@@ -1,258 +1,112 @@
+"""
+sas_fortuna / hooks.py
+
+Only hooks that are actually in use are enabled below. This file is kept
+intentionally small — add a new hook only when a real requirement shows
+up, not because it "might be useful later" (see README > Hooks).
+"""
+
 app_name = "sas_fortuna"
 app_title = "SAS Fortuna"
 app_publisher = "SAS Infosystem Pvt Ltd"
-app_description = "Custom Frappe app bundling SAS Fortuna\'s Client Scripts, Server Scripts, Web Forms, Portal Settings, Email Templates, and DocType customizations for version-controlled deployment."
+app_description = (
+	"Custom Frappe app bundling SAS Fortuna's Client Scripts, "
+	"Server Scripts, Web Forms, Portal Settings, Email Templates, "
+	"and DocType customizations for version-controlled deployment."
+)
 app_email = "subhapriyo@gmail.com"
 app_license = "mit"
 
-# Apps
-# ------------------
+# ---------------------------------------------------------------------------
+# App logo
+# ---------------------------------------------------------------------------
+# CONFLICT WITH ORIGINAL SPEC, RESOLVED:
+# The original brief asked for `app_logo_url = "/assets/sas_fortuna/images/logo.png"`
+# as a hooks.py key. That is NOT a hook Frappe v16 reads automatically —
+# setting it here would silently do nothing. The logo is still shipped as
+# a real static asset (so the URL below is valid once the app is
+# installed and `bench build` has run):
+#
+#     sas_fortuna/public/images/logo.png -> /assets/sas_fortuna/images/logo.png
+#
+# To make it appear in the UI, wire that asset path into whatever actually
+# reads it on the target site — e.g. Website Settings > App Logo /
+# Banner Image (Desk: Settings > Website Settings), or a custom
+# `templates/pages/*.html` if this is used on a portal page. That's a
+# per-site configuration step, not something an app hook can force, so
+# it's documented in README > Installing on a Site rather than exported
+# as a fixture.
+# app_logo_url = "/assets/sas_fortuna/images/logo.png"  # NOT a real hook — see note above
 
-# required_apps = []
+# ---------------------------------------------------------------------------
+# Fixtures — version-controlled customizations
+# ---------------------------------------------------------------------------
+# Every entry is scoped with a filter so `bench export-fixtures` can never
+# sweep up unrelated site data (other apps' Custom Fields, ERPNext's own
+# Property Setters, someone else's Client Script, etc.). See
+# README > Fixture Management for the full rationale.
+#
+# BEFORE THE FIRST EXPORT, YOU MUST:
+#   1. List every standard DocType you've added Custom Fields /
+#      Property Setters to below, in CUSTOMIZED_DOCTYPES.
+#   2. Name every Client Script / Server Script / Web Form / Email
+#      Template you create for this project with the FIXTURE_NAME_PREFIX
+#      below, so the name-based filters catch exactly (and only) your
+#      records.
+#
+# Do NOT run `bench export-fixtures` until both are done — an empty
+# CUSTOMIZED_DOCTYPES list means the Custom Field / Property Setter
+# fixtures currently match nothing (safe default), not "everything".
 
-# Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "sas_fortuna",
-# 		"logo": "/assets/sas_fortuna/logo.png",
-# 		"title": "SAS Fortuna",
-# 		"route": "/sas_fortuna",
-# 		"has_permission": "sas_fortuna.api.permission.has_app_permission"
-# 	}
-# ]
+CUSTOMIZED_DOCTYPES = [
+	# "Customer",
+	# "Supplier",
+	# "Sales Order",
+]
 
-# Includes in <head>
-# ------------------
+FIXTURE_NAME_PREFIX = "SAS Fortuna - "
 
-# include js, css files in header of desk.html
-# app_include_css = "/assets/sas_fortuna/css/sas_fortuna.css"
+fixtures = [
+	{
+		"dt": "Custom Field",
+		"filters": [["dt", "in", CUSTOMIZED_DOCTYPES]],
+	},
+	{
+		"dt": "Property Setter",
+		"filters": [["doc_type", "in", CUSTOMIZED_DOCTYPES]],
+	},
+	{
+		"dt": "Client Script",
+		"filters": [["name", "like", f"{FIXTURE_NAME_PREFIX}%"]],
+	},
+	{
+		"dt": "Server Script",
+		"filters": [["name", "like", f"{FIXTURE_NAME_PREFIX}%"]],
+	},
+	{
+		"dt": "Web Form",
+		"filters": [["name", "like", f"{FIXTURE_NAME_PREFIX}%"]],
+	},
+	{
+		"dt": "Email Template",
+		"filters": [["name", "like", f"{FIXTURE_NAME_PREFIX}%"]],
+	},
+	# Portal Settings is a single/settings doctype — one record exists per
+	# site, so it can't pull in unrelated records and needs no filter.
+	{"dt": "Portal Settings"},
+]
+
+# ---------------------------------------------------------------------------
+# Website / Desk asset includes
+# ---------------------------------------------------------------------------
+# Uncomment only once sas_fortuna/public/js/sas_fortuna.js and/or
+# .../css/sas_fortuna.css actually exist and contain something real.
 # app_include_js = "/assets/sas_fortuna/js/sas_fortuna.js"
+# app_include_css = "/assets/sas_fortuna/css/sas_fortuna.css"
 
-# include js, css files in header of web template
-# web_include_css = "/assets/sas_fortuna/css/sas_fortuna.css"
-# web_include_js = "/assets/sas_fortuna/js/sas_fortuna.js"
-
-# include custom scss in every website theme (without file extension ".scss")
-# website_theme_scss = "sas_fortuna/public/scss/website"
-
-# include js, css files in header of web form
-# webform_include_js = {"doctype": "public/js/doctype.js"}
-# webform_include_css = {"doctype": "public/css/doctype.css"}
-
-# include js in page
-# page_js = {"page" : "public/js/file.js"}
-
-# include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
-# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
-
-# Svg Icons
-# ------------------
-# include app icons in desk
-# app_include_icons = "sas_fortuna/public/icons.svg"
-
-# Home Pages
-# ----------
-
-# application home page (will override Website Settings)
-# home_page = "login"
-
-# website user home page (by Role)
-# role_home_page = {
-# 	"Role": "home_page"
-# }
-
-# Generators
-# ----------
-
-# automatically create page for each record of this doctype
-# website_generators = ["Web Page"]
-
-# automatically load and sync documents of this doctype from downstream apps
-# importable_doctypes = [doctype_1]
-
-# Jinja
-# ----------
-
-# add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "sas_fortuna.utils.jinja_methods",
-# 	"filters": "sas_fortuna.utils.jinja_filters"
-# }
-
-# Installation
-# ------------
-
-# before_install = "sas_fortuna.install.before_install"
-# after_install = "sas_fortuna.install.after_install"
-
-# Uninstallation
-# ------------
-
-# before_uninstall = "sas_fortuna.uninstall.before_uninstall"
-# after_uninstall = "sas_fortuna.uninstall.after_uninstall"
-
-# Integration Setup
-# ------------------
-# To set up dependencies/integrations with other apps
-# Name of the app being installed is passed as an argument
-
-# before_app_install = "sas_fortuna.utils.before_app_install"
-# after_app_install = "sas_fortuna.utils.after_app_install"
-
-# Integration Cleanup
-# -------------------
-# To clean up dependencies/integrations with other apps
-# Name of the app being uninstalled is passed as an argument
-
-# before_app_uninstall = "sas_fortuna.utils.before_app_uninstall"
-# after_app_uninstall = "sas_fortuna.utils.after_app_uninstall"
-
-# Build
-# ------------------
-# To hook into the build process
-
-# after_build = "sas_fortuna.build.after_build"
-
-# Desk Notifications
-# ------------------
-# See frappe.core.notifications.get_notification_config
-
-# notification_config = "sas_fortuna.notifications.get_notification_config"
-
-# Permissions
-# -----------
-# Permissions evaluated in scripted ways
-
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
-
-# Document Events
-# ---------------
-# Hook on document methods and events
-
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
-
-# Scheduled Tasks
-# ---------------
-
-# scheduler_events = {
-# 	"all": [
-# 		"sas_fortuna.tasks.all"
-# 	],
-# 	"daily": [
-# 		"sas_fortuna.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"sas_fortuna.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"sas_fortuna.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"sas_fortuna.tasks.monthly"
-# 	],
-# }
-
-# Testing
-# -------
-
-# before_tests = "sas_fortuna.install.before_tests"
-
-# Extend DocType Class
-# ------------------------------
-#
-# Specify custom mixins to extend the standard doctype controller.
-# extend_doctype_class = {
-# 	"Task": "sas_fortuna.custom.task.CustomTaskMixin"
-# }
-
-# Overriding Methods
-# ------------------------------
-#
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "sas_fortuna.event.get_events"
-# }
-#
-# each overriding function accepts a `data` argument;
-# generated from the base implementation of the doctype dashboard,
-# along with any modifications made in other Frappe apps
-# override_doctype_dashboards = {
-# 	"Task": "sas_fortuna.task.get_dashboard_data"
-# }
-
-# exempt linked doctypes from being automatically cancelled
-#
-# auto_cancel_exempted_doctypes = ["Auto Repeat"]
-
-# Ignore links to specified DocTypes when deleting documents
-# -----------------------------------------------------------
-
-# ignore_links_on_delete = ["Communication", "ToDo"]
-
-# Request Events
-# ----------------
-# before_request = ["sas_fortuna.utils.before_request"]
-# after_request = ["sas_fortuna.utils.after_request"]
-
-# Job Events
-# ----------
-# before_job = ["sas_fortuna.utils.before_job"]
-# after_job = ["sas_fortuna.utils.after_job"]
-
-# User Data Protection
-# --------------------
-
-# user_data_fields = [
-# 	{
-# 		"doctype": "{doctype_1}",
-# 		"filter_by": "{filter_by}",
-# 		"redact_fields": ["{field_1}", "{field_2}"],
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_2}",
-# 		"filter_by": "{filter_by}",
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_3}",
-# 		"strict": False,
-# 	},
-# 	{
-# 		"doctype": "{doctype_4}"
-# 	}
-# ]
-
-# Authentication and authorization
-# --------------------------------
-
-# auth_hooks = [
-# 	"sas_fortuna.auth.validate"
-# ]
-
-# Automatically update python controller files with type annotations for this app.
-# export_python_type_annotations = True
-
-# default_log_clearing_doctypes = {
-# 	"Logging DocType Name": 30  # days to retain logs
-# }
-
-# Translation
-# ------------
-# List of apps whose translatable strings should be excluded from this app's translations.
-# ignore_translatable_strings_from = []
-
+# ---------------------------------------------------------------------------
+# Deliberately not used (yet): doc_events, scheduler_events,
+# override_whitelisted_methods, boot_session, permission_query_conditions,
+# website_route_rules, etc. Add one here only when a specific, documented
+# business requirement needs it — never speculatively.
+# ---------------------------------------------------------------------------
