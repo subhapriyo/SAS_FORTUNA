@@ -12,9 +12,9 @@ truth for what's deployed.**
 Workflow:
 
 1. Write/edit the Client Script in the Desk UI (Customize Form area
-   won't do it — use the **Client Script** doctype directly), naming it
-   with the `SAS Fortuna - ` prefix so it's caught by the fixture filter
-   in `hooks.py`.
+   won't do it — use the **Client Script** doctype directly). Then add
+   its exact name to `CUSTOM_CLIENT_SCRIPTS` in `hooks.py` — unlisted
+   records are skipped on export, not swept in.
 2. Copy the final script text into a same-named `.js` file here, e.g.
    `customer/sas_fortuna_customer_validation.js`, purely for code review
    and history.

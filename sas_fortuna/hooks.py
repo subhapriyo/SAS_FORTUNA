@@ -49,14 +49,22 @@ app_license = "mit"
 # BEFORE THE FIRST EXPORT, YOU MUST:
 #   1. List every standard DocType you've added Custom Fields /
 #      Property Setters to below, in CUSTOMIZED_DOCTYPES.
-#   2. Name every Client Script / Server Script / Web Form / Email
-#      Template you create for this project with the FIXTURE_NAME_PREFIX
-#      below, so the name-based filters catch exactly (and only) your
-#      records.
+#   2. Add the EXACT name of every Client Script / Server Script /
+#      Web Form / Email Template you create for this project into the
+#      matching list below, the moment you create it.
 #
-# Do NOT run `bench export-fixtures` until both are done — an empty
-# CUSTOMIZED_DOCTYPES list means the Custom Field / Property Setter
-# fixtures currently match nothing (safe default), not "everything".
+# No naming convention (prefix, tag, etc.) is relied on — scoping is by
+# explicit, hand-maintained name list instead. A record you forget to
+# add here is simply skipped on export (safe default), never
+# accidentally swept in. If you rename a record in the Desk UI, update
+# its name here too, or the next export silently stops tracking it.
+#
+# Do NOT run `bench export-fixtures` until these are populated — empty
+# lists mean the fixtures currently match nothing (safe default), not
+# "everything". An unscoped filter would pull every Custom Field /
+# Property Setter / Client Script / etc. on the site, including
+# ERPNext's own, other installed apps' (e.g. fortuna_erp), and anything
+# unrelated.
 
 CUSTOMIZED_DOCTYPES = [
 	# "Customer",
@@ -64,7 +72,21 @@ CUSTOMIZED_DOCTYPES = [
 	# "Sales Order",
 ]
 
-FIXTURE_NAME_PREFIX = "SAS Fortuna - "
+CUSTOM_CLIENT_SCRIPTS = [
+	# "Sales Order - Highlight Overdue",
+]
+
+CUSTOM_SERVER_SCRIPTS = [
+	# "Sales Order - Before Submit - Validate Credit Limit",
+]
+
+CUSTOM_WEB_FORMS = [
+	# "customer-onboarding",
+]
+
+CUSTOM_EMAIL_TEMPLATES = [
+	# "Order Confirmation",
+]
 
 fixtures = [
 	{
@@ -77,19 +99,19 @@ fixtures = [
 	},
 	{
 		"dt": "Client Script",
-		"filters": [["name", "like", f"{FIXTURE_NAME_PREFIX}%"]],
+		"filters": [["name", "in", CUSTOM_CLIENT_SCRIPTS]],
 	},
 	{
 		"dt": "Server Script",
-		"filters": [["name", "like", f"{FIXTURE_NAME_PREFIX}%"]],
+		"filters": [["name", "in", CUSTOM_SERVER_SCRIPTS]],
 	},
 	{
 		"dt": "Web Form",
-		"filters": [["name", "like", f"{FIXTURE_NAME_PREFIX}%"]],
+		"filters": [["name", "in", CUSTOM_WEB_FORMS]],
 	},
 	{
 		"dt": "Email Template",
-		"filters": [["name", "like", f"{FIXTURE_NAME_PREFIX}%"]],
+		"filters": [["name", "in", CUSTOM_EMAIL_TEMPLATES]],
 	},
 	# Portal Settings is a single/settings doctype — one record exists per
 	# site, so it can't pull in unrelated records and needs no filter.

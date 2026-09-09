@@ -18,9 +18,9 @@ Prefer a real Python module inside this app instead (e.g.
 
 Reach for a Frappe **Server Script** only for small, self-contained,
 low-risk automation that genuinely benefits from being editable by an
-admin without a deployment — and even then, name it with the
-`SAS Fortuna - ` prefix so it's picked up by the fixture filter in
-`hooks.py`.
+admin without a deployment — and even then, add its exact name to
+`CUSTOM_SERVER_SCRIPTS` in `hooks.py` the moment you create it, or it
+will be silently skipped on export.
 
 Never put secrets, API keys, or credentials in a Server Script — they end
 up in the fixture JSON and therefore in Git history.

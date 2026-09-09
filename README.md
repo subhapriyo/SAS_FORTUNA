@@ -104,7 +104,7 @@ The logo ships as a static asset at `/assets/sas_fortuna/images/logo.png` after 
 Fixtures are scoped, never a blind full-table export. See `sas_fortuna/hooks.py` for the exact filters. In short:
 
 - **Custom Field / Property Setter** — filtered to the DocTypes listed in `CUSTOMIZED_DOCTYPES` in `hooks.py`. Add a DocType there *before* you customize it, or the export will silently skip your change.
-- **Client Script / Server Script / Web Form / Email Template** — filtered by a `SAS Fortuna - ` name prefix. Always name new records with that prefix.
+- **Client Script / Server Script / Web Form / Email Template** — filtered by an explicit, hand-maintained list of exact record names in `hooks.py` (`CUSTOM_CLIENT_SCRIPTS`, `CUSTOM_SERVER_SCRIPTS`, `CUSTOM_WEB_FORMS`, `CUSTOM_EMAIL_TEMPLATES`). Add a record's exact name to the matching list the moment you create it — an unlisted record is skipped on export, not swept in. If you rename a record, update the list entry too.
 - **Portal Settings** — a per-site singleton, exported without a filter (nothing unrelated to pull in).
 
 Never remove the filters to "just export everything" — that's how unrelated site data, or another app's customizations, ends up committed to this repo.
