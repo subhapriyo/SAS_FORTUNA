@@ -1,134 +1,214 @@
 """
-sas_fortuna / hooks.py
+SAS Fortuna / hooks.py
 
-Only hooks that are actually in use are enabled below. This file is kept
-intentionally small — add a new hook only when a real requirement shows
-up, not because it "might be useful later" (see README > Hooks).
+Application hooks and controlled fixtures for the SAS Fortuna app.
+
+Fixture exports are intentionally scoped to records owned by this app.
+App-owned DocTypes are maintained as source files, while any additional
+Custom Fields and Property Setters are exported as fixtures.
 """
 
 app_name = "sas_fortuna"
 app_title = "SAS Fortuna"
 app_publisher = "SAS Infosystem Pvt Ltd"
+
 app_description = (
-	"Custom Frappe app bundling SAS Fortuna's Client Scripts, "
-	"Server Scripts, Web Forms, Portal Settings, Email Templates, "
-	"and DocType customizations for version-controlled deployment."
+	"Custom Frappe app for Fortuna Impex Pvt Ltd, covering customer and "
+	"supplier onboarding, portal access, welcome emails, email logs, "
+	"Client Scripts, Server Scripts, Web Forms, Workflows, and related "
+	"customizations."
 )
+
 app_email = "subhapriyo@gmail.com"
 app_license = "mit"
 
-# ---------------------------------------------------------------------------
-# App logo
-# ---------------------------------------------------------------------------
-# CONFLICT WITH ORIGINAL SPEC, RESOLVED:
-# The original brief asked for `app_logo_url = "/assets/sas_fortuna/images/logo.png"`
-# as a hooks.py key. That is NOT a hook Frappe v16 reads automatically —
-# setting it here would silently do nothing. The logo is still shipped as
-# a real static asset (so the URL below is valid once the app is
-# installed and `bench build` has run):
-#
-#     sas_fortuna/public/images/logo.png -> /assets/sas_fortuna/images/logo.png
-#
-# To make it appear in the UI, wire that asset path into whatever actually
-# reads it on the target site — e.g. Website Settings > App Logo /
-# Banner Image (Desk: Settings > Website Settings), or a custom
-# `templates/pages/*.html` if this is used on a portal page. That's a
-# per-site configuration step, not something an app hook can force, so
-# it's documented in README > Installing on a Site rather than exported
-# as a fixture.
-# app_logo_url = "/assets/sas_fortuna/images/logo.png"  # NOT a real hook — see note above
 
-# ---------------------------------------------------------------------------
-# Fixtures — version-controlled customizations
-# ---------------------------------------------------------------------------
-# Every entry is scoped with a filter so `bench export-fixtures` can never
-# sweep up unrelated site data (other apps' Custom Fields, ERPNext's own
-# Property Setters, someone else's Client Script, etc.). See
-# README > Fixture Management for the full rationale.
+# ============================================================================
+# CUSTOMIZED DOCTYPES
+# ============================================================================
+# Custom Field and Property Setter records are exported only for the
+# DocTypes listed here.
 #
-# BEFORE THE FIRST EXPORT, YOU MUST:
-#   1. List every standard DocType you've added Custom Fields /
-#      Property Setters to below, in CUSTOMIZED_DOCTYPES.
-#   2. Add the EXACT name of every Client Script / Server Script /
-#      Web Form / Email Template you create for this project into the
-#      matching list below, the moment you create it.
+# This includes:
+#   - Supplier Onboarding
+#   - Supplier Welcome Email Log
+#   - Customer Welcome Email Log
 #
-# No naming convention (prefix, tag, etc.) is relied on — scoping is by
-# explicit, hand-maintained name list instead. A record you forget to
-# add here is simply skipped on export (safe default), never
-# accidentally swept in. If you rename a record in the Desk UI, update
-# its name here too, or the next export silently stops tracking it.
-#
-# Do NOT run `bench export-fixtures` until these are populated — empty
-# lists mean the fixtures currently match nothing (safe default), not
-# "everything". An unscoped filter would pull every Custom Field /
-# Property Setter / Client Script / etc. on the site, including
-# ERPNext's own, other installed apps' (e.g. fortuna_erp), and anything
-# unrelated.
+# The DocTypes themselves should remain app-owned source files. Only
+# additional Custom Field and Property Setter records are exported here.
 
 CUSTOMIZED_DOCTYPES = [
-	# "Customer",
-	# "Supplier",
-	# "Sales Order",
+	"Supplier Onboarding",
+	"Supplier Welcome Email Log",
+	"Customer Welcome Email Log",
 ]
 
-CUSTOM_CLIENT_SCRIPTS = [
-	# "Sales Order - Highlight Overdue",
+
+# ============================================================================
+# WORKFLOWS
+# ============================================================================
+# Only explicitly identified SAS Fortuna workflows are exported.
+#
+# Add additional workflow names here when they are created and managed
+# by the SAS Fortuna application.
+
+CUSTOM_WORKFLOWS = [
+	"Supplier Onboarding Workflow",
+	# "Supplier Welcome Email Log Workflow",
+	# "Customer Welcome Email Log Workflow",
 ]
 
-CUSTOM_SERVER_SCRIPTS = [
-	# "Sales Order - Before Submit - Validate Credit Limit",
-]
 
-CUSTOM_WEB_FORMS = [
-	# "customer-onboarding",
-]
+# ============================================================================
+# EMAIL TEMPLATES
+# ============================================================================
+# Only explicitly identified SAS Fortuna email templates are exported.
 
 CUSTOM_EMAIL_TEMPLATES = [
-	# "Order Confirmation",
+	"Portal Welcome Email - Fortuna Impex Pvt Ltd",
 ]
+
+
+# ============================================================================
+# CLIENT SCRIPTS
+# ============================================================================
+# Only Client Scripts required by the SAS Fortuna onboarding and portal
+# processes are exported.
+
+CUSTOM_CLIENT_SCRIPTS = [
+	"Bulk Send Supplier Welcome Email",
+	"Bulk Send Customer Welcome Email",
+]
+
+
+# ============================================================================
+# SERVER SCRIPTS
+# ============================================================================
+# Only Server Scripts required by the SAS Fortuna onboarding, portal,
+# permissions, banking, ledger, and welcome-email processes are exported.
+
+CUSTOM_SERVER_SCRIPTS = [
+	"Address - Auto Link Portal Party",
+	"Bank Account Permission Query - Portal Party Access",
+	"Bulk Send Customer Welcome Email",
+	"Bulk Send Supplier Welcome Email",
+	"Get Portal Bank Accounts",
+	"Get Portal Ledger",
+	"Get Portal Party",
+	"GL Entry Permission Query - Portal Party Access",
+	"Party Permission Query - Portal Customer & Supplier Access",
+	"Party Set Bank Account Owner Before Insert",
+	"Send Customer Welcome Email on First Sales Order",
+	"Supplier Welcome",
+]
+
+
+# ============================================================================
+# WEB FORMS
+# ============================================================================
+# These Web Forms support the SAS Fortuna customer and supplier portal
+# onboarding and self-service processes.
+
+CUSTOM_WEB_FORMS = [
+	"bank-accounts",
+	"my-company-address",
+	"my-ledger",
+	"supplier-registration",
+	"update-customer-details",
+	"update-supplier-details",
+]
+
+
+# ============================================================================
+# FIXTURES
+# ============================================================================
+# Fixtures contain configuration/customization records that need to be
+# version-controlled with the application.
+#
+# IMPORTANT:
+# Filters are intentionally explicit to prevent unrelated records from
+# the Fortuna site from being exported into the sas_fortuna application.
+
 
 fixtures = [
+	# ------------------------------------------------------------------------
+	# Custom Fields
+	# ------------------------------------------------------------------------
+	# Exports Custom Field records belonging only to the DocTypes listed in
+	# CUSTOMIZED_DOCTYPES.
 	{
 		"dt": "Custom Field",
-		"filters": [["dt", "in", CUSTOMIZED_DOCTYPES]],
+		"filters": [
+			["dt", "in", CUSTOMIZED_DOCTYPES],
+		],
 	},
+	# ------------------------------------------------------------------------
+	# Property Setters
+	# ------------------------------------------------------------------------
+	# Exports Property Setter records belonging only to the customized
+	# DocTypes listed above.
 	{
 		"dt": "Property Setter",
-		"filters": [["doc_type", "in", CUSTOMIZED_DOCTYPES]],
+		"filters": [
+			["doc_type", "in", CUSTOMIZED_DOCTYPES],
+		],
 	},
+	# ------------------------------------------------------------------------
+	# Client Scripts
+	# ------------------------------------------------------------------------
+	# Exports only the explicitly listed SAS Fortuna Client Scripts.
 	{
 		"dt": "Client Script",
-		"filters": [["name", "in", CUSTOM_CLIENT_SCRIPTS]],
+		"filters": [
+			["name", "in", CUSTOM_CLIENT_SCRIPTS],
+		],
 	},
+	# ------------------------------------------------------------------------
+	# Server Scripts
+	# ------------------------------------------------------------------------
+	# Exports only the explicitly listed SAS Fortuna Server Scripts.
 	{
 		"dt": "Server Script",
-		"filters": [["name", "in", CUSTOM_SERVER_SCRIPTS]],
+		"filters": [
+			["name", "in", CUSTOM_SERVER_SCRIPTS],
+		],
 	},
+	# ------------------------------------------------------------------------
+	# Web Forms
+	# ------------------------------------------------------------------------
+	# Exports only the explicitly listed SAS Fortuna Web Forms.
 	{
 		"dt": "Web Form",
-		"filters": [["name", "in", CUSTOM_WEB_FORMS]],
+		"filters": [
+			["name", "in", CUSTOM_WEB_FORMS],
+		],
 	},
+	# ------------------------------------------------------------------------
+	# Email Templates
+	# ------------------------------------------------------------------------
+	# Exports only the explicitly listed SAS Fortuna Email Templates.
 	{
 		"dt": "Email Template",
-		"filters": [["name", "in", CUSTOM_EMAIL_TEMPLATES]],
+		"filters": [
+			["name", "in", CUSTOM_EMAIL_TEMPLATES],
+		],
 	},
-	# Portal Settings is a single/settings doctype — one record exists per
-	# site, so it can't pull in unrelated records and needs no filter.
-	{"dt": "Portal Settings"},
+	# ------------------------------------------------------------------------
+	# Workflows
+	# ------------------------------------------------------------------------
+	# Exports only the explicitly listed SAS Fortuna Workflows.
+	{
+		"dt": "Workflow",
+		"filters": [
+			["name", "in", CUSTOM_WORKFLOWS],
+		],
+	},
+	# ------------------------------------------------------------------------
+	# Portal Settings
+	# ------------------------------------------------------------------------
+	# Portal Settings is a Singleton. It is therefore exported without a
+	# filter because the site contains a single Portal Settings record.
+	{
+		"dt": "Portal Settings",
+	},
 ]
-
-# ---------------------------------------------------------------------------
-# Website / Desk asset includes
-# ---------------------------------------------------------------------------
-# Uncomment only once sas_fortuna/public/js/sas_fortuna.js and/or
-# .../css/sas_fortuna.css actually exist and contain something real.
-# app_include_js = "/assets/sas_fortuna/js/sas_fortuna.js"
-# app_include_css = "/assets/sas_fortuna/css/sas_fortuna.css"
-
-# ---------------------------------------------------------------------------
-# Deliberately not used (yet): doc_events, scheduler_events,
-# override_whitelisted_methods, boot_session, permission_query_conditions,
-# website_route_rules, etc. Add one here only when a specific, documented
-# business requirement needs it — never speculatively.
-# ---------------------------------------------------------------------------
