@@ -10,7 +10,12 @@ def execute():
 
 	doc.append(
 		"custom_menu",
-		{"title": "Supplier KYC", "enabled": 1, "route": "/supplier-kyc", "role": "Supplier"},
+		{
+			"title": "Supplier KYC",
+			"enabled": 1,
+			"route": "/supplier-kyc",
+			"role": "Supplier",
+		},
 	)
 
 	doc.save(ignore_permissions=True)
