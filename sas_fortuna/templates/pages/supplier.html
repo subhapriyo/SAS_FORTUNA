@@ -6,7 +6,7 @@
 		id="supplier-form-loading"
 		class="supplier-form-loading"
 		aria-live="polite"
-		aria-busy="true"cd
+		aria-busy="true"
 	>
 		<div class="supplier-form-loading__content">
 			<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
@@ -316,15 +316,18 @@
 		padding-top: 12px;
 	}
 	.supplier-form-loading {
-		position: relative;
-		width: 100%;
-		height: auto;
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		width: 100vw;
+		height: 100vh;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: transparent;
-		padding: 12px 0 8px;
-		z-index: 1;
+		background: rgba(255, 255, 255, 0.72);
+		z-index: 9999;
 	}
 	.supplier-form-loading__content {
 		display: flex;
@@ -382,7 +385,7 @@
 	}
 </style>
 {% endblock %} {% block script %}
-<script src="/assets/fortuna_erp/js/portal_kyc.js"></script>
+<script src="/assets/sas_fortuna/js/portal_kyc.js"></script>
 <script>
 	const SUPPLIER_FILE_FIELDS = [
 		"custom_gst_certificate",
@@ -610,7 +613,7 @@
 
 		// Load option lists before populating the rest of the supplier document.
 		frappe.call({
-			method: "fortuna_erp.api.supplier.get_gst_category_options",
+			method: "sas_fortuna.api.supplier.get_gst_category_options",
 			callback: function (r) {
 				const gstSelect = document.getElementById("gst_category");
 				if (gstSelect) {
@@ -630,7 +633,7 @@
 		});
 
 		frappe.call({
-			method: "fortuna_erp.api.supplier.get_tax_withholding_category_options",
+			method: "sas_fortuna.api.supplier.get_tax_withholding_category_options",
 			callback: function (r) {
 				const tdsSelect = document.getElementById("tax_withholding_category");
 				if (tdsSelect && r.message) {
@@ -651,7 +654,7 @@
 
 		function loadSupplierData() {
 			frappe.call({
-				method: "fortuna_erp.api.supplier.get_supplier_doc",
+				method: "sas_fortuna.api.supplier.get_supplier_doc",
 				callback: function (r) {
 					if (!r.message) {
 						finishInitialLoad("supplier");
@@ -755,7 +758,7 @@
 			SASPortalKyc.uploadFiles(SUPPLIER_FILE_FIELDS, data);
 
 			frappe.call({
-				method: "fortuna_erp.api.supplier.update_supplier",
+				method: "sas_fortuna.api.supplier.update_supplier",
 				args: { data: data },
 				callback: function () {
 					setFormLoading(false);

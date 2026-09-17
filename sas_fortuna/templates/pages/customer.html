@@ -87,29 +87,49 @@
 			</div>
 		</section>
 
+		<!-- Tax withholding and collection settings for supplier compliance -->
 		<section>
 			<h5>Tax Identification</h5>
-            <hr />
+			<hr />
 			<div class="row">
-				<div class="col-md-6 mb-3">
-					<label>TDS Applicability</label>
-					<select name="custom_tds_applicability" id="custom_tds_applicability" class="form-control">
-						<option value="">Select TDS Applicability</option>
-						<option value="Yes">Yes</option>
-						<option value="No">No</option>
-					</select>
+				<div class="col-md-6">
+					<div class="col-12 mb-3">
+						<label>TDS Applicability</label>
+						<select
+							name="custom_tds_applicable"
+							id="custom_tds_applicable"
+							class="form-control mb-2"
+							onchange="toggleTDS(this)"
+						>
+							<option value="">Select TDS Applicability</option>
+							<option value="No">No</option>
+							<option value="Yes">Yes</option>
+						</select>
+					</div>
+					<div class="col-12 mb-3" id="tds_section" style="display: none">
+						<label>Tax Withholding Category</label>
+						<select
+							name="tax_withholding_category"
+							id="tax_withholding_category"
+							class="form-control"
+						>
+							<option value="">Select Tax Withholding Category</option>
+						</select>
+					</div>
 				</div>
-				<div class="col-md-6 mb-3">
-					<label>TCS Applicability</label>
-					<select name="custom_tcs_applicable" class="form-control">
-						<option value="">Select TCS Applicability</option>
-						<option value="Yes">Yes</option>
-						<option value="No">No</option>
-					</select>
-				</div>
-				<div class="col-md-6 mb-3">
-					<label>TAN No.</label>
-					<input type="text" name="custom_tan_no" class="form-control" placeholder="TAN No." />
+				<div class="col-md-6">
+					<div class="col-12 mb-3">
+						<label>TCS Applicability</label>
+						<select
+							name="custom_tcs_applicable"
+							id="custom_tcs_applicable"
+							class="form-control mb-2"
+						>
+							<option value="">Select TCS Applicability</option>
+							<option value="No">No</option>
+							<option value="Yes">Yes</option>
+						</select>
+					</div>
 				</div>
 			</div>
 		</section>
@@ -514,6 +534,20 @@
 	function toggleMSME(select) {
 		var fields = document.getElementById("msme_fields");
 		if (fields) fields.style.display = select && select.value === "Yes" ? "block" : "none";
+	}
+
+	function toggleTDS(select) {
+		const section = document.getElementById("tds_section");
+		if (!select || !section) return;
+		if (select.value === "Yes") {
+			section.style.display = "flex";
+			return;
+		}
+
+		section.style.display = "none";
+		section.querySelectorAll("input[type='checkbox']").forEach(function (checkbox) {
+			checkbox.checked = false;
+		});
 	}
 </script>
 {% endblock %}
