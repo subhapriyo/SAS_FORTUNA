@@ -613,7 +613,7 @@
 
 		// Load option lists before populating the rest of the supplier document.
 		frappe.call({
-			method: "sas_fortuna.api.vendor.get_gst_category_options",
+			method: "sas_fortuna.api.supplier.get_gst_category_options",
 			callback: function (r) {
 				const gstSelect = document.getElementById("gst_category");
 				if (gstSelect) {
@@ -633,7 +633,7 @@
 		});
 
 		frappe.call({
-			method: "sas_fortuna.api.vendor.get_tax_withholding_category_options",
+			method: "sas_fortuna.api.supplier.get_tax_withholding_category_options",
 			callback: function (r) {
 				const tdsSelect = document.getElementById("tax_withholding_category");
 				if (tdsSelect && r.message) {
@@ -654,7 +654,7 @@
 
 		function loadSupplierData() {
 			frappe.call({
-				method: "sas_fortuna.api.vendor.get_supplier_doc",
+				method: "sas_fortuna.api.supplier.get_supplier_doc",
 				callback: function (r) {
 					if (!r.message) {
 						finishInitialLoad("supplier");
@@ -758,7 +758,7 @@
 			SASPortalKyc.uploadFiles(SUPPLIER_FILE_FIELDS, data);
 
 			frappe.call({
-				method: "sas_fortuna.api.vendor.update_supplier",
+				method: "sas_fortuna.api.supplier.update_supplier",
 				args: { data: data },
 				callback: function () {
 					setFormLoading(false);
