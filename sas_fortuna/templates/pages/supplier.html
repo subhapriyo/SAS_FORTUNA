@@ -1,26 +1,31 @@
 {% extends "templates/web.html" %} {% block header %}
-<h2>Vendor KYC</h2>
+<h2>Supplier KYC</h2>
 {% endblock %} {% block page_content %}
-<div class="vendor-page mt-4">
-	<div id="vendor-form-loading" class="vendor-form-loading" aria-live="polite" aria-busy="true">
-		<div class="vendor-form-loading__content">
+<div class="supplier-page mt-4">
+	<div
+		id="supplier-form-loading"
+		class="supplier-form-loading"
+		aria-live="polite"
+		aria-busy="true"
+	>
+		<div class="supplier-form-loading__content">
 			<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
-			<span id="vendor-form-loading-message" data-loading-message>Loading...</span>
+			<span id="supplier-form-loading-message" data-loading-message>Loading...</span>
 		</div>
 	</div>
 
-	<form id="vendor-form" class="vendor-form" enctype="multipart/form-data">
-		<!-- Basic supplier reference data used to identify the vendor record -->
+	<form id="supplier-form" class="supplier-form" enctype="multipart/form-data">
+		<!-- Basic supplier reference data used to identify the supplier record -->
 		<section>
 			<h5>Basic Details</h5>
 			<hr />
 			<div class="row">
 				<div class="col-md-6 mb-2">
-					<label>Vendor Code</label>
+					<label>Supplier Code</label>
 					<input type="text" name="supplier_code" class="form-control" readonly />
 				</div>
 				<div class="col-md-6 mb-2">
-					<label>Name of Vendor</label>
+					<label>Name of Supplier</label>
 					<input type="text" name="supplier_name" class="form-control" readonly />
 				</div>
 			</div>
@@ -112,7 +117,7 @@
 			</div>
 		</section>
 
-		<!-- Tax withholding and collection settings for vendor compliance -->
+		<!-- Tax withholding and collection settings for supplier compliance -->
 		<section>
 			<h5>Tax Identification</h5>
 			<hr />
@@ -238,128 +243,62 @@
 			</div>
 		</section>
 
-		<!-- Supporting documents uploaded for vendor verification -->
+		<!-- Supporting documents uploaded for supplier verification -->
 		<section>
 			<h5>Attachments</h5>
 			<hr />
 			<div class="row">
-				<!-- Left Main Column (col-md-6) -->
-				<div class="col-md-6">
-					<div class="col-12 mb-4">
-						<label>GST Certificate</label>
-						<input type="file" class="form-control" id="custom_gst_certificate" accept=".pdf, image/*" />
-						<a
-							id="link_custom_gst_certificate"
-							href="#"
-							target="_blank"
-							style="display: none !important;"
-							class="mt-1 small text-primary d-block"
-							>&#128206; View Uploaded File</a
-						>
-					</div>
-					<div class="col-12 mb-4">
-						<label>PAN Card</label>
-						<input type="file" class="form-control" id="custom_pan_card" accept=".pdf, image/*" />
-						<a
-							id="link_custom_pan_card"
-							href="#"
-							target="_blank"
-							style="display: none !important; text-decoration: none;"
-							class="mt-1 small text-primary d-block"
-							>&#128206; View Uploaded File</a
-						>
-					</div>
-					<div class="col-12 mb-4">
-						<label>Certificate of Incorporation / Partnership deed</label>
-						<input
-							type="file"
-							class="form-control"
-							id="custom_certificate_of_incorporation__partnership_deed" accept=".pdf, image/*"
-						/>
-						<a
-							id="link_custom_certificate_of_incorporation__partnership_deed"
-							href="#"
-							target="_blank"
-							style="display: none !important;"
-							class="mt-1 small text-primary d-block"
-							>&#128206; View Uploaded File</a
-						>
-					</div>
+				{% for field in ["custom_gst_certificate", "custom_pan_card",
+				"custom_certificate_of_incorporation__partnership_deed", "custom_cancelled_cheque",
+				"custom_last_itr__acknowledgement", "custom_msme_certificate"] %}
+				<div class="col-md-6 mb-3">
+					<label>{{ field.replace("custom_", "").replace("_", " ").title() }}</label>
+					<input
+						type="file"
+						class="form-control"
+						id="{{ field }}"
+						accept=".pdf, image/*"
+					/>
+					<a
+						id="link_{{ field }}"
+						href="#"
+						target="_blank"
+						style="display: none !important"
+						class="mt-1 small text-primary d-block"
+						>&#128206; View Uploaded File</a
+					>
 				</div>
-
-				<!-- Right Main Column (col-md-6) -->
-				<div class="col-md-6">
-					<div class="col-12 mb-4">
-						<label>Cancelled Cheque</label>
-						<input type="file" class="form-control" id="custom_cancelled_cheque" accept=".pdf, image/*" />
-						<a
-							id="link_custom_cancelled_cheque"
-							href="#"
-							target="_blank"
-							style="display: none !important;"
-							class="mt-1 small text-primary d-block"
-							>&#128206; View Uploaded File</a
-						>
-					</div>
-					<div class="col-12 mb-4">
-						<label>Last ITR - Acknowledgement</label>
-						<input
-							type="file"
-							class="form-control"
-							id="custom_last_itr__acknowledgement" accept=".pdf, image/*"
-						/>
-						<a
-							id="link_custom_last_itr__acknowledgement"
-							href="#"
-							target="_blank"
-							style="display: none !important;"
-							class="mt-1 small text-primary d-block"
-							>&#128206; View Uploaded File</a
-						>
-					</div>
-					<div class="col-12 mb-4">
-						<label>MSME Certificate</label>
-						<input type="file" class="form-control" id="custom_msme_certificate" accept=".pdf, image/*" />
-						<a
-							id="link_custom_msme_certificate"
-							href="#"
-							target="_blank"
-							style="display: none !important;"
-							class="mt-1 small text-primary d-block"
-							>&#128206; View Uploaded File</a
-						>
-					</div>
-				</div>
+				{% endfor %}
 			</div>
 		</section>
 		<section>
-			<div class="vendor-form-actions">
+			<div class="supplier-form-actions">
 				<button type="submit" class="btn btn-success btn-lg">Save</button>
 			</div>
 		</section>
 	</form>
 </div>
 
-<!-- UI styling kept intentionally minimal and scoped to the custom form layout -->
+<!-- UI styling kept intentionally minimal and scoped to the supplier KYC form layout -->
 <style>
-	.vendor-page {
+	.supplier-page {
 		width: 100%;
 		max-width: 100%;
 		padding: 0 10px 24px;
 		box-sizing: border-box;
 	}
-	.vendor-form {
+	.supplier-form {
 		width: 100%;
 	}
-	.vendor-form .row {
+	.supplier-form .row {
 		margin-left: -8px;
 		margin-right: -8px;
 	}
-	.vendor-form .row > [class*="col-"] {
+	.supplier-form .row > [class*="col-"] {
 		padding-left: 8px;
 		padding-right: 8px;
 	}
-	.vendor-form section {
+	.supplier-form section {
 		background: #fff;
 		border: 1px solid #e6eaf0;
 		border-radius: 10px;
@@ -367,16 +306,16 @@
 		margin-bottom: 18px;
 		box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 	}
-	.vendor-form section h5 {
+	.supplier-form section h5 {
 		margin-bottom: 0;
 		font-weight: 600;
 	}
-	.vendor-form-actions {
+	.supplier-form-actions {
 		display: flex;
 		justify-content: center;
 		padding-top: 12px;
 	}
-	.vendor-form-loading {
+	.supplier-form-loading {
 		position: fixed;
 		top: 0;
 		right: 0;
@@ -390,7 +329,7 @@
 		background: rgba(255, 255, 255, 0.72);
 		z-index: 9999;
 	}
-	.vendor-form-loading__content {
+	.supplier-form-loading__content {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -398,11 +337,11 @@
 		font-weight: 600;
 		color: #1f2937;
 	}
-	.vendor-form-loading__content .spinner-border {
+	.supplier-form-loading__content .spinner-border {
 		width: 2.25rem;
 		height: 2.25rem;
 	}
-	.vendor-form-actions .btn {
+	.supplier-form-actions .btn {
 		min-width: 180px;
 		padding: 10px 24px;
 		font-size: 1rem;
@@ -440,7 +379,7 @@
 		margin-bottom: 8px;
 	}
 	@media (max-width: 767px) {
-		.vendor-page {
+		.supplier-page {
 			padding: 0 6px 20px;
 		}
 	}
@@ -448,22 +387,27 @@
 {% endblock %} {% block script %}
 <script src="/assets/sas_fortuna/js/portal_kyc.js"></script>
 <script>
+	const SUPPLIER_FILE_FIELDS = [
+		"custom_gst_certificate",
+		"custom_pan_card",
+		"custom_certificate_of_incorporation__partnership_deed",
+		"custom_cancelled_cheque",
+		"custom_last_itr__acknowledgement",
+		"custom_msme_certificate",
+	];
+
 	let currentSupplier = "";
 	let contactRowCount = 0;
 	let addressRowCount = 0;
 
-	// =============================================================
-	// =================== ADDRESS ROW FUNCTIONS ===================
-	// =============================================================
+	// Dynamic address rows keep supplier contact data in a predictable structure.
+	function addAddressRow(data = {}) {
+		addressRowCount += 1;
+		const idx = addressRowCount;
+		const container = document.getElementById("address-rows-container");
+		const isPrimary = idx === 1;
+		const row = document.createElement("div");
 
-	function addAddressRow(data) {
-		data = data || {};
-		addressRowCount++;
-		var idx = addressRowCount;
-		var container = document.getElementById("address-rows-container");
-		var isPrimary = idx === 1;
-
-		var row = document.createElement("div");
 		row.classList.add("address-row");
 		row.setAttribute("data-addr-idx", idx);
 		if (data.address_name) row.setAttribute("data-address-name", data.address_name);
@@ -502,70 +446,62 @@
 		renumberAddressRows();
 	}
 
-	function removeAddressRow(btn) {
-		btn.closest(".address-row").remove();
+	function removeAddressRow(button) {
+		button.closest(".address-row").remove();
 		renumberAddressRows();
 	}
 
 	function renumberAddressRows() {
-		var rows = document.querySelectorAll(".address-row");
-		rows.forEach(function (row, i) {
-			var label = row.querySelector(".address-row-label");
+		const rows = document.querySelectorAll(".address-row");
+		rows.forEach(function (row, index) {
+			const label = row.querySelector(".address-row-label");
 			if (label) {
-				var isPrimary = i === 0;
+				const isPrimary = index === 0;
 				label.innerHTML =
 					"Address " +
-					(i + 1) +
+					(index + 1) +
 					(isPrimary
 						? ' <span class="badge badge-primary" style="font-size:10px;background:#007bff;color:#fff;border-radius:3px;padding:2px 6px;">Primary</span>'
 						: "");
 			}
-			var removeBtn = row.querySelector(".remove-address-btn");
-			if (i === 0) {
+			const removeBtn = row.querySelector(".remove-address-btn");
+			if (index === 0) {
 				if (removeBtn) removeBtn.remove();
-			} else {
-				if (!removeBtn) {
-					removeBtn = document.createElement("button");
-					removeBtn.type = "button";
-					removeBtn.className = "remove-address-btn";
-					removeBtn.title = "Remove";
-					removeBtn.innerHTML = "&#x2715;";
-					removeBtn.setAttribute("onclick", "removeAddressRow(this)");
-					row.appendChild(removeBtn);
-				}
+			} else if (!removeBtn) {
+				const newRemoveBtn = document.createElement("button");
+				newRemoveBtn.type = "button";
+				newRemoveBtn.className = "remove-address-btn";
+				newRemoveBtn.title = "Remove";
+				newRemoveBtn.innerHTML = "&#x2715;";
+				newRemoveBtn.setAttribute("onclick", "removeAddressRow(this)");
+				row.appendChild(newRemoveBtn);
 			}
 		});
 	}
 
 	function getAddressRowsData() {
-		var rows = document.querySelectorAll(".address-row");
-		var addresses = [];
-		rows.forEach(function (row, i) {
-			addresses.push({
+		const rows = document.querySelectorAll(".address-row");
+		return Array.from(rows).map(function (row, index) {
+			return {
 				address_line1: row.querySelector('[data-addr-field="address_line1"]').value || "",
 				address_line2: row.querySelector('[data-addr-field="address_line2"]').value || "",
 				city: row.querySelector('[data-addr-field="city"]').value || "",
 				state: row.querySelector('[data-addr-field="state"]').value || "",
 				pincode: row.querySelector('[data-addr-field="pincode"]').value || "",
 				address_name: row.getAttribute("data-address-name") || "",
-				is_primary: i === 0 ? 1 : 0,
-			});
+				is_primary: index === 0 ? 1 : 0,
+			};
 		});
-		return addresses;
 	}
 
-	// =============================================================
-	// =================== CONTACT ROW FUNCTIONS ===================
-	// =============================================================
+	// Dynamic contact rows mirror the supplier contact master data for the same record.
+	function addContactRow(data = {}) {
+		contactRowCount += 1;
+		const idx = contactRowCount;
+		const container = document.getElementById("contact-rows-container");
+		const isPrimary = idx === 1;
+		const row = document.createElement("div");
 
-	function addContactRow(data) {
-		data = data || {};
-		contactRowCount++;
-		var idx = contactRowCount;
-		var container = document.getElementById("contact-rows-container");
-		var isPrimary = idx === 1;
-
-		var row = document.createElement("div");
 		row.classList.add("contact-row");
 		row.setAttribute("data-row-idx", idx);
 		if (data.contact_name) row.setAttribute("data-contact-name", data.contact_name);
@@ -605,46 +541,43 @@
 		renumberContactRows();
 	}
 
-	function removeContactRow(btn) {
-		btn.closest(".contact-row").remove();
+	function removeContactRow(button) {
+		button.closest(".contact-row").remove();
 		renumberContactRows();
 	}
 
 	function renumberContactRows() {
-		var rows = document.querySelectorAll(".contact-row");
-		rows.forEach(function (row, i) {
-			var label = row.querySelector(".contact-row-label");
+		const rows = document.querySelectorAll(".contact-row");
+		rows.forEach(function (row, index) {
+			const label = row.querySelector(".contact-row-label");
 			if (label) {
-				var isPrimary = i === 0;
+				const isPrimary = index === 0;
 				label.innerHTML =
 					"Contact " +
-					(i + 1) +
+					(index + 1) +
 					(isPrimary
 						? ' <span class="badge badge-primary" style="font-size:10px;background:#007bff;color:#fff;border-radius:3px;padding:2px 6px;">Primary</span>'
 						: "");
 			}
-			var removeBtn = row.querySelector(".remove-contact-btn");
-			if (i === 0) {
+			const removeBtn = row.querySelector(".remove-contact-btn");
+			if (index === 0) {
 				if (removeBtn) removeBtn.remove();
-			} else {
-				if (!removeBtn) {
-					removeBtn = document.createElement("button");
-					removeBtn.type = "button";
-					removeBtn.className = "remove-contact-btn";
-					removeBtn.title = "Remove";
-					removeBtn.innerHTML = "&#x2715;";
-					removeBtn.setAttribute("onclick", "removeContactRow(this)");
-					row.appendChild(removeBtn);
-				}
+			} else if (!removeBtn) {
+				const newRemoveBtn = document.createElement("button");
+				newRemoveBtn.type = "button";
+				newRemoveBtn.className = "remove-contact-btn";
+				newRemoveBtn.title = "Remove";
+				newRemoveBtn.innerHTML = "&#x2715;";
+				newRemoveBtn.setAttribute("onclick", "removeContactRow(this)");
+				row.appendChild(newRemoveBtn);
 			}
 		});
 	}
 
 	function getContactRowsData() {
-		var rows = document.querySelectorAll(".contact-row");
-		var contacts = [];
-		rows.forEach(function (row, i) {
-			contacts.push({
+		const rows = document.querySelectorAll(".contact-row");
+		return Array.from(rows).map(function (row, index) {
+			return {
 				first_name: row.querySelector('[data-contact-field="first_name"]').value || "",
 				designation: row.querySelector('[data-contact-field="designation"]').value || "",
 				phone: row.querySelector('[data-contact-field="phone"]').value || "",
@@ -652,28 +585,20 @@
 				email: row.querySelector('[data-contact-field="email"]').value || "",
 				website: row.querySelector('[data-contact-field="website"]').value || "",
 				contact_name: row.getAttribute("data-contact-name") || "",
-				is_primary: i === 0 ? 1 : 0,
-			});
+				is_primary: index === 0 ? 1 : 0,
+			};
 		});
-		return contacts;
 	}
 
-	// =============================================================
-	// ===================== MAIN LOGIC ============================
-	// =============================================================
-
 	frappe.ready(function () {
-		var initialLoadState = {
-			supplier: false,
-			tds: false,
-		};
-		var supplierLoadStarted = false;
+		const initialLoadState = { supplier: false, tds: false };
+		let supplierLoadStarted = false;
 
 		function finishInitialLoad(key) {
 			initialLoadState[key] = true;
 			if (!initialLoadState.supplier || !initialLoadState.tds) return;
 
-			var overlay = document.getElementById("vendor-form-loading");
+			const overlay = document.getElementById("supplier-form-loading");
 			if (overlay) {
 				overlay.style.display = "none";
 				overlay.setAttribute("aria-busy", "false");
@@ -686,38 +611,37 @@
 			loadSupplierData();
 		}
 
-		// GST Options Load — pehle options load karo, phir data
+		// Load option lists before populating the rest of the supplier document.
 		frappe.call({
 			method: "sas_fortuna.api.vendor.get_gst_category_options",
 			callback: function (r) {
-				var gstSelect = document.getElementById("gst_category");
+				const gstSelect = document.getElementById("gst_category");
 				if (gstSelect) {
 					gstSelect.innerHTML = '<option value=""></option>';
 					if (r.message) {
-						r.message.forEach(function (opt) {
-							var option = document.createElement("option");
-							option.value = opt;
-							option.textContent = opt;
+						r.message.forEach(function (optionValue) {
+							const option = document.createElement("option");
+							option.value = optionValue;
+							option.textContent = optionValue;
 							gstSelect.appendChild(option);
 						});
 					}
 				}
-				startSupplierLoad(); // options ready hone ke baad hi data load karo
+				startSupplierLoad();
 			},
 			error: startSupplierLoad,
 		});
 
-		// TDS Category Options Load
 		frappe.call({
 			method: "sas_fortuna.api.vendor.get_tax_withholding_category_options",
 			callback: function (r) {
-				var tdsSelect = document.getElementById("tax_withholding_category");
+				const tdsSelect = document.getElementById("tax_withholding_category");
 				if (tdsSelect && r.message) {
 					tdsSelect.innerHTML = '<option value=""></option>';
-					r.message.forEach(function (opt) {
-						var option = document.createElement("option");
-						option.value = opt;
-						option.textContent = opt;
+					r.message.forEach(function (optionValue) {
+						const option = document.createElement("option");
+						option.value = optionValue;
+						option.textContent = optionValue;
 						tdsSelect.appendChild(option);
 					});
 				}
@@ -736,83 +660,57 @@
 						finishInitialLoad("supplier");
 						return;
 					}
-					var data = r.message;
+
+					const data = r.message;
 					currentSupplier = data.name || "";
 
-					// ---- Generic loop — name attribute wale fields ----
-					Object.keys(data).forEach(function (k) {
-						var el = document.querySelector('[name="' + k + '"]');
-						if (el) el.value = data[k] || "";
+					Object.keys(data).forEach(function (key) {
+						const field = document.querySelector('[name="' + key + '"]');
+						if (field) field.value = data[key] || "";
 					});
 
-					// ---- Statutory fields explicitly set karo ----
-					// (generic loop ke baad bhi, ensure karo ki values aa gayi hain)
 					setVal("pan", data.pan);
 					setVal("gstin", data.gstin);
 					setVal("gst_category", data.gst_category);
 
-					// ===== ADDRESS ROWS LOAD =====
-					var addrContainer = document.getElementById("address-rows-container");
-					addrContainer.innerHTML = "";
+					const addressContainer = document.getElementById("address-rows-container");
+					addressContainer.innerHTML = "";
 					addressRowCount = 0;
+					(data.addresses && data.addresses.length ? data.addresses : [{}]).forEach(
+						addAddressRow,
+					);
 
-					if (data.addresses && data.addresses.length > 0) {
-						data.addresses.forEach(function (a) {
-							addAddressRow(a);
-						});
-					} else {
-						addAddressRow();
-					}
-
-					// ===== CONTACT ROWS LOAD =====
-					var contactContainer = document.getElementById("contact-rows-container");
+					const contactContainer = document.getElementById("contact-rows-container");
 					contactContainer.innerHTML = "";
 					contactRowCount = 0;
+					(data.contacts && data.contacts.length ? data.contacts : [{}]).forEach(
+						addContactRow,
+					);
 
-					if (data.contacts && data.contacts.length > 0) {
-						data.contacts.forEach(function (c) {
-							addContactRow(c);
-						});
-					} else {
-						addContactRow();
-					}
-
-					// ===== FILE LINKS =====
-					var fileFields = [
-						"custom_gst_certificate",
-						"custom_pan_card",
-						"custom_certificate_of_incorporation__partnership_deed",
-						"custom_cancelled_cheque",
-						"custom_last_itr__acknowledgement",
-						"custom_msme_certificate",
-					];
-					fileFields.forEach(function (fieldName) {
-						if (data[fieldName]) {
-							var link = document.getElementById("link_" + fieldName);
-							if (link) {
-								link.href = data[fieldName];
-								link.style.display = "block";
-							}
+					SUPPLIER_FILE_FIELDS.forEach(function (fieldName) {
+						if (!data[fieldName]) return;
+						const link = document.getElementById("link_" + fieldName);
+						if (link) {
+							link.href = data[fieldName];
+							link.style.display = "block";
 						}
 					});
 
-					// ===== TDS =====
-					var tdsSelect = document.getElementById("custom_tds_applicable");
+					const tdsSelect = document.getElementById("custom_tds_applicable");
 					if (data.tax_withholding_category) {
 						if (tdsSelect) tdsSelect.value = "Yes";
-						var cat = document.getElementById("tax_withholding_category");
-						if (cat) cat.value = data.tax_withholding_category;
-					} else {
-						if (tdsSelect) tdsSelect.value = data.custom_tds_applicable || "";
+						const taxCategory = document.getElementById("tax_withholding_category");
+						if (taxCategory) taxCategory.value = data.tax_withholding_category;
+					} else if (tdsSelect) {
+						tdsSelect.value = data.custom_tds_applicable || "";
 					}
 					toggleTDS(tdsSelect);
 
-					// ===== TCS =====
-					var tcsSelect = document.getElementById("custom_tcs_applicable");
-					if (tcsSelect && data.custom_tcs_applicable)
+					const tcsSelect = document.getElementById("custom_tcs_applicable");
+					if (tcsSelect && data.custom_tcs_applicable) {
 						tcsSelect.value = data.custom_tcs_applicable;
+					}
 
-					// ===== MSME =====
 					toggleMSME(document.getElementById("custom_msme"));
 					finishInitialLoad("supplier");
 				},
@@ -822,57 +720,47 @@
 			});
 		}
 
-		// Helper — set value by name attribute
 		function setVal(fieldName, value) {
-			var el = document.querySelector('[name="' + fieldName + '"]');
-			if (el) el.value = value || "";
+			const field = document.querySelector('[name="' + fieldName + '"]');
+			if (field) field.value = value || "";
 		}
 
-		document.getElementById("custom_msme").addEventListener("change", function () {
-			toggleMSME(this);
-		});
+		const msmeSelect = document.getElementById("custom_msme");
+		if (msmeSelect) {
+			msmeSelect.addEventListener("change", function () {
+				toggleMSME(this);
+			});
+		}
 
-		// FORM SUBMIT
-		$("#vendor-form").submit(function (e) {
-			e.preventDefault();
+		// Submit the supplier data using the same backend contract and file upload flow.
+		$("#supplier-form").submit(function (event) {
+			event.preventDefault();
 
-			const submitButton = document.querySelector("#vendor-form button[type='submit']");
-
+			const submitButton = document.querySelector("#supplier-form button[type='submit']");
 			function setFormLoading(isLoading) {
-				SASPortalKyc.setLoading("vendor-form-loading", submitButton, isLoading);
+				SASPortalKyc.setLoading("supplier-form-loading", submitButton, isLoading);
 			}
 
-			if (!SASPortalKyc.validateIdentityFields(document.getElementById("vendor-form"))) return;
+			if (!SASPortalKyc.validateIdentityFields(document.getElementById("supplier-form")))
+				return;
 
 			setFormLoading(true);
 
-			var data = {};
-			// name attribute wale sabhi fields serialize karo
-			$("#vendor-form")
+			const data = {};
+			$("#supplier-form")
 				.serializeArray()
-				.forEach(function (f) {
-					data[f.name] = f.value;
+				.forEach(function (field) {
+					data[field.name] = field.value;
 				});
 
 			data.addresses = getAddressRowsData();
 			data.contacts = getContactRowsData();
-
-			// File uploads
-			var fileFields = [
-				"custom_gst_certificate",
-				"custom_pan_card",
-				"custom_certificate_of_incorporation__partnership_deed",
-				"custom_cancelled_cheque",
-				"custom_last_itr__acknowledgement",
-				"custom_msme_certificate",
-			];
-
-			SASPortalKyc.uploadFiles(fileFields, data);
+			SASPortalKyc.uploadFiles(SUPPLIER_FILE_FIELDS, data);
 
 			frappe.call({
 				method: "sas_fortuna.api.vendor.update_supplier",
 				args: { data: data },
-				callback: function (r) {
+				callback: function () {
 					setFormLoading(false);
 					frappe.msgprint("Supplier details saved successfully");
 				},
@@ -880,30 +768,31 @@
 					setFormLoading(false);
 					SASPortalKyc.showApiError(xhr, "Supplier details");
 				},
-				complete: function() {
+				complete: function () {
 					setFormLoading(false);
-				}
+				},
 			});
 		});
 	});
 
 	function toggleMSME(select) {
-		var box = document.getElementById("msme_fields");
+		const box = document.getElementById("msme_fields");
 		if (!select || !box) return;
 		box.style.display = select.value === "Yes" ? "block" : "none";
 	}
 
 	function toggleTDS(select) {
-		var sec = document.getElementById("tds_section");
-		if (!select || !sec) return;
+		const section = document.getElementById("tds_section");
+		if (!select || !section) return;
 		if (select.value === "Yes") {
-			sec.style.display = "flex";
-		} else {
-			sec.style.display = "none";
-			sec.querySelectorAll("input[type='checkbox']").forEach(function (cb) {
-				cb.checked = false;
-			});
+			section.style.display = "flex";
+			return;
 		}
+
+		section.style.display = "none";
+		section.querySelectorAll("input[type='checkbox']").forEach(function (checkbox) {
+			checkbox.checked = false;
+		});
 	}
 </script>
 {% endblock %}

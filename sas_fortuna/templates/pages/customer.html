@@ -291,10 +291,20 @@
 {% endblock %} {% block script %}
 <script src="/assets/sas_fortuna/js/portal_kyc.js"></script>
 <script>
+	const CUSTOMER_FILE_FIELDS = [
+		"custom_gst_certificate",
+		"custom_pan_card",
+		"custom_certificate_of_incorporation__partnership_deed",
+		"custom_cancelled_cheque",
+		"custom_last_itr__acknowledgement",
+		"custom_msme_certificate",
+	];
+
 	let currentCustomer = "";
 	let addressRowCount = 0;
 	let contactRowCount = 0;
 
+	// Address rows are created dynamically so the customer record can hold multiple locations.
 	function addAddressRow(data) {
 		data = data || {};
 		addressRowCount++;
@@ -405,7 +415,7 @@
 	}
 
 	frappe.ready(function () {
-		var overlay = document.getElementById("customer-form-loading");
+		const overlay = document.getElementById("customer-form-loading");
 		function finishLoading() {
 			if (overlay) {
 				overlay.style.display = "none";
@@ -413,6 +423,7 @@
 			}
 		}
 
+		// Load GST options first, then fetch the customer record so the form is ready for editing.
 		frappe.call({
 			method: "sas_fortuna.api.customer.get_gst_category_options",
 			callback: function (r) {
@@ -455,14 +466,7 @@
 					(data.contacts && data.contacts.length ? data.contacts : [{}]).forEach(
 						addContactRow,
 					);
-					[
-						"custom_gst_certificate",
-						"custom_pan_card",
-						"custom_certificate_of_incorporation__partnership_deed",
-						"custom_cancelled_cheque",
-						"custom_last_itr__acknowledgement",
-						"custom_msme_certificate",
-					].forEach(function (fieldName) {
+					CUSTOMER_FILE_FIELDS.forEach(function (fieldName) {
 						if (!data[fieldName]) return;
 						var link = document.getElementById("link_" + fieldName);
 						if (link) {
@@ -491,15 +495,7 @@
 				});
 			data.addresses = collectRows("address");
 			data.contacts = collectRows("contact");
-			var fileFields = [
-				"custom_gst_certificate",
-				"custom_pan_card",
-				"custom_certificate_of_incorporation__partnership_deed",
-				"custom_cancelled_cheque",
-				"custom_last_itr__acknowledgement",
-				"custom_msme_certificate",
-			];
-			SASPortalKyc.uploadFiles(fileFields, data);
+			SASPortalKyc.uploadFiles(CUSTOMER_FILE_FIELDS, data);
 			frappe.call({
 				method: "sas_fortuna.api.customer.update_customer",
 				args: { data: data },
