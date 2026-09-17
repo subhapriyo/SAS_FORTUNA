@@ -1,8 +1,10 @@
 import frappe
 
+from sas_fortuna.portal import set_portal_sidebar
 
-# Supplier view metadata used by the portal page.
+
+# Supplier KYC page metadata for the portal view.
 def get_context(context):
 	context.no_cache = 1
-	context.show_sidebar = True
+	set_portal_sidebar(context, "Portal")
 	context.title = "Supplier KYC"
