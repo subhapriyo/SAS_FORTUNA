@@ -88,16 +88,12 @@ CUSTOM_CLIENT_SCRIPTS = [
 # permissions, banking, ledger, and welcome-email processes are exported.
 
 CUSTOM_SERVER_SCRIPTS = [
-	"Address - Auto Link Portal Party",
-	"Bank Account Permission Query - Portal Party Access",
 	"Bulk Send Customer Welcome Email",
 	"Bulk Send Supplier Welcome Email",
-	"Get Portal Bank Accounts",
 	"Get Portal Ledger",
 	"Get Portal Party",
 	"GL Entry Permission Query - Portal Party Access",
 	"Party Permission Query - Portal Customer & Supplier Access",
-	"Party Set Bank Account Owner Before Insert",
 	"Send Customer Welcome Email on First Sales Order",
 	"Supplier Welcome",
 ]
@@ -110,8 +106,6 @@ CUSTOM_SERVER_SCRIPTS = [
 # onboarding and self-service processes.
 
 CUSTOM_WEB_FORMS = [
-	"bank-accounts",
-	"my-company-address",
 	"my-ledger",
 	"supplier-registration",
 	"update-customer-details",

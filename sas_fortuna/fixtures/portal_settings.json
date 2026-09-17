@@ -19,51 +19,19 @@
    },
    {
     "enabled": 1,
-    "reference_doctype": "Address",
-    "role": "Customer",
-    "route": "/my-company-address",
-    "target": null,
-    "title": "My Company Address"
-   },
-   {
-    "enabled": 1,
-    "reference_doctype": "Address",
+    "reference_doctype": null,
     "role": "Supplier",
-    "route": "/my-company-address",
+    "route": "/supplier-kyc",
     "target": null,
-    "title": "My Company Address"
+    "title": "Supplier KYC"
    },
    {
     "enabled": 1,
-    "reference_doctype": "Bank Account",
+    "reference_doctype": null,
     "role": "Customer",
-    "route": "bank-accounts",
+    "route": "/customer-kyc",
     "target": null,
-    "title": "Bank Accounts"
-   },
-   {
-    "enabled": 1,
-    "reference_doctype": "Bank Account",
-    "role": "Supplier",
-    "route": "bank-accounts",
-    "target": null,
-    "title": "Bank Accounts"
-   },
-   {
-    "enabled": 1,
-    "reference_doctype": "Customer",
-    "role": "Customer",
-    "route": "/update-customer-details",
-    "target": null,
-    "title": "Update Customer Details"
-   },
-   {
-    "enabled": 1,
-    "reference_doctype": "Supplier",
-    "role": "Supplier",
-    "route": "/update-supplier-details",
-    "target": null,
-    "title": "Update Supplier Details"
+    "title": "Customer KYC"
    }
   ],
   "default_portal_home": "/portal",
@@ -177,7 +145,7 @@
     "title": "Material Request"
    }
   ],
-  "modified": "2026-09-02 18:39:23.667297",
+  "modified": "2026-09-17 12:21:41.634169",
   "name": "Portal Settings"
  }
 ]
