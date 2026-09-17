@@ -215,6 +215,6 @@ fixtures = [
 
 
 after_migrate = [
-	"sas_fortuna.patches.vendor_portal.execute",
+	"sas_fortuna.patches.supplier_portal.execute",
 	"sas_fortuna.patches.customer_portal.execute",
 ]
