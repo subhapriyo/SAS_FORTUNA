@@ -21,7 +21,7 @@
     "enabled": 1,
     "reference_doctype": null,
     "role": "Supplier",
-    "route": "/supplier-kyc",
+    "route": "/supplier",
     "target": null,
     "title": "Supplier KYC"
    },
@@ -29,7 +29,7 @@
     "enabled": 1,
     "reference_doctype": null,
     "role": "Customer",
-    "route": "/customer-kyc",
+    "route": "/customer",
     "target": null,
     "title": "Customer KYC"
    }
@@ -145,7 +145,7 @@
     "title": "Material Request"
    }
   ],
-  "modified": "2026-09-17 12:21:41.634169",
+  "modified": "2026-09-17 18:02:12.136245",
   "name": "Portal Settings"
  }
 ]

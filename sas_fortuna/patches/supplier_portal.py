@@ -13,7 +13,7 @@ def execute():
 		{
 			"title": "Supplier KYC",
 			"enabled": 1,
-			"route": "/supplier-kyc",
+			"route": "/supplier",
 			"role": "Supplier",
 		},
 	)
