@@ -315,7 +315,7 @@
 		row.innerHTML =
 			'<div class="address-row-label">Address ' +
 			index +
-			(index === 1 ? ' <span class="badge badge-primary">Primary</span>' : "") +
+			(index === 1 ? ' <span class="badge badge-info">Primary</span>' : "") +
 			"</div>" +
 			(index === 1
 				? ""
@@ -350,7 +350,7 @@
 		row.innerHTML =
 			'<div class="contact-row-label">Contact ' +
 			index +
-			(index === 1 ? ' <span class="badge badge-primary">Primary</span>' : "") +
+			(index === 1 ? ' <span class="badge badge-info">Primary</span>' : "") +
 			"</div>" +
 			(index === 1
 				? ""
@@ -386,7 +386,7 @@
 				label.innerHTML =
 					(type === "address" ? "Address " : "Contact ") +
 					(index + 1) +
-					(index === 0 ? ' <span class="badge badge-primary">Primary</span>' : "");
+					(index === 0 ? ' <span class="badge badge-info">Primary</span>' : "");
 			var removeButton = row.querySelector(
 				type === "address" ? ".remove-address-btn" : ".remove-contact-btn",
 			);
