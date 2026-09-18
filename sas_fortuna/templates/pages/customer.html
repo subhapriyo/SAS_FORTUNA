@@ -7,14 +7,12 @@
 		class="customer-form-loading"
 		aria-live="polite"
 		aria-busy="true"
-		style="display: none"
 	>
 		<div class="customer-form-loading__content">
 			<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
 			<span data-loading-message>Loading...</span>
 		</div>
 	</div>
-
 	<form id="customer-form" class="customer-form" enctype="multipart/form-data">
 		<section>
 			<h5>Basic Details</h5>
@@ -311,7 +309,7 @@
 {% endblock %} {% block script %}
 <script src="/assets/sas_fortuna/js/portal_kyc.js"></script>
 <script>
-	const SUPPLIER_FILE_FIELDS = [
+	const CUSTOMER_FILE_FIELDS = [
 		"custom_gst_certificate",
 		"custom_pan_card",
 		"custom_certificate_of_incorporation__partnership_deed",
@@ -611,7 +609,7 @@
 						addContactRow,
 					);
 
-					SUPPLIER_FILE_FIELDS.forEach(function (fieldName) {
+					CUSTOMER_FILE_FIELDS.forEach(function (fieldName) {
 						if (!data[fieldName]) return;
 						const link = document.getElementById("link_" + fieldName);
 						if (link) {
@@ -679,14 +677,37 @@
 
 			data.addresses = getAddressRowsData();
 			data.contacts = getContactRowsData();
-			SASPortalKyc.uploadFiles(SUPPLIER_FILE_FIELDS, data);
+			SASPortalKyc.uploadFiles(CUSTOMER_FILE_FIELDS, data);
 
 			frappe.call({
 				method: "sas_fortuna.api.customer.update_customer",
 				args: { data: data },
 				callback: function () {
 					setFormLoading(false);
-					frappe.msgprint("Customer details saved successfully");
+					let actionClicked = false;
+
+					let d = frappe.msgprint({
+						message: "Customer details saved successfully",
+						primary_action: {
+							label: "OK",
+							action: function () {
+								actionClicked = true;
+								d.hide();
+								// logic for when OK is clicked
+								console.log("when OK is clicked");
+								location.reload();
+							}
+						}
+					});
+
+					d.$wrapper.on("hidden.bs.modal", function () {
+						if (!actionClicked) {
+							// logic for when dialog is closed via X / Escape / outside click
+							// e.g., do nothing, or a different action
+							//console.log("Closed without clicking OK");
+							location.reload();
+						}
+					});
 				},
 				error: function (xhr) {
 					setFormLoading(false);

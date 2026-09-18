@@ -762,7 +762,31 @@
 				args: { data: data },
 				callback: function () {
 					setFormLoading(false);
-					frappe.msgprint("Supplier details saved successfully");
+
+					let actionClicked = false;
+
+					let d = frappe.msgprint({
+						message: "Supplier details saved successfully",
+						primary_action: {
+							label: "OK",
+							action: function () {
+								actionClicked = true;
+								d.hide();
+								// logic for when OK is clicked
+								console.log("when OK is clicked");
+								location.reload();
+							}
+						}
+					});
+
+					d.$wrapper.on("hidden.bs.modal", function () {
+						if (!actionClicked) {
+							// logic for when dialog is closed via X / Escape / outside click
+							// e.g., do nothing, or a different action
+							//console.log("Closed without clicking OK");
+							location.reload();
+						}
+					});
 				},
 				error: function (xhr) {
 					setFormLoading(false);
