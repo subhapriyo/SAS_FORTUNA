@@ -108,8 +108,6 @@ CUSTOM_SERVER_SCRIPTS = [
 CUSTOM_WEB_FORMS = [
 	"my-ledger",
 	"supplier-registration",
-	"update-customer-details",
-	"update-supplier-details",
 ]
 
 
