@@ -106,6 +106,18 @@
 					/>
 				</div>
 				<div class="col-md-6 mb-3">
+					<label>Tax ID</label>
+					<!-- name="tax_id" is the standard Frappe field for Tax ID registration -->
+					<input
+						type="text"
+						name="tax_id"
+						id="field_tax_id"
+						class="form-control"
+						placeholder="Tax ID"
+						title="Supplier's tax identification number (e.g. PAN, VAT, GST)"
+					/>
+				</div>
+				<div class="col-md-6 mb-3">
 					<label>Aadhaar Number</label>
 					<input
 						type="text"
@@ -247,26 +259,30 @@
 		<section>
 			<h5>Attachments</h5>
 			<hr />
+			{% set file_field_labels = { "custom_gst_certificate": "GST Certificate",
+			"custom_pan_card": "PAN Card", "custom_certificate_of_incorporation__partnership_deed":
+			"Certificate of Incorporation / Partnership Deed", "custom_cancelled_cheque":
+			"Cancelled Cheque", "custom_last_itr__acknowledgement": "Last ITR / Acknowledgement",
+			"custom_msme_certificate": "MSME Certificate", } %}
 			<div class="row">
 				{% for field in ["custom_gst_certificate", "custom_pan_card",
 				"custom_certificate_of_incorporation__partnership_deed", "custom_cancelled_cheque",
 				"custom_last_itr__acknowledgement", "custom_msme_certificate"] %}
 				<div class="col-md-6 mb-3">
-					<label>{{ field.replace("custom_", "").replace("_", " ").title() }}</label>
+					<label>{{ file_field_labels[field] }}</label>
 					<input
 						type="file"
 						class="form-control"
 						id="{{ field }}"
 						accept=".pdf, image/*"
 					/>
-					<a
-						id="link_{{ field }}"
+					<a id="link_{{ field }}"
 						href="#"
 						target="_blank"
-						style="display: none !important"
-						class="mt-1 small text-primary d-block"
-						>&#128206; View Uploaded File</a
-					>
+						style="display: none !important; text-decoration: none; font-weight: bold;"
+						class="mt-1 mb-1 small text-primary d-block"
+						title="{{ file_field_labels[field] }}"
+						>&#128206; View Uploaded File</a>
 				</div>
 				{% endfor %}
 			</div>
@@ -415,9 +431,7 @@
 		row.innerHTML =
 			'<div class="address-row-label">Address ' +
 			idx +
-			(isPrimary
-				? ' <span class="badge badge-info">Primary</span>'
-				: "") +
+			(isPrimary ? ' <span class="badge badge-info">Primary</span>' : "") +
 			"</div>" +
 			(!isPrimary
 				? '<button type="button" class="remove-address-btn" onclick="removeAddressRow(this)" title="Remove">&#x2715;</button>'
@@ -460,9 +474,7 @@
 				label.innerHTML =
 					"Address " +
 					(index + 1) +
-					(isPrimary
-						? ' <span class="badge badge-info">Primary</span>'
-						: "");
+					(isPrimary ? ' <span class="badge badge-info">Primary</span>' : "");
 			}
 			const removeBtn = row.querySelector(".remove-address-btn");
 			if (index === 0) {
@@ -509,9 +521,7 @@
 		row.innerHTML =
 			'<div class="contact-row-label">Contact ' +
 			idx +
-			(isPrimary
-				? ' <span class="badge badge-info">Primary</span>'
-				: "") +
+			(isPrimary ? ' <span class="badge badge-info">Primary</span>' : "") +
 			"</div>" +
 			(!isPrimary
 				? '<button type="button" class="remove-contact-btn" onclick="removeContactRow(this)" title="Remove">&#x2715;</button>'
@@ -555,9 +565,7 @@
 				label.innerHTML =
 					"Contact " +
 					(index + 1) +
-					(isPrimary
-						? ' <span class="badge badge-info">Primary</span>'
-						: "");
+					(isPrimary ? ' <span class="badge badge-info">Primary</span>' : "");
 			}
 			const removeBtn = row.querySelector(".remove-contact-btn");
 			if (index === 0) {
@@ -761,8 +769,6 @@
 				method: "sas_fortuna.api.supplier.update_supplier",
 				args: { data: data },
 				callback: function () {
-					setFormLoading(false);
-
 					let actionClicked = false;
 
 					let d = frappe.msgprint({
@@ -772,28 +778,22 @@
 							action: function () {
 								actionClicked = true;
 								d.hide();
-								// logic for when OK is clicked
-								console.log("when OK is clicked");
 								location.reload();
-							}
-						}
+							},
+						},
 					});
 
 					d.$wrapper.on("hidden.bs.modal", function () {
 						if (!actionClicked) {
-							// logic for when dialog is closed via X / Escape / outside click
-							// e.g., do nothing, or a different action
-							//console.log("Closed without clicking OK");
 							location.reload();
 						}
 					});
 				},
 				error: function (xhr) {
-					setFormLoading(false);
 					SASPortalKyc.showApiError(xhr, "Supplier details");
 				},
-				complete: function () {
-					setFormLoading(false);
+				always: function () {
+					setFormLoading(false); // now guaranteed to run, success or failure
 				},
 			});
 		});

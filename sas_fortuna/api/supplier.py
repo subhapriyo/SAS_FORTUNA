@@ -24,6 +24,7 @@ def get_supplier_doc():
 	response["gstin"] = supplier_doc.get("gstin") or ""
 	response["gst_category"] = supplier_doc.get("gst_category") or ""
 	response["supplier_name"] = supplier_doc.supplier_name or ""
+	response["tax_id"] = supplier_doc.get("tax_id") or ""
 
 	# ===== MULTIPLE ADDRESSES =====
 	try:
@@ -159,6 +160,7 @@ def update_supplier(data):
 
 	# ---------------- NORMAL SUPPLIER FIELDS ----------------
 	ALLOWED_FIELDS = [
+		"tax_id",
 		"pan",
 		"gstin",
 		"gst_category",
@@ -272,16 +274,25 @@ def update_supplier(data):
 		existing_contact_names = {d["parent"] for d in existing_links}
 		saved_contact_names = []
 
+		# Contact Phone has a mandatory custom_mobile_number field on this site.
+		# Check once so this still works on sites where the field doesn't exist.
+		contact_phone_meta = frappe.get_meta("Contact Phone")
+		has_custom_mobile_field = contact_phone_meta.has_field("custom_mobile_number")
+
 		for idx, c_data in enumerate(contacts_data):
-			phone = c_data.get("phone", "")
-			mobile = c_data.get("mobile", "")
-			email = c_data.get("email", "")
+			phone = (c_data.get("phone") or "").strip()
+			mobile = (c_data.get("mobile") or "").strip()
+			email = (c_data.get("email") or "").strip()
 			website = c_data.get("website", "")
-			first_name = c_data.get("first_name", "") or supplier
+			raw_first_name = (c_data.get("first_name") or "").strip()
+			first_name = raw_first_name or supplier
 			designation = c_data.get("designation", "")
 			is_primary = idx == 0
 
-			if not any([phone, mobile, email, first_name]):
+			# Skip completely empty rows. Use raw_first_name (pre-fallback) so a
+			# blank row isn't kept alive just because we default the name to the
+			# supplier name below.
+			if not any([phone, mobile, email, raw_first_name]):
 				continue
 
 			contact_name = c_data.get("contact_name", "")
@@ -302,9 +313,17 @@ def update_supplier(data):
 			contact.append("links", {"link_doctype": "Supplier", "link_name": supplier})
 
 			if phone:
-				contact.append("phone_nos", {"phone": phone, "is_primary_phone": 1})
+				row = {"phone": phone, "is_primary_phone": 1}
+				if has_custom_mobile_field:
+					row["custom_mobile_number"] = phone
+				contact.append("phone_nos", row)
+
 			if mobile:
-				contact.append("phone_nos", {"phone": mobile, "is_primary_mobile_no": 1})
+				row = {"phone": mobile, "is_primary_mobile_no": 1}
+				if has_custom_mobile_field:
+					row["custom_mobile_number"] = mobile
+				contact.append("phone_nos", row)
+
 			if email:
 				contact.append("email_ids", {"email_id": email, "is_primary": 1})
 
