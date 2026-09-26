@@ -49,7 +49,7 @@
     "title": "Projects"
    },
    {
-    "enabled": 0,
+    "enabled": 1,
     "reference_doctype": "Request for Quotation",
     "role": "Supplier",
     "route": "/rfq",
@@ -145,7 +145,7 @@
     "title": "Material Request"
    }
   ],
-  "modified": "2026-09-18 18:33:55.590675",
+  "modified": "2026-09-24 14:53:47.284100",
   "name": "Portal Settings"
  }
 ]
