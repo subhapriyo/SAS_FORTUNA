@@ -1,13 +1,7 @@
-/* sas_fortuna portal: filter + sort bar for list pages */
+/* sas_fortuna portal: filter + sort + items-per-page bar for list pages */
 frappe.ready(() => {
-	// items-per-page select (rendered server-side in the pager footer)
-	document.addEventListener("change", (e) => {
-		if (!e.target.classList || !e.target.classList.contains("sf-pg-size")) return;
-		const p = new URLSearchParams(location.search);
-		p.delete("sf_page");
-		p.set("sf_len", e.target.value);
-		location.search = p.toString();
-	});
+	const PAGE_SIZES = [10, 20, 50, 100];
+	const DEFAULT_PAGE_SIZE = "10";
 
 	const PAGES = {
 		// Supplier role
@@ -29,6 +23,7 @@ frappe.ready(() => {
 		},
 		// Customer role
 		"/quotations": {
+			paginate: true, // server renders numbered pager (see quotation.py)
 			status: ["Open", "Ordered", "Partially Ordered", "Expired", "Lost"],
 			sort: { transaction_date: "Date", grand_total: "Amount", name: "Number" },
 		},
@@ -79,6 +74,13 @@ frappe.ready(() => {
       <option value="desc">Newest / High first</option>
       <option value="asc">Oldest / Low first</option>
     </select>
+    ${
+		cfg.paginate
+			? `<select id="sf-len" title="Items per page">
+      ${PAGE_SIZES.map((n) => `<option value="${n}">${n} per page</option>`).join("")}
+    </select>`
+			: ""
+	}
     <button type="button" class="sf-clear" id="sf-clear">Clear</button>`;
 
 	const anchor =
@@ -87,13 +89,20 @@ frappe.ready(() => {
 	if (!anchor) return;
 	anchor.parentNode.insertBefore(bar, anchor);
 
-	const map = { "sf-status": "status", "sf-sort": "sort_by", "sf-dir": "sort_dir" };
+	const map = {
+		"sf-status": "status",
+		"sf-sort": "sort_by",
+		"sf-dir": "sort_dir",
+		"sf-len": "sf_len",
+	};
 	Object.entries(map).forEach(([id, key]) => {
 		const el = document.getElementById(id);
+		if (!el) return; // sf-len only exists on paginated pages
 		if (params.get(key)) el.value = params.get(key);
+		else if (id === "sf-len") el.value = DEFAULT_PAGE_SIZE;
 		el.addEventListener("change", () => {
 			const p = new URLSearchParams(location.search);
-			p.delete("sf_page");
+			p.delete("sf_page"); // any filter/sort/size change goes back to page 1
 			el.value ? p.set(key, el.value) : p.delete(key);
 			location.search = p.toString();
 		});

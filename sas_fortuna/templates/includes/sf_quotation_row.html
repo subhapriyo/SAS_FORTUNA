@@ -34,13 +34,6 @@
 
 {% if sf and sf.last %}
 <div class="sf-pager">
-	<label class="sf-pg-size-wrap">
-		<span>Items per page</span>
-		<select class="sf-pg-size" aria-label="Items per page">
-			{% for n in sf.sizes %}<option value="{{ n }}"{% if n == sf.page_size %} selected{% endif %}>{{ n }}</option>{% endfor %}
-		</select>
-	</label>
-
 	<span class="sf-pg-info">
 		Showing {{ sf.start + 1 }}&ndash;{{ sf.start + sf.shown }}{% if sf.total is not none %} of {{ sf.total }}{% endif %}
 	</span>
