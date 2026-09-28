@@ -18,7 +18,7 @@ repos:
       - id: eslint
         files: \.(js|jsx)$
         types: [file]
-        additional_dependencies: []
+        additional_dependencies: ["eslint@8.57.1"]
 
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v3.0.3

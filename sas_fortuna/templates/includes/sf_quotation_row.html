@@ -1,0 +1,43 @@
+{#- Quotation portal listing row: original fields + Customer Enquiry, with header row and footer pager -#}
+{% set enquiry = doc.get("custom_customer_enquiry") or doc.get("customer_enquiry") %}
+{% set items = doc.get("items") %}
+{% set preview = doc.get("items_preview") or ((items[0].get("item_name") or items[0].get("item_code")) if items else "") %}
+{% set colors = {"Open": "orange", "Ordered": "green", "Partially Ordered": "yellow", "Lost": "red", "Expired": "gray"} %}
+
+{% if doc.sf_first %}
+<div class="sf-qhead sf-qgrid">
+	<div>Quotation / Date</div>
+	<div>Status</div>
+	<div>Item</div>
+	<div>Customer Enquiry</div>
+	<div class="sf-right">Amount</div>
+</div>
+{% endif %}
+
+<a class="sf-qrow sf-qgrid" href="/quotations/{{ doc.name | e }}">
+	<div>
+		<div class="sf-qname">{{ doc.name | e }}</div>
+		<div class="sf-muted">{{ frappe.utils.global_date_format(doc.transaction_date) }}</div>
+	</div>
+	<div>
+		<span class="indicator-pill {{ colors.get(doc.status, 'gray') }} ellipsis">
+			<span class="ellipsis">{{ doc.status | e }}</span>
+		</span>
+	</div>
+	<div class="sf-muted sf-ellipsis" title="{{ preview | e }}">{{ preview | e }}</div>
+	<div class="sf-muted sf-ellipsis" title="{{ (enquiry or '') | e }}">{% if enquiry %}{{ enquiry | e }}{% else %}&mdash;{% endif %}</div>
+	<div class="sf-right">
+		{% if doc.get_formatted %}{{ doc.get_formatted("grand_total") }}{% else %}{{ frappe.utils.fmt_money(doc.grand_total, currency=doc.currency) }}{% endif %}
+	</div>
+</a>
+
+{% if doc.sf_last %}
+<div class="sf-pager">
+	<span>Showing {{ doc.sf_start + 1 }}&ndash;{{ doc.sf_start + doc.sf_shown }}</span>
+	<span>
+		{% if doc.sf_page > 1 %}<a class="sf-pg-btn" href="{{ doc.sf_prev_url | e }}">&lsaquo; Previous</a>{% else %}<span class="sf-pg-btn disabled">&lsaquo; Previous</span>{% endif %}
+		<span class="sf-pg-current">Page {{ doc.sf_page }}</span>
+		{% if doc.sf_has_next %}<a class="sf-pg-btn" href="{{ doc.sf_next_url | e }}">Next &rsaquo;</a>{% else %}<span class="sf-pg-btn disabled">Next &rsaquo;</span>{% endif %}
+	</span>
+</div>
+{% endif %}

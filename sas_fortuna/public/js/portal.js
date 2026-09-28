@@ -84,6 +84,7 @@ frappe.ready(() => {
 		if (params.get(key)) el.value = params.get(key);
 		el.addEventListener("change", () => {
 			const p = new URLSearchParams(location.search);
+			p.delete("sf_page");
 			el.value ? p.set(key, el.value) : p.delete(key);
 			location.search = p.toString();
 		});

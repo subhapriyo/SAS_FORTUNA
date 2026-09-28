@@ -20,18 +20,18 @@
    {
     "enabled": 1,
     "reference_doctype": null,
-    "role": "Supplier",
-    "route": "/supplier",
-    "target": null,
-    "title": "Supplier KYC"
-   },
-   {
-    "enabled": 1,
-    "reference_doctype": null,
     "role": "Customer",
     "route": "/customer",
     "target": null,
     "title": "Customer KYC"
+   },
+   {
+    "enabled": 1,
+    "reference_doctype": null,
+    "role": "Supplier",
+    "route": "/supplier",
+    "target": null,
+    "title": "Supplier KYC"
    }
   ],
   "default_portal_home": "/portal",
@@ -145,7 +145,7 @@
     "title": "Material Request"
    }
   ],
-  "modified": "2026-09-26 12:48:26.553119",
+  "modified": "2026-09-28 10:41:30.872570",
   "name": "Portal Settings"
  }
 ]
