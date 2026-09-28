@@ -14,6 +14,7 @@ DEFAULT_PAGE_LEN = 10
 _PARAMS = ("sort_by", "sort_dir", "sf_page", "sf_len")
 _PATCHES = []
 PAGED_ROW_TEMPLATE = "templates/includes/sf_paged_row.html"
+TABLE_ROW_TEMPLATE = "templates/includes/sf_table_row.html"
 
 # ERPNext's transaction list and our Issue list mutate `filters` in place (docstatus, customer,
 # raised_by...) but only when it is non-empty, so we seed a harmless key to keep our copy in sync
@@ -37,12 +38,13 @@ def add_patch(fn):
 	_PATCHES.append(fn)
 
 
-def paginate_list_context(module_path, get_list=None):
+def paginate_list_context(module_path, get_list=None, columns=None):
 	"""Turn on numbered paging for the portal list of the doctype module at `module_path`.
 
 	Wraps the module's get_list_context() so the list uses sf_paged_row.html (the doctype's own row
 	template + the pager footer). If `get_list` is given it replaces ERPNext's list query, and is
-	paginated the same way as the stock transaction list.
+	paginated the same way as the stock transaction list. If `columns` is given, rows are drawn by
+	sf_table_row.html: a table with a header row (see that template for the column format).
 	"""
 
 	def _patch():
@@ -52,7 +54,10 @@ def paginate_list_context(module_path, get_list=None):
 		def get_list_context(context=None):
 			list_context = original(context)
 			base = list_context.get("row_template")
-			if base and base != PAGED_ROW_TEMPLATE:
+			if columns:
+				list_context["sf_columns"] = columns
+				list_context["row_template"] = TABLE_ROW_TEMPLATE
+			elif base and base != PAGED_ROW_TEMPLATE:
 				# plain dict in ERPNext: use item assignment, not attributes
 				list_context["sf_base_row"] = base
 				list_context["row_template"] = PAGED_ROW_TEMPLATE

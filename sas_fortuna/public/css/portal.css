@@ -41,6 +41,13 @@
 	gap: 12px;
 	align-items: center;
 }
+/* generic table rows (sf_table_row.html); column widths are set inline per doctype */
+.sf-tgrid {
+	display: grid;
+	gap: 12px;
+	align-items: center;
+}
+
 .sf-qhead {
 	padding: 10px;
 	font-size: 12px;
@@ -152,8 +159,9 @@ a.sf-pg-btn:hover {
 	.sf-qhead {
 		display: none;
 	}
-	.sf-qgrid {
-		grid-template-columns: 1fr 1fr;
+	.sf-qgrid,
+	.sf-tgrid {
+		grid-template-columns: 1fr 1fr !important;
 	}
 	.sf-right {
 		text-align: left;

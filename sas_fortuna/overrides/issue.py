@@ -3,6 +3,13 @@ from frappe.utils.user import is_website_user
 
 from sas_fortuna.overrides.portal_list import paginate_list_context, register
 
+COLUMNS = [
+	{"label": "Subject / Number", "field": "subject", "kind": "name", "sub": "name", "sub_kind": "text"},
+	{"label": "Status", "field": "status", "kind": "status"},
+	{"label": "Priority", "field": "priority", "kind": "text"},
+	{"label": "Last updated", "field": "modified", "kind": "ago"},
+]
+
 register(
 	"Issue",
 	default="creation desc",
@@ -49,4 +56,4 @@ def _issue_list(doctype, txt, filters, limit_start, limit_page_length=20, order_
 	)
 
 
-paginate_list_context("erpnext.support.doctype.issue.issue", get_list=_issue_list)
+paginate_list_context("erpnext.support.doctype.issue.issue", get_list=_issue_list, columns=COLUMNS)

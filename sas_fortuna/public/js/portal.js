@@ -6,14 +6,17 @@ frappe.ready(() => {
 	const PAGES = {
 		// Supplier role
 		"/rfq": {
+			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Draft", "Submitted", "Cancelled"],
 			sort: { transaction_date: "Date", name: "Number" },
 		},
 		"/supplier-quotations": {
+			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Draft", "Submitted", "Cancelled"],
 			sort: { transaction_date: "Date", valid_till: "Valid till", grand_total: "Amount" },
 		},
 		"/purchase-orders": {
+			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["To Receive and Bill", "To Bill", "To Receive", "Completed", "Cancelled"],
 			sort: {
 				transaction_date: "Date",
@@ -23,15 +26,17 @@ frappe.ready(() => {
 		},
 		// Customer role
 		"/quotations": {
-			paginate: true, // server renders numbered pager (see quotation.py)
+			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Open", "Ordered", "Partially Ordered", "Expired", "Lost"],
 			sort: { transaction_date: "Date", grand_total: "Amount", name: "Number" },
 		},
 		"/orders": {
+			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["To Deliver and Bill", "To Bill", "To Deliver", "Completed", "Cancelled"],
 			sort: { transaction_date: "Date", delivery_date: "Delivery", grand_total: "Amount" },
 		},
 		"/invoices": {
+			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Paid", "Unpaid", "Overdue", "Partly Paid", "Return", "Credit Note Issued"],
 			sort: {
 				posting_date: "Date",
@@ -41,10 +46,12 @@ frappe.ready(() => {
 			},
 		},
 		"/shipments": {
+			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["To Bill", "Completed", "Return Issued", "Cancelled"],
 			sort: { posting_date: "Date", grand_total: "Amount", name: "Number" },
 		},
 		"/issues": {
+			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Open", "Replied", "On Hold", "Resolved", "Closed"],
 			sort: { creation: "Created", modified: "Last updated", priority: "Priority" },
 		},

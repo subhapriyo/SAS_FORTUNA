@@ -1,5 +1,13 @@
 from sas_fortuna.overrides.portal_list import paginate_list_context, register
 
+COLUMNS = [
+	{"label": "Number / Date", "field": "name", "kind": "name", "sub": "posting_date", "sub_kind": "date"},
+	{"label": "Status", "field": "status", "kind": "status"},
+	{"label": "Due date", "field": "due_date", "kind": "date"},
+	{"label": "Amount", "field": "grand_total", "kind": "money"},
+	{"label": "Outstanding", "field": "outstanding_amount", "kind": "money"},
+]
+
 register(
 	"Sales Invoice",
 	default="posting_date desc",
@@ -7,4 +15,4 @@ register(
 	filters=("status",),
 	paginate=True,
 )
-paginate_list_context("erpnext.accounts.doctype.sales_invoice.sales_invoice")
+paginate_list_context("erpnext.accounts.doctype.sales_invoice.sales_invoice", columns=COLUMNS)
