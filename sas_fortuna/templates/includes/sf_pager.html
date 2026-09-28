@@ -1,0 +1,25 @@
+{#- Shared portal pager footer: "Showing a-b of N" + numbered pages. Drawn once, after the last row of the page. -#}
+{% set sf = doc.sf %}
+{% if sf and sf.last %}
+<div class="sf-pager">
+	<span class="sf-pg-info">
+		Showing {{ sf.start + 1 }}&ndash;{{ sf.start + sf.shown }}{% if sf.total is not none %} of {{ sf.total }}{% endif %}
+	</span>
+
+	<nav class="sf-pg-nav" aria-label="Pagination">
+		{% if sf.page > 1 %}<a class="sf-pg-btn" href="{{ sf.prev_url | e }}">&lsaquo; Previous</a>{% else %}<span class="sf-pg-btn disabled">&lsaquo; Previous</span>{% endif %}
+
+		{% if sf.links %}
+			{% for p in sf.links %}
+				{% if p.gap %}<span class="sf-pg-gap">&hellip;</span>
+				{% elif p.current %}<span class="sf-pg-btn sf-pg-active" aria-current="page">{{ p.n }}</span>
+				{% else %}<a class="sf-pg-btn" href="{{ p.url | e }}">{{ p.n }}</a>{% endif %}
+			{% endfor %}
+		{% else %}
+			<span class="sf-pg-current">Page {{ sf.page }}</span>
+		{% endif %}
+
+		{% if sf.has_next %}<a class="sf-pg-btn" href="{{ sf.next_url | e }}">Next &rsaquo;</a>{% else %}<span class="sf-pg-btn disabled">Next &rsaquo;</span>{% endif %}
+	</nav>
+</div>
+{% endif %}
