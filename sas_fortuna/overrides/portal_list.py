@@ -9,7 +9,8 @@ from frappe.utils.user import is_website_user
 
 # doctype -> {"default": "field dir", "sort": {allowed fields}, "filters": (...), "paginate": bool, "count": bool}
 REGISTRY = {}
-PAGE_SIZES = (10, 20, 50, 100)
+PAGE_SIZES = (10, 25, 50, 100)
+MAX_ALL = 500  # ?sf_len=all (All items) is capped: every row is loaded as a full document
 DEFAULT_PAGE_LEN = 10
 _PARAMS = ("sort_by", "sort_dir", "sf_page", "sf_len")
 _PATCHES = []
@@ -71,8 +72,11 @@ def paginate_list_context(module_path, get_list=None, columns=None):
 
 
 def _page_len():
-	"""Items per page requested via ?sf_len=, restricted to PAGE_SIZES."""
-	size = cint(frappe.form_dict.get("sf_len"))
+	"""Items per page requested via ?sf_len= (a PAGE_SIZES value or "all")."""
+	raw = frappe.form_dict.get("sf_len")
+	if raw == "all":
+		return MAX_ALL
+	size = cint(raw)
 	return size if size in PAGE_SIZES else DEFAULT_PAGE_LEN
 
 
@@ -143,7 +147,7 @@ def _annotate(rows, page, page_len, total):
 	}
 	for i, doc in enumerate(rows):
 		# plain attribute, not doc.update(): a list value would be treated as child rows
-		doc.sf = frappe._dict(info, first=(i == 0), last=(i == shown - 1))
+		doc.sf = frappe._dict(info, first=(i == 0), last=(i == shown - 1), n=info["start"] + i + 1)
 
 
 def _patch_portal_get():

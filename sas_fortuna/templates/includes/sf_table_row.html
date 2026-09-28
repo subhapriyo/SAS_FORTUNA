@@ -1,5 +1,5 @@
-{#- Generic portal table row driven by sf_columns (set by paginate_list_context(columns=...)):
-    header row on the first row, pager after the last row.
+{#- Portal list as a real table, driven by sf_columns (set by paginate_list_context(columns=...)).
+    The first row of a page opens <table> + header, the last row closes it and draws the pager.
     column = {label, field, kind: name|status|date|money|text|items|ago, sub: optional 2nd line field, sub_kind: date|text} -#}
 {% set sf = doc.sf %}
 {% set cols = sf_columns %}
@@ -10,43 +10,50 @@
 	"To Bill": "orange", "To Deliver": "orange", "To Deliver and Bill": "orange", "To Receive": "orange",
 	"To Receive and Bill": "orange", "Return Issued": "gray", "Expired": "gray", "Ordered": "green"
 } %}
-{% set grid = "grid-template-columns: 2fr repeat(" ~ (cols | length - 1) ~ ", minmax(0, 1fr))" %}
 {% set items = doc.get("items") %}
 {% set preview = doc.get("items_preview") or ((items[0].get("item_name") or items[0].get("item_code")) if items else "") %}
 
-{% if sf and sf.first %}
-<div class="sf-qhead sf-tgrid" style="{{ grid }}">
-	{% for c in cols %}<div{% if c.kind == "money" %} class="sf-right"{% endif %}>{{ _(c.label) }}</div>{% endfor %}
-</div>
+{% if sf %}
+{% if sf.first %}
+<div class="sf-table-wrap"><table class="sf-table">
+	<thead><tr>
+		<th class="sf-c-sr">{{ _("Sr.") }}</th>
+		{% for c in cols %}<th class="sf-c-{{ c.kind }}">{{ _(c.label) }}</th>{% endfor %}
+	</tr></thead>
+	<tbody>
 {% endif %}
-
-<a class="sf-qrow sf-tgrid" style="{{ grid }}" href="/{{ pathname }}/{{ doc.name | e }}">
-	{% for c in cols %}
-	{% set value = doc.get(c.field) %}
-	{% if c.kind == "name" %}
-	<div>
-		<div class="sf-qname sf-ellipsis">{{ (value or doc.name) | e }}</div>
-		{% set subvalue = doc.get(c.sub) if c.sub else None %}
-		{% if subvalue %}<div class="sf-muted sf-ellipsis">{% if c.sub_kind == "date" %}{{ frappe.utils.global_date_format(subvalue) }}{% else %}{{ subvalue | e }}{% endif %}</div>{% endif %}
-	</div>
-	{% elif c.kind == "status" %}
-	<div>
-		{% if value %}<span class="indicator-pill {{ colors.get(value, 'gray') }} ellipsis"><span class="ellipsis">{{ value | e }}</span></span>{% else %}&mdash;{% endif %}
-	</div>
-	{% elif c.kind == "money" %}
-	<div class="sf-right">
-		{% if value is not none %}{% if doc.get_formatted %}{{ doc.get_formatted(c.field) }}{% else %}{{ frappe.utils.fmt_money(value, currency=doc.currency) }}{% endif %}{% else %}&mdash;{% endif %}
-	</div>
-	{% elif c.kind == "items" %}
-	<div class="sf-muted sf-ellipsis" title="{{ preview | e }}">{% if preview %}{{ preview | e }}{% else %}&mdash;{% endif %}</div>
-	{% elif c.kind == "date" %}
-	<div class="sf-muted">{% if value %}{{ frappe.utils.global_date_format(value) }}{% else %}&mdash;{% endif %}</div>
-	{% elif c.kind == "ago" %}
-	<div class="sf-muted">{% if value %}{{ frappe.utils.pretty_date(value) }}{% else %}&mdash;{% endif %}</div>
-	{% else %}
-	<div class="sf-muted sf-ellipsis">{% if value %}{{ value | e }}{% else %}&mdash;{% endif %}</div>
-	{% endif %}
-	{% endfor %}
-</a>
+	<tr>
+		<td class="sf-c-sr" data-label="{{ _('Sr.') }}">{{ sf.n }}</td>
+		{% for c in cols %}
+		{% set value = doc.get(c.field) %}
+		<td class="sf-c-{{ c.kind }}" data-label="{{ _(c.label) | e }}">
+			{% if c.kind == "name" %}
+				<a class="sf-rowlink sf-qname" href="/{{ pathname }}/{{ doc.name | e }}">{{ (value or doc.name) | e }}</a>
+				{% set subvalue = doc.get(c.sub) if c.sub else None %}
+				{% if subvalue %}<div class="sf-muted">{% if c.sub_kind == "date" %}{{ frappe.utils.global_date_format(subvalue) }}{% else %}{{ subvalue | e }}{% endif %}</div>{% endif %}
+			{% elif c.kind == "status" %}
+				{% if value %}<span class="indicator-pill {{ colors.get(value, 'gray') }} ellipsis"><span class="ellipsis">{{ value | e }}</span></span>{% else %}<span class="sf-none">&mdash;</span>{% endif %}
+			{% elif c.kind == "money" %}
+				{% if value is not none %}{% if doc.get_formatted %}{{ doc.get_formatted(c.field) }}{% else %}{{ frappe.utils.fmt_money(value, currency=doc.currency) }}{% endif %}{% else %}<span class="sf-none">&mdash;</span>{% endif %}
+			{% elif c.kind == "items" %}
+				{% if preview %}<span class="sf-clamp" title="{{ preview | e }}">{{ preview | e }}</span>{% else %}<span class="sf-none">&mdash;</span>{% endif %}
+			{% elif c.kind == "date" %}
+				{% if value %}{{ frappe.utils.global_date_format(value) }}{% else %}<span class="sf-none">&mdash;</span>{% endif %}
+			{% elif c.kind == "ago" %}
+				{% if value %}{{ frappe.utils.pretty_date(value) }}{% else %}<span class="sf-none">&mdash;</span>{% endif %}
+			{% else %}
+				{% if value %}<span class="sf-clamp">{{ value | e }}</span>{% else %}<span class="sf-none">&mdash;</span>{% endif %}
+			{% endif %}
+		</td>
+		{% endfor %}
+	</tr>
+{% if sf.last %}
+	</tbody>
+</table></div>
+{% endif %}
+{% else %}
+{#- no paging info (e.g. an ajax "More" call): plain row, not part of a table -#}
+<a class="sf-qrow" href="/{{ pathname }}/{{ doc.name | e }}"><span class="sf-qname">{{ doc.name | e }}</span></a>
+{% endif %}
 
 {% include "templates/includes/sf_pager.html" %}

@@ -1,22 +1,19 @@
 /* sas_fortuna portal: filter + sort + items-per-page bar for list pages */
 frappe.ready(() => {
-	const PAGE_SIZES = [10, 20, 50, 100];
+	const PAGE_SIZES = ["10", "25", "50", "100", "all"];
 	const DEFAULT_PAGE_SIZE = "10";
 
 	const PAGES = {
 		// Supplier role
 		"/rfq": {
-			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Draft", "Submitted", "Cancelled"],
 			sort: { transaction_date: "Date", name: "Number" },
 		},
 		"/supplier-quotations": {
-			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Draft", "Submitted", "Cancelled"],
 			sort: { transaction_date: "Date", valid_till: "Valid till", grand_total: "Amount" },
 		},
 		"/purchase-orders": {
-			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["To Receive and Bill", "To Bill", "To Receive", "Completed", "Cancelled"],
 			sort: {
 				transaction_date: "Date",
@@ -26,17 +23,14 @@ frappe.ready(() => {
 		},
 		// Customer role
 		"/quotations": {
-			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Open", "Ordered", "Partially Ordered", "Expired", "Lost"],
 			sort: { transaction_date: "Date", grand_total: "Amount", name: "Number" },
 		},
 		"/orders": {
-			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["To Deliver and Bill", "To Bill", "To Deliver", "Completed", "Cancelled"],
 			sort: { transaction_date: "Date", delivery_date: "Delivery", grand_total: "Amount" },
 		},
 		"/invoices": {
-			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Paid", "Unpaid", "Overdue", "Partly Paid", "Return", "Credit Note Issued"],
 			sort: {
 				posting_date: "Date",
@@ -46,12 +40,10 @@ frappe.ready(() => {
 			},
 		},
 		"/shipments": {
-			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["To Bill", "Completed", "Return Issued", "Cancelled"],
 			sort: { posting_date: "Date", grand_total: "Amount", name: "Number" },
 		},
 		"/issues": {
-			paginate: true, // numbered pager + items-per-page (see overrides/*.py)
 			status: ["Open", "Replied", "On Hold", "Resolved", "Closed"],
 			sort: { creation: "Created", modified: "Last updated", priority: "Priority" },
 		},
@@ -81,13 +73,11 @@ frappe.ready(() => {
       <option value="desc">Newest / High first</option>
       <option value="asc">Oldest / Low first</option>
     </select>
-    ${
-		cfg.paginate
-			? `<select id="sf-len" title="Items per page">
-      ${PAGE_SIZES.map((n) => `<option value="${n}">${n} per page</option>`).join("")}
-    </select>`
-			: ""
-	}
+    <select id="sf-len" title="Items per page">
+      ${PAGE_SIZES.map(
+			(n) => `<option value="${n}">${n === "all" ? "All items" : n + " per page"}</option>`,
+		).join("")}
+    </select>
     <button type="button" class="sf-clear" id="sf-clear">Clear</button>`;
 
 	const anchor =
@@ -104,7 +94,7 @@ frappe.ready(() => {
 	};
 	Object.entries(map).forEach(([id, key]) => {
 		const el = document.getElementById(id);
-		if (!el) return; // sf-len only exists on paginated pages
+		if (!el) return;
 		if (params.get(key)) el.value = params.get(key);
 		else if (id === "sf-len") el.value = DEFAULT_PAGE_SIZE;
 		el.addEventListener("change", () => {
