@@ -206,6 +206,20 @@ fixtures = [
 ]
 
 
+# ============================================================================
+# PORTAL LIST PAGES (filters, sorting, design)
+# ============================================================================
+# Adds sorting/filtering to the Customer and Supplier portal list pages
+# (Quotations, Orders, Invoices, Shipments, Issues, RFQ, Supplier Quotations,
+# Purchase Orders). The patch is applied lazily on each request to avoid
+# importing ERPNext while this app is loading.
+
+before_request = ["sas_fortuna.overrides.apply_portal_overrides"]
+
+web_include_css = "/assets/sas_fortuna/css/portal.css"
+web_include_js = "/assets/sas_fortuna/js/portal.js"
+
+
 after_migrate = [
 	"sas_fortuna.patches.supplier_portal.execute",
 	"sas_fortuna.patches.customer_portal.execute",

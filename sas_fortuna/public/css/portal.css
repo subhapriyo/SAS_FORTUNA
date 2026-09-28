@@ -1,0 +1,35 @@
+/* sas_fortuna portal: filter/sort bar */
+.sf-filter-bar {
+	display: flex;
+	gap: 10px;
+	margin: 16px 0;
+	flex-wrap: wrap;
+	align-items: center;
+}
+.sf-filter-bar select {
+	padding: 6px 10px;
+	border: 1px solid #e2e6ea;
+	border-radius: 8px;
+	background: #fff;
+	font-size: 13px;
+	min-width: 150px;
+}
+.sf-filter-bar .sf-clear {
+	font-size: 13px;
+	color: #6b7280;
+	cursor: pointer;
+	text-decoration: underline;
+	background: none;
+	border: 0;
+}
+
+/* row hover (adjust selectors after inspecting a row in your browser) */
+.web-list-item,
+.list-item-container {
+	border-radius: 8px;
+	transition: background 0.15s;
+}
+.web-list-item:hover,
+.list-item-container:hover {
+	background: #f7f8fa;
+}

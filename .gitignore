@@ -29,3 +29,5 @@ Thumbs.db
 .env
 *.pem
 *.key
+sas_fortuna/public/node_modules
+sas_fortuna/public/node_modules
