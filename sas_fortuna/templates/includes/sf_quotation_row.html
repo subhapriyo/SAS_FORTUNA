@@ -1,10 +1,11 @@
-{#- Quotation portal listing row: original fields + Customer Enquiry, with header row and footer pager -#}
+{#- Quotation portal listing row: original fields + Customer Enquiry, with header row and footer pager (items-per-page + numbered pages) -#}
+{% set sf = doc.sf %}
 {% set enquiry = doc.get("custom_customer_enquiry") or doc.get("customer_enquiry") %}
 {% set items = doc.get("items") %}
 {% set preview = doc.get("items_preview") or ((items[0].get("item_name") or items[0].get("item_code")) if items else "") %}
 {% set colors = {"Open": "orange", "Ordered": "green", "Partially Ordered": "yellow", "Lost": "red", "Expired": "gray"} %}
 
-{% if doc.sf_first %}
+{% if sf and sf.first %}
 <div class="sf-qhead sf-qgrid">
 	<div>Quotation / Date</div>
 	<div>Status</div>
@@ -31,13 +32,33 @@
 	</div>
 </a>
 
-{% if doc.sf_last %}
+{% if sf and sf.last %}
 <div class="sf-pager">
-	<span>Showing {{ doc.sf_start + 1 }}&ndash;{{ doc.sf_start + doc.sf_shown }}</span>
-	<span>
-		{% if doc.sf_page > 1 %}<a class="sf-pg-btn" href="{{ doc.sf_prev_url | e }}">&lsaquo; Previous</a>{% else %}<span class="sf-pg-btn disabled">&lsaquo; Previous</span>{% endif %}
-		<span class="sf-pg-current">Page {{ doc.sf_page }}</span>
-		{% if doc.sf_has_next %}<a class="sf-pg-btn" href="{{ doc.sf_next_url | e }}">Next &rsaquo;</a>{% else %}<span class="sf-pg-btn disabled">Next &rsaquo;</span>{% endif %}
+	<label class="sf-pg-size-wrap">
+		<span>Items per page</span>
+		<select class="sf-pg-size" aria-label="Items per page">
+			{% for n in sf.sizes %}<option value="{{ n }}"{% if n == sf.page_size %} selected{% endif %}>{{ n }}</option>{% endfor %}
+		</select>
+	</label>
+
+	<span class="sf-pg-info">
+		Showing {{ sf.start + 1 }}&ndash;{{ sf.start + sf.shown }}{% if sf.total is not none %} of {{ sf.total }}{% endif %}
 	</span>
+
+	<nav class="sf-pg-nav" aria-label="Pagination">
+		{% if sf.page > 1 %}<a class="sf-pg-btn" href="{{ sf.prev_url | e }}">&lsaquo; Previous</a>{% else %}<span class="sf-pg-btn disabled">&lsaquo; Previous</span>{% endif %}
+
+		{% if sf.links %}
+			{% for p in sf.links %}
+				{% if p.gap %}<span class="sf-pg-gap">&hellip;</span>
+				{% elif p.current %}<span class="sf-pg-btn sf-pg-active" aria-current="page">{{ p.n }}</span>
+				{% else %}<a class="sf-pg-btn" href="{{ p.url | e }}">{{ p.n }}</a>{% endif %}
+			{% endfor %}
+		{% else %}
+			<span class="sf-pg-current">Page {{ sf.page }}</span>
+		{% endif %}
+
+		{% if sf.has_next %}<a class="sf-pg-btn" href="{{ sf.next_url | e }}">Next &rsaquo;</a>{% else %}<span class="sf-pg-btn disabled">Next &rsaquo;</span>{% endif %}
+	</nav>
 </div>
 {% endif %}

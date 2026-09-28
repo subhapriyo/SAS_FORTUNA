@@ -1,5 +1,14 @@
 /* sas_fortuna portal: filter + sort bar for list pages */
 frappe.ready(() => {
+	// items-per-page select (rendered server-side in the pager footer)
+	document.addEventListener("change", (e) => {
+		if (!e.target.classList || !e.target.classList.contains("sf-pg-size")) return;
+		const p = new URLSearchParams(location.search);
+		p.delete("sf_page");
+		p.set("sf_len", e.target.value);
+		location.search = p.toString();
+	});
+
 	const PAGES = {
 		// Supplier role
 		"/rfq": {
@@ -91,6 +100,9 @@ frappe.ready(() => {
 	});
 
 	document.getElementById("sf-clear").addEventListener("click", () => {
-		location.search = "";
+		// reset filters/sort/page, but keep the chosen items-per-page
+		const keep = new URLSearchParams();
+		if (params.get("sf_len")) keep.set("sf_len", params.get("sf_len"));
+		location.search = keep.toString();
 	});
 });

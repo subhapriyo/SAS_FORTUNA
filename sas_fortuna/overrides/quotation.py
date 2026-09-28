@@ -18,7 +18,8 @@ def _use_custom_row_template():
 
 	def get_list_context(context=None):
 		list_context = original(context)
-		list_context.row_template = ROW_TEMPLATE
+		# ERPNext returns a plain dict here; attribute assignment raised AttributeError -> HTTP 500
+		list_context["row_template"] = ROW_TEMPLATE
 		return list_context
 
 	quotation_module.get_list_context = get_list_context
