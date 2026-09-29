@@ -1,7 +1,8 @@
 /* sas_fortuna portal: shared filter bar for list pages.
  * Order (same on every page): Filter by Status | Filter by Date Range | Sort by | Sort order | Clear | Items per Page.
  * Items per Page is always the last control. All values go to the server as URL params
- * (status, sf_from, sf_to, sort_by, sort_dir, sf_len); see sas_fortuna/overrides/portal_list.py. */
+ * (status, sf_from, sf_to, sort_by, sort_dir, sf_len); see sas_fortuna/overrides/portal_list.py.
+ * The bar is only shown when the list has rows (or a filter is active, so it can still be cleared). */
 frappe.ready(() => {
 	const PAGE_SIZES = ["10", "25", "50", "100", "all"];
 	const DEFAULT_PAGE_SIZE = "10";
@@ -25,9 +26,20 @@ frappe.ready(() => {
 			},
 		},
 		"/purchase-invoices": {
-			status: ["Paid", "Unpaid", "Overdue", "Partly Paid", "Return", "Debit Note Issued"],
+			status: [
+				"Draft",
+				"Submitted",
+				"Paid",
+				"Unpaid",
+				"Overdue",
+				"Partly Paid",
+				"Return",
+				"Debit Note Issued",
+			],
 			sort: {
 				posting_date: "Date",
+				name: "Number",
+				bill_no: "Supplier Invoice No",
 				bill_date: "Supplier Invoice Date",
 				due_date: "Due date",
 				grand_total: "Amount",
@@ -36,13 +48,14 @@ frappe.ready(() => {
 		},
 		// Customer role
 		"/quotations": {
-			status: ["Open", "Ordered", "Partially Ordered", "Expired", "Lost"],
+			status: ["Draft", "Open", "Ordered", "Partially Ordered", "Expired", "Lost"],
 			sort: { transaction_date: "Date", grand_total: "Amount", name: "Number" },
 		},
 		"/orders": {
 			status: ["To Deliver and Bill", "To Bill", "To Deliver", "Completed", "Cancelled"],
 			sort: {
 				transaction_date: "Date",
+				po_no: "Customer's PO",
 				po_date: "Customer's PO Date",
 				delivery_date: "Delivery",
 				grand_total: "Amount",
@@ -152,6 +165,22 @@ frappe.ready(() => {
 		document.querySelector(".page-content, main");
 	if (!anchor) return;
 	anchor.parentNode.insertBefore(bar, anchor);
+
+	// Show the bar only when the list has rows. If a status/date filter is active the bar stays
+	// visible even for 0 results, otherwise the user could not clear the filter. Rows can be
+	// (re)drawn after load (e.g. the ajax "More" call), so re-check on DOM changes.
+	const ROWS =
+		".sf-table tbody tr, .sf-qrow, .website-list .list-item-container, .website-list .web-list-item";
+	const filtersActive = ["status", "sf_from", "sf_to"].some((key) => params.get(key));
+	const syncVisibility = () => {
+		const hidden = !(filtersActive || document.querySelector(ROWS));
+		if (bar.hidden !== hidden) bar.hidden = hidden;
+	};
+	syncVisibility();
+	new MutationObserver(syncVisibility).observe(anchor.parentNode, {
+		childList: true,
+		subtree: true,
+	});
 
 	// Reload with the given params changed. Any filter/sort/size change goes back to page 1.
 	const reload = (changes) => {

@@ -1,6 +1,7 @@
 {#- Portal list as a real table, driven by sf_columns (set by paginate_list_context(columns=...)).
     The first row of a page opens <table> + header, the last row closes it and draws the pager.
-    column = {label, field, kind: name|status|date|money|text|items|ago, sub: optional 2nd line field, sub_kind: date|text} -#}
+    column = {label, field, kind: name|stack|status|date|money|text|items|ago, sub: optional 2nd line field, sub_kind: date|text}
+    name = linked first line + 2nd line; stack = same two-line layout without the link -#}
 {% set sf = doc.sf %}
 {% set cols = sf_columns %}
 {% set colors = {
@@ -30,6 +31,10 @@
 			{% if c.kind == "name" %}
 				<a class="sf-rowlink sf-qname" href="/{{ pathname }}/{{ doc.name | e }}">{{ (value or doc.name) | e }}</a>
 				{% set subvalue = doc.get(c.sub) if c.sub else None %}
+				{% if subvalue %}<div class="sf-muted">{% if c.sub_kind == "date" %}{{ frappe.utils.global_date_format(subvalue) }}{% else %}{{ subvalue | e }}{% endif %}</div>{% endif %}
+			{% elif c.kind == "stack" %}
+				{% set subvalue = doc.get(c.sub) if c.sub else None %}
+				{% if value %}<div class="sf-qname">{{ value | e }}</div>{% elif not subvalue %}<span class="sf-none">&mdash;</span>{% endif %}
 				{% if subvalue %}<div class="sf-muted">{% if c.sub_kind == "date" %}{{ frappe.utils.global_date_format(subvalue) }}{% else %}{{ subvalue | e }}{% endif %}</div>{% endif %}
 			{% elif c.kind == "status" %}
 				{% if value %}<span class="indicator-pill {{ colors.get(value, 'gray') }} ellipsis"><span class="ellipsis">{{ value | e }}</span></span>{% else %}<span class="sf-none">&mdash;</span>{% endif %}

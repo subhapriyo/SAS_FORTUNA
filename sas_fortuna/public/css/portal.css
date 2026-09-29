@@ -7,6 +7,9 @@
 	flex-wrap: wrap;
 	align-items: flex-end;
 }
+.sf-filter-bar[hidden] {
+	display: none;
+}
 .sf-filter-bar .sf-field {
 	display: flex;
 	flex-direction: column;
@@ -265,7 +268,8 @@ a.sf-pg-btn:hover {
 	width: 56px;
 	color: #9ca3af;
 }
-.sf-table .sf-c-name {
+.sf-table .sf-c-name,
+.sf-table .sf-c-stack {
 	min-width: 170px;
 }
 .sf-table .sf-c-text {
@@ -339,6 +343,7 @@ a.sf-pg-btn:hover {
 		border: 0;
 	}
 	.sf-table td.sf-c-name,
+	.sf-table td.sf-c-stack,
 	.sf-table td.sf-c-items,
 	.sf-table td.sf-c-text {
 		grid-column: 1 / -1;
@@ -360,4 +365,45 @@ a.sf-pg-btn:hover {
 	.sf-clamp {
 		-webkit-line-clamp: 3;
 	}
+}
+
+/* ---- Purchase Invoice detail pages (/purchase-invoices/<name>): slightly more compact ----
+   Scoped by the page path Frappe puts on <body>, so no other page is affected. To compact other
+   detail pages, add their path to the selector list. Classes are ERPNext's stock order template. */
+body[data-path^="purchase-invoices/"] {
+	--sf-detail-gap: 8px;
+}
+body[data-path^="purchase-invoices/"] .page-header,
+body[data-path^="purchase-invoices/"] .page-header-actions-block {
+	margin-bottom: var(--sf-detail-gap);
+}
+body[data-path^="purchase-invoices/"] .page-content {
+	font-size: 13px;
+	line-height: 1.4;
+}
+body[data-path^="purchase-invoices/"] .page-content h3,
+body[data-path^="purchase-invoices/"] .page-content .h3 {
+	font-size: 1.15rem;
+	margin: 0 0 4px;
+}
+body[data-path^="purchase-invoices/"] .page-content p,
+body[data-path^="purchase-invoices/"] .order-container .row {
+	margin-bottom: 4px;
+}
+body[data-path^="purchase-invoices/"] .order-container {
+	margin-top: var(--sf-detail-gap);
+}
+body[data-path^="purchase-invoices/"] .order-item-table .row,
+body[data-path^="purchase-invoices/"] .order-item-table .list-item-container,
+body[data-path^="purchase-invoices/"] .order-taxes .row {
+	padding-top: 6px;
+	padding-bottom: 6px;
+}
+body[data-path^="purchase-invoices/"] .order-item-table .item-description,
+body[data-path^="purchase-invoices/"] .order-item-table .text-muted {
+	font-size: 12px;
+}
+body[data-path^="purchase-invoices/"] .indicator-pill {
+	padding: 2px 8px;
+	font-size: 12px;
 }
