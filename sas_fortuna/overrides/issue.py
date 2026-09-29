@@ -16,6 +16,7 @@ register(
 	sort={"creation", "modified", "priority", "status", "name"},
 	filters=("status", "priority"),
 	paginate=True,
+	date_field="opening_date",
 )
 
 

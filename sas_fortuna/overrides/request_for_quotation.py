@@ -21,5 +21,6 @@ register(
 	filters=("status",),
 	paginate=True,
 	count=False,
+	date_field="transaction_date",
 )
 paginate_list_context("erpnext.buying.doctype.request_for_quotation.request_for_quotation", columns=COLUMNS)

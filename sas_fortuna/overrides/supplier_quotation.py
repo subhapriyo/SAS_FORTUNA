@@ -11,6 +11,7 @@ COLUMNS = [
 	{"label": "Status", "field": "status", "kind": "status"},
 	{"label": "Item", "field": "items_preview", "kind": "items"},
 	{"label": "Valid till", "field": "valid_till", "kind": "date"},
+	{"label": "Quotation Number", "field": "quotation_number", "kind": "text"},
 	{"label": "Amount", "field": "grand_total", "kind": "money"},
 ]
 
@@ -20,5 +21,6 @@ register(
 	sort={"transaction_date", "valid_till", "grand_total", "status", "name"},
 	filters=("status",),
 	paginate=True,
+	date_field="transaction_date",
 )
 paginate_list_context("erpnext.buying.doctype.supplier_quotation.supplier_quotation", columns=COLUMNS)

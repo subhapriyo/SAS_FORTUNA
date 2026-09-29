@@ -4,15 +4,17 @@ from urllib.parse import urlencode
 
 import frappe
 from erpnext.controllers import website_list_for_contact as wlc
-from frappe.utils import cint
+from frappe.utils import cint, getdate
 from frappe.utils.user import is_website_user
 
-# doctype -> {"default": "field dir", "sort": {allowed fields}, "filters": (...), "paginate": bool, "count": bool}
+# doctype -> {"default": "field dir", "sort": {allowed fields}, "filters": (...), "paginate": bool, "count": bool,
+#              "date_field": field used by the Filter by Date Range control}
 REGISTRY = {}
 PAGE_SIZES = (10, 25, 50, 100)
 MAX_ALL = 500  # ?sf_len=all (All items) is capped: every row is loaded as a full document
 DEFAULT_PAGE_LEN = 10
-_PARAMS = ("sort_by", "sort_dir", "sf_page", "sf_len")
+# sf_from / sf_to = Start Date / End Date of the date-range filter (YYYY-MM-DD)
+_PARAMS = ("sort_by", "sort_dir", "sf_page", "sf_len", "sf_from", "sf_to")
 _PATCHES = []
 PAGED_ROW_TEMPLATE = "templates/includes/sf_paged_row.html"
 TABLE_ROW_TEMPLATE = "templates/includes/sf_table_row.html"
@@ -24,13 +26,14 @@ _TRANSACTION_SEED = {"docstatus": 1}
 _GENERIC_SEED = {"name": ["!=", ""]}
 
 
-def register(doctype, default, sort, filters=("status",), paginate=False, count=True):
+def register(doctype, default, sort, filters=("status",), paginate=False, count=True, date_field=None):
 	REGISTRY[doctype] = {
 		"default": default,
 		"sort": set(sort),
 		"filters": tuple(filters),
 		"paginate": paginate,
 		"count": count,  # False: no cheap total, so Previous / Next paging instead of page numbers
+		"date_field": date_field,  # column the date-range filter applies to (None: filter ignored)
 	}
 
 
@@ -166,6 +169,38 @@ def _patch_portal_get():
 	portal.get = get
 
 
+def _parse_date(value):
+	"""Return a date for a YYYY-MM-DD request value, or None if missing/invalid."""
+	if not value:
+		return None
+	try:
+		return getdate(value)
+	except Exception:
+		return None
+
+
+def _apply_date_range(filters, cfg):
+	"""Add the Start Date / End Date request params (?sf_from= / ?sf_to=) to `filters`.
+
+	Done in the query itself (not in JS) so paging, totals and sorting all respect the range.
+	The filter is merged into the same dict ERPNext later adds customer / supplier restrictions
+	to, so it can never widen what the portal user is allowed to see.
+	"""
+	field = cfg.get("date_field")
+	start = _parse_date(frappe.form_dict.get("sf_from"))
+	end = _parse_date(frappe.form_dict.get("sf_to"))
+	if not field or not (start or end):
+		return
+	if start and end and start > end:  # hand-edited URL: be forgiving rather than return nothing
+		start, end = end, start
+	if start and end:
+		filters[field] = ["between", [start, end]]
+	elif start:
+		filters[field] = [">=", start]
+	else:
+		filters[field] = ["<=", end]
+
+
 def _paginate(doctype, original, txt, filters, limit_start, limit_page_length, seed, **kwargs):
 	"""Sorting + numbered paging around `original(doctype, txt, filters, start, len, order_by=..)`."""
 	cfg = REGISTRY[doctype]
@@ -176,6 +211,7 @@ def _paginate(doctype, original, txt, filters, limit_start, limit_page_length, s
 		filters.pop(key, None)
 	for key, value in seed.items():
 		filters.setdefault(key, value)
+	_apply_date_range(filters, cfg)
 
 	order_by = cfg["default"]
 	field = frappe.form_dict.get("sort_by")

@@ -8,6 +8,7 @@ register(
 	sort={"transaction_date", "grand_total", "status", "name"},
 	filters=("status",),
 	paginate=True,
+	date_field="transaction_date",
 )
 
 

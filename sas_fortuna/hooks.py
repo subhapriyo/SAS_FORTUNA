@@ -209,10 +209,11 @@ fixtures = [
 # ============================================================================
 # PORTAL LIST PAGES (filters, sorting, design)
 # ============================================================================
-# Adds sorting/filtering to the Customer and Supplier portal list pages
-# (Quotations, Orders, Invoices, Shipments, Issues, RFQ, Supplier Quotations,
-# Purchase Orders). The patch is applied lazily on each request to avoid
-# importing ERPNext while this app is loading.
+# Adds column headers, sorting, filtering (status, date range), and items-per-page
+# to the Customer and Supplier portal list pages (Quotations, Orders, Invoices,
+# Shipments, Issues, RFQ, Supplier Quotations, Purchase Orders, Purchase Invoices).
+# The patch is applied lazily on each request to avoid importing ERPNext while
+# this app is loading. Per-page config lives in sas_fortuna/overrides/<doctype>.py.
 
 before_request = ["sas_fortuna.overrides.apply_portal_overrides"]
 

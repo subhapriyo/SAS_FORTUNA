@@ -8,7 +8,7 @@
 	"Draft": "red", "Submitted": "blue", "Completed": "green", "Paid": "green", "Cancelled": "red",
 	"Unpaid": "orange", "Overdue": "red", "Partly Paid": "yellow", "Return": "gray", "Credit Note Issued": "gray",
 	"To Bill": "orange", "To Deliver": "orange", "To Deliver and Bill": "orange", "To Receive": "orange",
-	"To Receive and Bill": "orange", "Return Issued": "gray", "Expired": "gray", "Ordered": "green"
+	"To Receive and Bill": "orange", "Return Issued": "gray", "Expired": "gray", "Ordered": "green", "Debit Note Issued": "gray"
 } %}
 {% set items = doc.get("items") %}
 {% set preview = doc.get("items_preview") or ((items[0].get("item_name") or items[0].get("item_code")) if items else "") %}

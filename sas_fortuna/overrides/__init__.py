@@ -1,6 +1,7 @@
 from sas_fortuna.overrides import (
 	delivery_note,
 	issue,
+	purchase_invoice,
 	purchase_order,
 	quotation,
 	request_for_quotation,

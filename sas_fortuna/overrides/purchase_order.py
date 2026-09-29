@@ -8,6 +8,7 @@ COLUMNS = [
 		"sub": "transaction_date",
 		"sub_kind": "date",
 	},
+	{"label": "Order Confirmation No", "field": "order_confirmation_no", "kind": "text"},
 	{"label": "Status", "field": "status", "kind": "status"},
 	{"label": "Item", "field": "items_preview", "kind": "items"},
 	{"label": "Required by", "field": "schedule_date", "kind": "date"},
@@ -20,5 +21,6 @@ register(
 	sort={"transaction_date", "schedule_date", "grand_total", "status", "name"},
 	filters=("status",),
 	paginate=True,
+	date_field="transaction_date",
 )
 paginate_list_context("erpnext.buying.doctype.purchase_order.purchase_order", columns=COLUMNS)
