@@ -1,19 +1,21 @@
 /* sas_fortuna portal: filter/sort bar (built by public/js/portal.js).
-   Every control has a visible title; the bar wraps on narrow screens. Items per Page is last. */
+   Every control has a visible title, drawn on the SAME line as its field and vertically centred with it
+   (label left, input right); the bar wraps on narrow screens. Items per Page is last. */
 .sf-filter-bar {
 	display: flex;
 	gap: 12px 16px;
 	margin: 16px 0;
 	flex-wrap: wrap;
-	align-items: flex-end;
+	align-items: center;
 }
 .sf-filter-bar[hidden] {
 	display: none;
 }
 .sf-filter-bar .sf-field {
 	display: flex;
-	flex-direction: column;
-	gap: 4px;
+	flex-direction: row;
+	align-items: center;
+	gap: 8px;
 	min-width: 0;
 	margin: 0;
 	padding: 0;
@@ -24,9 +26,11 @@
 	width: auto;
 	margin: 0;
 	padding: 0;
+	flex: 0 0 auto;
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1.3;
+	white-space: nowrap;
 	color: #6b7280;
 }
 .sf-filter-bar select,
@@ -46,15 +50,13 @@
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 6px;
-}
-.sf-range {
-	align-items: flex-end;
+	gap: 6px 10px;
 }
 .sf-sub {
 	display: flex;
-	flex-direction: column;
-	gap: 2px;
+	flex-direction: row;
+	align-items: center;
+	gap: 6px;
 	margin: 0;
 	font-size: 11.5px;
 	font-weight: 500;
@@ -70,7 +72,7 @@
 	cursor: pointer;
 }
 .sf-filter-bar .sf-clear {
-	align-self: flex-end;
+	align-self: center;
 	padding: 6px 4px;
 	font-size: 13px;
 	color: #6b7280;
@@ -81,14 +83,28 @@
 }
 /* phones: every field takes the full row */
 @media (max-width: 768px) {
-	.sf-filter-bar .sf-field,
-	.sf-filter-bar select {
+	.sf-filter-bar .sf-field {
 		width: 100%;
+	}
+	/* label stays left of its select; the select takes the rest of the row */
+	.sf-filter-bar .sf-field > .sf-label {
+		min-width: 8.5em;
+	}
+	.sf-filter-bar .sf-field > select {
+		flex: 1 1 auto;
+		width: auto;
+	}
+	/* date range: two dates + Apply do not fit beside the title on a phone, so its title sits on top */
+	.sf-filter-bar .sf-field-range {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 4px;
 	}
 	.sf-filter-bar .sf-sub {
 		flex: 1 1 120px;
 	}
 	.sf-filter-bar .sf-range input[type="date"] {
+		flex: 1 1 auto;
 		width: 100%;
 		min-width: 0;
 	}
@@ -406,4 +422,196 @@ body[data-path^="purchase-invoices/"] .order-item-table .text-muted {
 body[data-path^="purchase-invoices/"] .indicator-pill {
 	padding: 2px 8px;
 	font-size: 12px;
+}
+
+/* ---- Detail pages: header lines + compact items grid (all doctypes) ----
+   Scoped by the .sf-detail class portal.js puts on <html> for /orders|invoices|quotations|shipments|
+   supplier-quotations|purchase-orders|purchase-invoices/<name>. Classes are ERPNext's stock order.html:
+   .order-container > .w-100 > .order-items rows (Item | Qty | Rate | Amount), .order-taxes below. */
+.sf-detail {
+	--sf-oi-cols: minmax(0, 1fr) 76px 116px 128px; /* Item | Qty | Rate | Amount */
+}
+
+/* extra "Label: value" lines under the status badge */
+.sf-detail .sf-meta {
+	margin-top: 6px;
+}
+.sf-detail .sf-meta-line {
+	line-height: 1.5;
+}
+
+/* header row + item rows share one grid so columns line up */
+.sf-detail .order-container {
+	margin-top: 12px !important;
+}
+.sf-detail .order-container .w-100 > .order-items {
+	display: grid;
+	grid-template-columns: var(--sf-oi-cols);
+	align-items: start;
+	column-gap: 12px;
+	margin: 0;
+	padding: 8px 4px;
+	border-bottom: 1px solid #eef0f2;
+}
+.sf-detail .order-container .w-100 > .order-items > [class*="col-"] {
+	flex: none;
+	width: auto;
+	max-width: none;
+	min-width: 0;
+	padding: 0;
+	text-align: left;
+}
+.sf-detail .order-container .w-100 > .order-item-header {
+	padding: 6px 4px;
+	margin: 0 !important;
+	font-size: 11.5px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #6b7280 !important;
+	border-bottom: 1px solid #e2e6ea;
+}
+.sf-detail .order-container .w-100 > .order-items:not(.order-item-header):hover {
+	background: #f7f8fa;
+}
+/* numbers: right aligned */
+.sf-detail .order-container .w-100 > .order-items > .sf-oi-qty,
+.sf-detail .order-container .w-100 > .order-items > .sf-oi-rate,
+.sf-detail .order-container .w-100 > .order-items > .sf-oi-amt {
+	display: block; /* stock hides Qty on small screens (d-s-n) */
+	text-align: right;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+.sf-detail .order-container .w-100 > .order-items > .sf-oi-amt {
+	font-weight: 600;
+}
+
+/* item cell: small thumbnail + code / name on line 1, muted description below */
+.sf-detail .order-item-name .item_name_and_description {
+	display: flex;
+	flex-wrap: nowrap;
+	margin: 0;
+	gap: 10px;
+}
+.sf-detail .order-item-name .item_name_and_description > [class*="col-"] {
+	flex: 0 1 auto;
+	width: auto;
+	max-width: none;
+	padding: 0;
+}
+.sf-detail .order-item-name .item_name_and_description > div:last-child {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+.sf-detail .order-image {
+	height: auto !important;
+	width: 40px;
+}
+.sf-detail .order-image img {
+	width: 40px;
+	height: 40px;
+	object-fit: contain;
+}
+.sf-detail .order-image .no-image-cart-item {
+	min-height: 40px !important;
+	height: 40px;
+	width: 40px;
+	font-size: 13px;
+}
+.sf-detail .sf-oi-title {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0 8px;
+	line-height: 1.4;
+}
+.sf-detail .sf-oi-code {
+	font-weight: 600;
+	color: #111827;
+}
+.sf-detail .sf-oi-name {
+	color: #374151;
+}
+.sf-detail .item-description {
+	margin: 1px 0 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #6b7280;
+}
+.sf-detail .item-description[hidden] {
+	display: none;
+}
+.sf-detail .order-item-name .order-qty {
+	display: none !important; /* Qty has its own column / label-value pair */
+}
+/* Serial Nos, Renew AMC, ...: kept, tucked under the item */
+.sf-detail .sf-oi-extra {
+	margin: 2px 0 0 12px;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #6b7280;
+}
+
+/* totals + taxes: compact, right block sits over the Rate / Amount columns */
+.sf-detail .order-taxes,
+.sf-detail .order-container .w-100 ~ div {
+	font-size: 13px;
+}
+.sf-detail .order-taxes table {
+	margin: 6px 4px 0 auto;
+	width: auto;
+	min-width: 260px;
+}
+.sf-detail .order-taxes td,
+.sf-detail .order-taxes .row {
+	padding: 3px 0;
+	border: 0;
+	line-height: 1.4;
+}
+.sf-detail .order-taxes td:last-child {
+	min-width: 128px; /* same width as the Amount column */
+	padding-left: 12px;
+	text-align: right;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+/* phones: each row becomes a stacked card, no horizontal scrolling */
+@media (max-width: 768px) {
+	.sf-detail .order-container .w-100 > .order-item-header {
+		display: none;
+	}
+	.sf-detail .order-container .w-100 > .order-items:not(.order-item-header) {
+		display: block;
+		margin-bottom: 10px;
+		padding: 12px 14px;
+		border: 1px solid #e2e6ea;
+		border-radius: 12px;
+	}
+	.sf-detail .order-container .w-100 > .order-items > .sf-oi-item {
+		margin-bottom: 8px;
+	}
+	.sf-detail .order-container .w-100 > .order-items > .sf-oi-qty,
+	.sf-detail .order-container .w-100 > .order-items > .sf-oi-rate,
+	.sf-detail .order-container .w-100 > .order-items > .sf-oi-amt {
+		display: flex !important;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 3px 0;
+		border-top: 1px dashed #eef0f2;
+	}
+	.sf-detail .order-container .w-100 > .order-items > [data-label]::before {
+		content: attr(data-label);
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: #9ca3af;
+	}
+	.sf-detail .order-taxes table {
+		width: 100%;
+		min-width: 0;
+		margin-right: 0;
+	}
 }

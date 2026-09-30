@@ -65,6 +65,7 @@ frappe.ready(() => {
 			status: ["Paid", "Unpaid", "Overdue", "Partly Paid", "Return", "Credit Note Issued"],
 			sort: {
 				posting_date: "Date",
+				po_no: "Customer's PO",
 				po_date: "Customer's PO Date",
 				due_date: "Due date",
 				grand_total: "Amount",
@@ -120,8 +121,8 @@ frappe.ready(() => {
 			</select>`,
 		) +
 		// Date range: native date inputs open the browser calendar; filtering happens server-side.
-		`<fieldset class="sf-field sf-field-range">
-			<legend class="sf-label">${T("Filter by Date Range")}</legend>
+		`<div class="sf-field sf-field-range" role="group" aria-labelledby="sf-range-label">
+			<span class="sf-label" id="sf-range-label">${T("Filter by Date Range")}</span>
 			<div class="sf-range">
 				<label class="sf-sub" for="sf-from"><span>${T(
 					"Start Date",
@@ -131,7 +132,7 @@ frappe.ready(() => {
 				)}</span><input type="date" id="sf-to" /></label>
 				<button type="button" class="sf-apply" id="sf-apply">${T("Apply")}</button>
 			</div>
-		</fieldset>` +
+		</div>` +
 		field(
 			"sf-sort",
 			"Sort by",
@@ -231,3 +232,141 @@ frappe.ready(() => {
 		location.search = keep.toString();
 	});
 });
+
+/* sas_fortuna portal: detail pages (/orders/<name>, /invoices/<name>, ...), all rendered by ERPNext's
+ * stock order.html. Two jobs, both on top of the stock markup:
+ *  1. compact items grid: tags the header / item rows so portal.css can lay them out as a grid (desktop)
+ *     or stacked cards (phones); item code + name on line 1, description below, extras (serial nos,
+ *     Renew AMC, ...) kept and indented.
+ *  2. extra "Label: value" lines under the status badge + item names + currency-symbol money, fetched
+ *     from sas_fortuna.overrides.detail_extras.get_detail_extras (permission checked server-side).
+ * The layout works without the fetch; the fetch only adds the extra text. */
+(() => {
+	const DETAIL = {
+		"supplier-quotations": "Supplier Quotation",
+		"purchase-orders": "Purchase Order",
+		"purchase-invoices": "Purchase Invoice",
+		quotations: "Quotation",
+		orders: "Sales Order",
+		invoices: "Sales Invoice",
+		shipments: "Delivery Note",
+	};
+	const parts = location.pathname.replace(/^\/+|\/+$/g, "").split("/");
+	const doctype = parts.length > 1 ? DETAIL[parts[0]] : null;
+	if (!doctype) return;
+	document.documentElement.classList.add("sf-detail"); // scopes the detail CSS in portal.css
+
+	frappe.ready(() => {
+		const container = document.querySelector(".order-container");
+		if (!container) return;
+		const T = (text) => (typeof __ === "function" ? __(text) : text);
+		const mk = (tag, cls, text) => {
+			const el = document.createElement(tag);
+			if (cls) el.className = cls;
+			if (text != null) el.textContent = text;
+			return el;
+		};
+
+		const head = container.querySelector(".w-100 > .order-item-header");
+		const rows = [...container.querySelectorAll(".w-100 > .order-items")].filter(
+			(row) => row !== head,
+		);
+		const LABELS = ["Item", "Qty", "Rate", "Amount"];
+		const KEYS = ["item", "qty", "rate", "amt"];
+		const tag = (row, labelled) =>
+			[...row.children].slice(0, 4).forEach((cell, i) => {
+				cell.classList.add(`sf-oi-${KEYS[i]}`);
+				if (labelled && i) cell.setAttribute("data-label", T(LABELS[i]));
+			});
+
+		if (head) {
+			tag(head, false);
+			const qtyHead = head.querySelector(".sf-oi-qty");
+			if (qtyHead) qtyHead.textContent = T("Qty"); // stock header says "Quantity"
+		}
+
+		const titles = rows.map((row) => {
+			tag(row, true);
+			const text = row.querySelector(".item_name_and_description > div:last-child");
+			if (!text) return null;
+			// line 1: item code (stock prints it as a bare text node) + item name (added after the fetch)
+			const codeNode = [...text.childNodes].find(
+				(n) => n.nodeType === 3 && n.textContent.trim(),
+			);
+			const title = mk("div", "sf-oi-title");
+			title.appendChild(
+				mk("span", "sf-oi-code", codeNode ? codeNode.textContent.trim() : ""),
+			);
+			if (codeNode) text.replaceChild(title, codeNode);
+			else text.prepend(title);
+			// everything that is not title / description / qty (serial nos, Renew AMC, ...) stays, indented
+			[...text.childNodes].forEach((n) => {
+				if (n === title) return;
+				if (n.nodeType === 1) {
+					if (!n.matches(".item-description, .order-qty"))
+						n.classList.add("sf-oi-extra");
+				} else if (n.nodeType === 3 && n.textContent.trim()) {
+					const wrap = mk("div", "sf-oi-extra");
+					text.replaceChild(wrap, n);
+					wrap.appendChild(n);
+				}
+			});
+			return { title, text };
+		});
+
+		frappe.call({
+			method: "sas_fortuna.overrides.detail_extras.get_detail_extras",
+			type: "GET",
+			args: { doctype, name: decodeURIComponent(parts.slice(1).join("/")) },
+			callback: ({ message }) => {
+				if (!message) return;
+				if (message.missing && message.missing.length) {
+					console.warn("sas_fortuna: field not found on", doctype, message.missing);
+				}
+
+				// header lines under the status badge (a line with no value is never sent)
+				const lines = message.meta || [];
+				const badgeCol = document.querySelector(".indicator-container > div:first-child");
+				if (badgeCol && lines.length) {
+					const box = mk("div", "sf-meta");
+					lines.forEach((line) => {
+						const el = mk("div", "sf-meta-line text-muted small");
+						el.appendChild(mk("span", "sf-meta-label", `${line.label}: `));
+						el.appendChild(document.createTextNode(line.value));
+						box.appendChild(el);
+					});
+					badgeCol.appendChild(box);
+					// Supplier Quotation: the stock page already prints Valid Till next to the date
+					if (lines.some((l) => l.fieldname === "valid_till")) {
+						const stock = document.querySelector(".transaction-subheading p");
+						if (stock) stock.remove();
+					}
+				}
+
+				// item names + money with currency symbol, matched to the rows by position
+				(message.items || []).forEach((item, i) => {
+					const row = rows[i];
+					if (!row) return;
+					const t = titles[i];
+					if (t && item.item_name && item.item_name !== item.item_code) {
+						t.title.appendChild(mk("span", "sf-oi-name", item.item_name));
+					}
+					const desc = row.querySelector(".item-description");
+					if (
+						desc &&
+						item.item_name &&
+						desc.textContent.trim() === item.item_name.trim()
+					) {
+						desc.hidden = true; // description just repeats the name
+					} else if (desc && !desc.textContent.trim()) {
+						desc.hidden = true;
+					}
+					const rate = row.querySelector(".sf-oi-rate");
+					const amt = row.querySelector(".sf-oi-amt");
+					if (rate) rate.textContent = item.rate;
+					if (amt) amt.textContent = item.amount;
+				});
+			},
+		});
+	});
+})();
