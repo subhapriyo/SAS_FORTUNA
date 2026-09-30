@@ -104,12 +104,12 @@ frappe.ready(() => {
 
 	// One labelled control. Every control gets a visible title so no filter is ever unlabelled.
 	const field = (id, title, control, extra = "") =>
-		`<div class="sf-field ${extra}"><label class="sf-label" for="${id}">${T(
+		`<div class="portal-filter-group ${extra}"><label class="portal-filter-label" for="${id}">${T(
 			title,
 		)}</label>${control}</div>`;
 
 	const bar = document.createElement("div");
-	bar.className = "sf-filter-bar";
+	bar.className = "portal-filter-bar";
 	bar.setAttribute("role", "search");
 	bar.innerHTML =
 		field(
@@ -121,16 +121,16 @@ frappe.ready(() => {
 			</select>`,
 		) +
 		// Date range: native date inputs open the browser calendar; filtering happens server-side.
-		`<div class="sf-field sf-field-range" role="group" aria-labelledby="sf-range-label">
-			<span class="sf-label" id="sf-range-label">${T("Filter by Date Range")}</span>
-			<div class="sf-range">
-				<label class="sf-sub" for="sf-from"><span>${T(
+		`<div class="portal-filter-group portal-filter-group-range" role="group" aria-labelledby="sf-range-label">
+			<span class="portal-filter-label" id="sf-range-label">${T("Filter by Date Range")}</span>
+			<div class="portal-filter-range">
+				<label class="portal-filter-sub" for="sf-from"><span>${T(
 					"Start Date",
 				)}</span><input type="date" id="sf-from" /></label>
-				<label class="sf-sub" for="sf-to"><span>${T(
+				<label class="portal-filter-sub" for="sf-to"><span>${T(
 					"End Date",
 				)}</span><input type="date" id="sf-to" /></label>
-				<button type="button" class="sf-apply" id="sf-apply">${T("Apply")}</button>
+				<button type="button" class="portal-filter-apply" id="sf-apply">${T("Apply")}</button>
 			</div>
 		</div>` +
 		field(
@@ -148,7 +148,7 @@ frappe.ready(() => {
 				<option value="asc">${T("Oldest / Low first")}</option>
 			</select>`,
 		) +
-		`<button type="button" class="sf-clear" id="sf-clear">${T("Clear")}</button>` +
+		`<button type="button" class="portal-filter-clear" id="sf-clear">${T("Clear")}</button>` +
 		// Items per Page must stay the LAST control in the bar.
 		field(
 			"sf-len",
@@ -158,7 +158,7 @@ frappe.ready(() => {
 					"",
 				)}
 			</select>`,
-			"sf-field-last",
+			"portal-filter-group-last",
 		);
 
 	const anchor =

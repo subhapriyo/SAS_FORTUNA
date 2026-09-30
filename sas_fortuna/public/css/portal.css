@@ -1,112 +1,124 @@
-/* sas_fortuna portal: filter/sort bar (built by public/js/portal.js).
-   Every control has a visible title, drawn on the SAME line as its field and vertically centred with it
-   (label left, input right); the bar wraps on narrow screens. Items per Page is last. */
-.sf-filter-bar {
+/* sas_fortuna portal: filter/sort bar (built by public/js/portal.js, shared by every list page).
+   Layout: each control is a "group" = title on its own line, centred over its field, field directly
+   below. Groups sit in one wrapping row; Apply / Clear line up with the bottom row of inputs.
+   Order (set in portal.js): Status | Date Range | Sort by | Sort Order | Clear | Items per Page (last). */
+.portal-filter-bar {
 	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end; /* Apply / Clear share the inputs' baseline, not the labels' */
 	gap: 12px 16px;
 	margin: 16px 0;
-	flex-wrap: wrap;
-	align-items: center;
 }
-.sf-filter-bar[hidden] {
+.portal-filter-bar[hidden] {
 	display: none;
 }
-.sf-filter-bar .sf-field {
+
+/* one filter = label + field, stacked and centred */
+.portal-filter-group {
 	display: flex;
-	flex-direction: row;
+	flex-direction: column;
 	align-items: center;
-	gap: 8px;
+	gap: 4px;
 	min-width: 0;
 	margin: 0;
 	padding: 0;
 	border: 0;
 }
-.sf-filter-bar .sf-label {
+.portal-filter-label {
 	display: block;
-	width: auto;
+	width: 100%;
 	margin: 0;
 	padding: 0;
-	flex: 0 0 auto;
+	text-align: center;
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1.3;
-	white-space: nowrap;
 	color: #6b7280;
 }
-.sf-filter-bar select,
-.sf-filter-bar input[type="date"] {
+.portal-filter-group select,
+.portal-filter-group input[type="date"] {
+	width: 100%; /* field spans the group, so the label is centred over the whole field */
+	max-width: 100%;
+	min-width: 150px;
 	padding: 6px 10px;
 	border: 1px solid #e2e6ea;
 	border-radius: 8px;
 	background: #fff;
 	font-size: 13px;
-	min-width: 150px;
-	max-width: 100%;
 }
-.sf-filter-bar input[type="date"] {
-	min-width: 135px;
-}
-.sf-range {
+
+/* Date Range: one centred title over the Start / End pair (each with its own small title) + Apply */
+.portal-filter-range {
 	display: flex;
-	align-items: center;
 	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: center;
 	gap: 6px 10px;
+	width: 100%;
 }
-.sf-sub {
+.portal-filter-sub {
 	display: flex;
-	flex-direction: row;
+	flex-direction: column;
 	align-items: center;
-	gap: 6px;
+	gap: 2px;
 	margin: 0;
 	font-size: 11.5px;
 	font-weight: 500;
 	color: #6b7280;
 }
-.sf-filter-bar .sf-apply {
+.portal-filter-group input[type="date"] {
+	min-width: 135px;
+}
+
+.portal-filter-apply {
 	padding: 6px 12px;
 	border: 1px solid #111827;
 	border-radius: 8px;
 	background: #111827;
 	color: #fff;
 	font-size: 13px;
+	line-height: 1.4;
 	cursor: pointer;
 }
-.sf-filter-bar .sf-clear {
-	align-self: center;
+.portal-filter-clear {
 	padding: 6px 4px;
-	font-size: 13px;
-	color: #6b7280;
-	cursor: pointer;
-	text-decoration: underline;
-	background: none;
 	border: 0;
+	background: none;
+	font-size: 13px;
+	line-height: 1.4;
+	color: #6b7280;
+	text-decoration: underline;
+	cursor: pointer;
 }
-/* phones: every field takes the full row */
+
+/* phones: every group takes the full row; labels stay centred over their fields */
 @media (max-width: 768px) {
-	.sf-filter-bar .sf-field {
-		width: 100%;
-	}
-	/* label stays left of its select; the select takes the rest of the row */
-	.sf-filter-bar .sf-field > .sf-label {
-		min-width: 8.5em;
-	}
-	.sf-filter-bar .sf-field > select {
-		flex: 1 1 auto;
-		width: auto;
-	}
-	/* date range: two dates + Apply do not fit beside the title on a phone, so its title sits on top */
-	.sf-filter-bar .sf-field-range {
-		flex-direction: column;
+	.portal-filter-bar {
 		align-items: stretch;
-		gap: 4px;
 	}
-	.sf-filter-bar .sf-sub {
-		flex: 1 1 120px;
-	}
-	.sf-filter-bar .sf-range input[type="date"] {
-		flex: 1 1 auto;
+	.portal-filter-group {
+		flex: 1 1 100%;
 		width: 100%;
+	}
+	.portal-filter-group select {
 		min-width: 0;
+	}
+	.portal-filter-range {
+		flex-wrap: nowrap;
+	}
+	.portal-filter-sub {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+	.portal-filter-group input[type="date"] {
+		min-width: 0;
+	}
+	.portal-filter-apply {
+		flex: 0 0 auto;
+	}
+	.portal-filter-clear {
+		flex: 1 1 100%;
+		text-align: center;
 	}
 }
 
