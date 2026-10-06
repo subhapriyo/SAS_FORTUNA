@@ -1,0 +1,182 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Welcome to Fortuna Impex Pvt Ltd!</title>
+<style type="text/css">
+body {
+    font-style: italic;
+}
+a {
+    text-decoration: none;
+}
+ul, ul > li {
+    font-weight: bold;
+    list-style-type: none;
+    margin: 15px auto;
+}
+ol > li {
+    font-weight: normal;
+}
+li {
+    margin: 5px;
+}
+</style>
+</head>
+
+<body>
+<div id="m_-1529805486378738600x_divRplyFwdMsg" dir="ltr">
+  <div>&nbsp;</div>
+</div>
+<div>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+    <tbody>
+      <tr>
+        <td align="center"><table border="0" cellpadding="0" cellspacing="0" width="590">
+            <tbody>
+              <tr>
+                <td align="center"><table border="0" cellpadding="0" cellspacing="0" width="590">
+                    <tbody>
+                      <tr>
+                        <td valign="middle">&nbsp;</td>
+                        <td valign="middle" align="right"><img width="80" alt="FORTUNA IMPEX PVT.LTD." src="https://fortunaimpex.com/wp-content/uploads/2023/12/Footer-Logo.png"></td>
+                      </tr>
+                      <tr>
+                        <td colspan="2"><hr width="100%"></td>
+                      </tr>
+                    </tbody>
+                  </table></td>
+              </tr>
+              <tr>
+                <td align="center"><table border="0" cellpadding="0" cellspacing="0" width="590">
+                    <tbody>
+                      <tr>
+                        <td valign="top">
+							<div>
+							<!-- Greeting: prefer first_name, else fall back to party name -->
+							<!-- Fixed: check top-level party_type (passed by the scripts), not doc.get("party_type") which is never set -->
+							<p>Dear {{ first_name or (doc.supplier_name if party_type == "Supplier" else doc.customer_name) }},</p>
+							<p><strong>Welcome to Fortuna Family!</strong></p>
+
+							<!-- Party-type specific blurb: only renders if party_type was passed in context -->
+							{% if party_type %}
+							  {% if party_type == "Customer" %}
+								<p>Your Customer Portal account has been created. You can now log in to track your orders, invoices, and update your account details.</p>
+							  {% elif party_type == "Supplier" %}
+								<p>Your Supplier Portal account has been created. You can now log in to view and respond to your RFQs, review purchase orders, and manage your supplier account details.</p>
+							  {% endif %}
+							{% endif %}
+
+                            <p>Your login email is: <strong><a href="mailto:{{ portal_email }}" target="_blank">{{ portal_email }}</a></strong></p>
+							<!-- Password setup: real reset link if provided, else point to Forgot Password -->
+							{% if reset_password_url %}
+							<p>Since this is your first login, please set your password using the button below:</p>
+							<div style="margin:15px auto;">
+							  <a href="{{ reset_password_url }}" target="_blank"
+							  style="background-color:#6a2c70;color:#ffffff;padding:10px;display:inline-block;">Set My Password</a>
+							</div>
+							{% else %}
+							<p>Since this is your first login, click <strong>Forgot Password</strong> on the login page to set your password.</p>
+							{% endif %}
+
+							<p>Once your password is set, you can log in and access your account here:</p>
+
+							<div style="margin:15px auto;">
+							  <a href="{{ portal_url }}/login" target="_blank"
+								 style="background-color:#6a2c70;color:#ffffff;padding:10px;display:inline-block;">
+								Go to My Account
+							  </a>
+							</div>
+                            <p>We're thrilled to have you on board and look forward to a successful partnership.<br />To ensure a smooth onboarding process, we&rsquo;ve outlined the key contacts and escalation matrix below:</p>
+                            <ul>
+                              <li>Escalation Matrix</li>
+                              <li><u>Service Department</u>: Service Call Logging / Registration:
+                                <ol>
+                                  <li>Ms. Ansari Begum (Support Co Ordinator)<br />Mobile No.: +919903992343, Email: <a href="mailto:amc@fortunaindia.com" target="_blank">amc@fortunaindia.com</a></li>
+                                  <li>Rakhi Naskar (Contract &amp; Subscription)<br />Mobile No.: +919147424538, Email: <a href="mailto:subscription@fortunaindia.com" target="_blank">subscription@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+                              <li><u>Software Support</u>:
+                                <ol>
+                                  <li>Insan Habib Ali<br /> Email: <a href="mailto:support@fortunaindia.com" target="_blank">support@fortunaindia.com</a></li>
+                                  <li>Shreyashi Dutta<br /> Email: <a href="mailto:helpdesk@fortunaindia.com" target="_blank">helpdesk@fortunaindia.com</a></li>
+                                  <li>Manisha Shaw<br /> Email: <a href="mailto:software@fortunaindia.com" target="_blank">software@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+                              <li><u>2nd Level Software Support / Escalation</u>:
+                                <ol>
+                                  <li>Shashikant Samal (HOD Software Support)<br />Email: <a href="mailto:ezeehr@fortunaindia.com" target="_blank">ezeehr@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+                              <li><u>Level 2 Hardware Support/Escalation</u>:
+                                <ol>
+                                  <li>Manoranjan Naskar (HOD Hardware Support)<br />Email: <a href="mailto:project@fortunaindia.com" target="_blank">project@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+                              <li><u>Integration, POC, Technical Clarification</u>:
+                                <ol>
+                                  <li>Nidhuram Mondal<br />Email: <a href="mailto:project1@fortunaindia.com" target="_blank">project1@fortunaindia.com</a></li>
+                                  <li>Md. Faisal<br />Email: <a href="mailto:project2@fortunaindia.com" target="_blank">project2@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+                              <li><u>TRC (Technical Repairing Centre)</u>:
+                                <ol>
+                                  <li>Ms Moutusi Manna<br />Email: <a href="mailto:service1@fortunaindia.com" target="_blank">service1@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+                              <li><u>Regional Technical Support</u>:
+                                <ol>
+                                  <li><strong>Hyderabad (Telangana/AP)</strong>: Gopala Rao<br />
+                                    Mobile No.: +919330900547, Email: <a href="mailto:hyd.support@fortunaindia.com" target="_blank">hyd.support@fortunaindia.com</a></li>
+                                  <li><strong>Mumbai</strong>: Raj Kumar Sahu<br />
+                                    Mobile No.: +917044468443, Email: <a href="mailto:mum.support@fortunaindia.com" target="_blank">mum.support@fortunaindia.com</a></li>
+                                  <li><strong>Bangalore/Karnataka/TN</strong>: Rajendra Prasad<br />
+                                    Mobile No.: +917044434401, Email: <a href="mailto:blore@fortunaindia.com" target="_blank">blore@fortunaindia.com</a></li>
+                                  <li><strong>Bihar &amp; UP</strong> : Kaushal Prasad<br />
+                                  Mobile No.: +917604012207, Email: <a href="mailto:bup@fortunaindia.com" target="_blank">bup@fortunaindia.com</a></li>
+                                  <li><strong>Odisha : </strong>Suresh Bahera<br />Mobile No.: +919330900543, Email: <a href="mailto:bbsr@fortunaindia.com" target="_blank">bbsr@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+								<li><u>Pre-Sales Support</u>:
+                                <ol>
+                                  <li>Ms. Nandini Dey, MarCOM<br />Mobile: +919903964859, Email: <a href="mailto:dealersales@fortunaindia.com" target="_blank">dealersales@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+								<li><u>Level 3 Escalation of any sort</u>:
+                                <ol>
+                                  <li>Ms. Keya Ghosh<br /> Mobile: +919903992344, Email: <a href="mailto:info@fortunaindia.com" target="_blank">info@fortunaindia.com</a></li>
+                                </ol>
+                              </li>
+                            </ul>
+                            <p>If you have any questions or concerns, Please don't hesitate to reach out to your primary contact or the support team. If your issue requires escalation, please refer to the matrix above.</p>
+                            <!-- Signature: fixed to use the top-level `company` variable (already passed by the scripts), not doc.company which doesn't exist on either Customer or the Supplier staging doc -->
+                            <p>Regards,<br>{{ company or "Company" }} Team</p>
+					</div>
+                          </td>
+                      </tr>
+                      <tr>
+                        <td><hr width="100%"></td>
+                      </tr>
+                    </tbody>
+                  </table></td>
+              </tr>
+              <tr>
+                <td align="center"><table border="0" cellpadding="0" cellspacing="0" width="590">
+                    <tbody>
+                      <tr>
+                        <td valign="middle" align="left">{{ company or "Company" }}</td>
+                      </tr>
+                      <tr>
+                        <td valign="middle" align="left">033 2443 2270 | <a href="mailto:accounts@fortunaindia.com" target="_blank">accounts@fortunaindia.com</a></td>
+                      </tr>
+                    </tbody>
+                  </table></td>
+              </tr>
+            </tbody>
+          </table></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

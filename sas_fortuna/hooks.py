@@ -45,6 +45,39 @@ CUSTOMIZED_DOCTYPES = [
 
 
 # ============================================================================
+# PORTAL & ONBOARDING FIELDS ON STANDARD DOCTYPES
+# ============================================================================
+# Customer and Supplier are standard ERPNext DocTypes that other apps
+# (e.g. india_compliance) also customize. They are deliberately NOT added to
+# CUSTOMIZED_DOCTYPES, because that would export every Custom Field and
+# Property Setter on them. Only the fields listed here are exported.
+
+PORTAL_ONBOARDING_FIELDNAMES = [
+	"custom_portal__onboarding",  # Tab Break (double underscore, created from Desk)
+	"custom_is_welcome_email_sent",
+	"custom_welcome_email_sent_on",
+	"custom_welcome_email_sent_by",
+]
+
+PORTAL_ONBOARDING_CUSTOM_FIELDS = [
+	f"{doctype}-{fieldname}"
+	for doctype in ("Customer", "Supplier")
+	for fieldname in PORTAL_ONBOARDING_FIELDNAMES
+]
+
+
+# ============================================================================
+# WORKFLOW STATES
+# ============================================================================
+# Workflow States used by SAS Fortuna workflows that are not shipped by
+# Frappe. Workflow State records are named by the state itself.
+
+CUSTOM_WORKFLOW_STATES = [
+	"Pending Approval",
+]
+
+
+# ============================================================================
 # WORKFLOWS
 # ============================================================================
 # Only explicitly identified SAS Fortuna workflows are exported.
@@ -66,6 +99,9 @@ CUSTOM_WORKFLOWS = [
 
 CUSTOM_EMAIL_TEMPLATES = [
 	"Portal Welcome Email - Fortuna Impex Pvt Ltd",
+	# Used by the welcome email Server Scripts; body source lives in
+	# sas_fortuna/templates/emails/portal_welcome_email.html
+	"Portal Welcome Email",
 ]
 
 
@@ -126,12 +162,18 @@ fixtures = [
 	# ------------------------------------------------------------------------
 	# Custom Fields
 	# ------------------------------------------------------------------------
-	# Exports Custom Field records belonging only to the DocTypes listed in
-	# CUSTOMIZED_DOCTYPES.
+	# Exports Custom Field records belonging to the DocTypes listed in
+	# CUSTOMIZED_DOCTYPES, OR the explicitly named Portal & Onboarding fields
+	# on Customer and Supplier.
+	#
+	# Keep this as a SINGLE "Custom Field" entry: export-fixtures writes one
+	# file per DocType (fixtures/custom_field.json), so a second entry would
+	# overwrite this one's output.
 	{
 		"dt": "Custom Field",
-		"filters": [
+		"or_filters": [
 			["dt", "in", CUSTOMIZED_DOCTYPES],
+			["name", "in", PORTAL_ONBOARDING_CUSTOM_FIELDS],
 		],
 	},
 	# ------------------------------------------------------------------------
@@ -193,6 +235,16 @@ fixtures = [
 		"dt": "Workflow",
 		"filters": [
 			["name", "in", CUSTOM_WORKFLOWS],
+		],
+	},
+	# ------------------------------------------------------------------------
+	# Workflow States
+	# ------------------------------------------------------------------------
+	# Exports only the explicitly listed SAS Fortuna Workflow States.
+	{
+		"dt": "Workflow State",
+		"filters": [
+			["name", "in", CUSTOM_WORKFLOW_STATES],
 		],
 	},
 	# ------------------------------------------------------------------------
