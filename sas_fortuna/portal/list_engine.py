@@ -1,3 +1,23 @@
+"""Sorting, date-range filtering and numbered paging for ERPNext's portal list pages.
+
+ERPNext renders /orders, /invoices, /purchase-orders, ... through frappe.www.list with a "load more"
+button and no sorting. This module wraps the functions those pages call, so that every page
+registered here (see portal/lists/) gets, driven by URL params:
+
+	sort_by / sort_dir   sorting on a whitelisted set of fields
+	sf_from / sf_to      date range on the page's date field (YYYY-MM-DD)
+	sf_page / sf_len     numbered pages and items per page (PAGE_SIZES or "all")
+
+Status (and any other real field) filters need nothing here: frappe.www.list already turns any
+query param that names a DocType field into a filter. The filter bar itself is drawn by
+public/js/portal.js.
+
+How it is wired: apply() runs before every request on sites that have this app installed (hooks.py
+before_request). It monkey-patches the ERPNext / Frappe functions once per worker process. Workers
+serve every site on the bench, so each wrapper checks is_active() and falls back to the stock
+behaviour on sites without sas_fortuna.
+"""
+
 import importlib
 import math
 from urllib.parse import urlencode
@@ -7,15 +27,16 @@ from erpnext.controllers import website_list_for_contact as wlc
 from frappe.utils import cint, getdate
 from frappe.utils.user import is_website_user
 
-# doctype -> {"default": "field dir", "sort": {allowed fields}, "filters": (...), "paginate": bool, "count": bool,
-#              "date_field": field used by the Filter by Date Range control}
-REGISTRY = {}
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+REGISTRY = {}  # doctype -> page config, filled by register()
 PAGE_SIZES = (10, 25, 50, 100)
 MAX_ALL = 500  # ?sf_len=all (All items) is capped: every row is loaded as a full document
 DEFAULT_PAGE_LEN = 10
-# sf_from / sf_to = Start Date / End Date of the date-range filter (YYYY-MM-DD)
-_PARAMS = ("sort_by", "sort_dir", "sf_page", "sf_len", "sf_from", "sf_to")
-_PATCHES = []
+_PARAMS = ("sort_by", "sort_dir", "sf_page", "sf_len", "sf_from", "sf_to")  # ours, not DB fields
+_PATCHES = []  # functions that patch ERPNext page modules, run once by apply()
 PAGED_ROW_TEMPLATE = "templates/includes/sf_paged_row.html"
 TABLE_ROW_TEMPLATE = "templates/includes/sf_table_row.html"
 
@@ -26,20 +47,37 @@ _TRANSACTION_SEED = {"docstatus": 1}
 _GENERIC_SEED = {"name": ["!=", ""]}
 
 
-def register(doctype, default, sort, filters=("status",), paginate=False, count=True, date_field=None):
+def register(doctype, default, sort, paginate=False, count=True, date_field=None):
+	"""Enable the sas_fortuna list features for one portal doctype.
+
+	default     ORDER BY used when no (valid) sort_by is given, e.g. "posting_date desc"
+	sort        fields the user may sort by; anything else in ?sort_by= is ignored
+	paginate    numbered pages + items-per-page instead of the stock "load more"
+	count       False when there is no cheap total (Previous / Next paging instead of page numbers)
+	date_field  column the date-range filter applies to (None: the range is ignored)
+	"""
 	REGISTRY[doctype] = {
 		"default": default,
 		"sort": set(sort),
-		"filters": tuple(filters),
 		"paginate": paginate,
-		"count": count,  # False: no cheap total, so Previous / Next paging instead of page numbers
-		"date_field": date_field,  # column the date-range filter applies to (None: filter ignored)
+		"count": count,
+		"date_field": date_field,
 	}
 
 
 def add_patch(fn):
 	"""Register a function that is run once, after ERPNext is importable."""
 	_PATCHES.append(fn)
+
+
+def is_active():
+	"""True while serving a request on a site that has sas_fortuna installed (set by apply())."""
+	return bool(frappe.flags.sas_portal_active)
+
+
+# ---------------------------------------------------------------------------
+# Row templates
+# ---------------------------------------------------------------------------
 
 
 def paginate_list_context(module_path, get_list=None, columns=None):
@@ -57,6 +95,8 @@ def paginate_list_context(module_path, get_list=None, columns=None):
 
 		def get_list_context(context=None):
 			list_context = original(context)
+			if not is_active():
+				return list_context
 			base = list_context.get("row_template")
 			if columns:
 				list_context["sf_columns"] = columns
@@ -74,6 +114,11 @@ def paginate_list_context(module_path, get_list=None, columns=None):
 	add_patch(_patch)
 
 
+# ---------------------------------------------------------------------------
+# Paging helpers
+# ---------------------------------------------------------------------------
+
+
 def _page_len():
 	"""Items per page requested via ?sf_len= (a PAGE_SIZES value or "all")."""
 	raw = frappe.form_dict.get("sf_len")
@@ -84,6 +129,7 @@ def _page_len():
 
 
 def _page_url(page):
+	"""Current URL with ?sf_page= set to `page` (dropped for page 1), all other params kept."""
 	request = getattr(frappe.local, "request", None)
 	if not request:
 		return ""
@@ -153,20 +199,9 @@ def _annotate(rows, page, page_len, total):
 		doc.sf = frappe._dict(info, first=(i == 0), last=(i == shown - 1), n=info["start"] + i + 1)
 
 
-def _patch_portal_get():
-	"""frappe.www.portal.get() asks for `limit + 1` rows and drops the last one itself.
-	Feeding it our page size as `limit` lets it do that trimming natively."""
-	from frappe.www import portal
-
-	original = portal.get
-
-	def get(doctype, **kwargs):
-		cfg = REGISTRY.get(doctype)
-		if cfg and cfg["paginate"]:
-			kwargs["limit"] = _page_len()
-		return original(doctype, **kwargs)
-
-	portal.get = get
+# ---------------------------------------------------------------------------
+# Filters
+# ---------------------------------------------------------------------------
 
 
 def _parse_date(value):
@@ -201,13 +236,18 @@ def _apply_date_range(filters, cfg):
 		filters[field] = ["<=", end]
 
 
+# ---------------------------------------------------------------------------
+# Core: sorting + paging around the original list query
+# ---------------------------------------------------------------------------
+
+
 def _paginate(doctype, original, txt, filters, limit_start, limit_page_length, seed, **kwargs):
 	"""Sorting + numbered paging around `original(doctype, txt, filters, start, len, order_by=..)`."""
 	cfg = REGISTRY[doctype]
 
 	# Own a non-empty copy so we can reuse the effective filters for the total count.
 	filters = frappe._dict(filters or {})
-	for key in _PARAMS:  # our params are not DB fields
+	for key in _PARAMS:
 		filters.pop(key, None)
 	for key, value in seed.items():
 		filters.setdefault(key, value)
@@ -263,11 +303,29 @@ def _wrap_get_list(original):
 	return get_list
 
 
-def apply():
-	"""Idempotent: safe to call on every request (hooked via before_request)."""
-	if getattr(wlc, "_sas_patched", False):
-		return
-	wlc._sas_patched = True
+# ---------------------------------------------------------------------------
+# Monkey patches (installed once per worker by apply())
+# ---------------------------------------------------------------------------
+
+
+def _patch_portal_get():
+	"""frappe.www.portal.get() asks for `limit + 1` rows and drops the last one itself.
+	Feeding it our page size as `limit` lets it do that trimming natively."""
+	from frappe.www import portal
+
+	original = portal.get
+
+	def get(doctype, **kwargs):
+		cfg = REGISTRY.get(doctype)
+		if cfg and cfg["paginate"] and is_active():
+			kwargs["limit"] = _page_len()
+		return original(doctype, **kwargs)
+
+	portal.get = get
+
+
+def _patch_transaction_list():
+	"""ERPNext's shared list query for the selling / buying transaction pages."""
 	original = wlc.get_transaction_list
 
 	def get_transaction_list(
@@ -279,7 +337,7 @@ def apply():
 		order_by="creation desc",
 		**kwargs,  # ERPNext also calls this with custom=True (web-form link filtering)
 	):
-		if doctype not in REGISTRY or kwargs.get("custom"):
+		if doctype not in REGISTRY or kwargs.get("custom") or not is_active():
 			return original(doctype, txt, filters, limit_start, limit_page_length, order_by, **kwargs)
 		return _paginate(
 			doctype, original, txt, filters, limit_start, limit_page_length, _TRANSACTION_SEED, **kwargs
@@ -287,7 +345,15 @@ def apply():
 
 	wlc.get_transaction_list = get_transaction_list
 
-	for fn in (_patch_portal_get, *_PATCHES):
+
+def apply():
+	"""before_request hook: mark this request as sas_fortuna-enabled, patch once per process."""
+	frappe.flags.sas_portal_active = True  # frappe.flags is reset for every request
+	if getattr(wlc, "_sas_patched", False):
+		return
+	wlc._sas_patched = True
+
+	for fn in (_patch_transaction_list, _patch_portal_get, *_PATCHES):
 		try:
 			fn()
 		except Exception:

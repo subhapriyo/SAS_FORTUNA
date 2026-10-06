@@ -1,3 +1,10 @@
+"""after_migrate: create the Customer KYC custom fields the /customer page reads and writes.
+
+Only missing fields are created (by fieldname); existing ones are never changed or moved, so
+edits made in Customize Form survive. New fields are appended at the end of the form.
+Select options here must match the options offered on templates/pages/customer.html.
+"""
+
 import frappe
 
 CUSTOMER_FIELDS = [
@@ -71,7 +78,7 @@ CUSTOMER_FIELDS = [
 ]
 
 
-def ensure_customer_fields():
+def execute():
 	for field in CUSTOMER_FIELDS:
 		if frappe.db.exists("Custom Field", {"dt": "Customer", "fieldname": field["fieldname"]}):
 			continue
@@ -85,18 +92,3 @@ def ensure_customer_fields():
 				"options": field.get("options"),
 			}
 		).insert(ignore_permissions=True)
-
-
-def execute():
-	ensure_customer_fields()
-	doc = frappe.get_single("Portal Settings")
-
-	# Remove if already exists (avoid duplicates)
-	doc.custom_menu = [row for row in doc.custom_menu if row.title != "Customer KYC"]
-
-	doc.append(
-		"custom_menu", {"title": "Customer KYC", "enabled": 1, "route": "/customer-kyc", "role": "Customer"}
-	)
-
-	doc.save(ignore_permissions=True)
-	frappe.db.commit()

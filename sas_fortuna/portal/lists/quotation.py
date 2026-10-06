@@ -1,4 +1,10 @@
-from sas_fortuna.overrides.portal_list import add_patch, register
+"""Customer portal /quotations (Quotation): sorting, paging and a custom row template.
+
+Uses its own row template (sf_quotation_row.html, which adds the Customer Enquiry column) instead
+of the generic table.
+"""
+
+from sas_fortuna.portal.list_engine import add_patch, is_active, register
 
 ROW_TEMPLATE = "templates/includes/sf_quotation_row.html"
 
@@ -6,7 +12,6 @@ register(
 	"Quotation",
 	default="transaction_date desc",
 	sort={"transaction_date", "grand_total", "status", "name"},
-	filters=("status",),
 	paginate=True,
 	date_field="transaction_date",
 )
@@ -19,8 +24,9 @@ def _use_custom_row_template():
 
 	def get_list_context(context=None):
 		list_context = original(context)
-		# ERPNext returns a plain dict here; attribute assignment raised AttributeError -> HTTP 500
-		list_context["row_template"] = ROW_TEMPLATE
+		if is_active():
+			# ERPNext returns a plain dict here: item assignment, not attributes
+			list_context["row_template"] = ROW_TEMPLATE
 		return list_context
 
 	quotation_module.get_list_context = get_list_context

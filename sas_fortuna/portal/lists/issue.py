@@ -1,7 +1,15 @@
+"""Customer portal /issues (Issue): table columns, sorting, paging.
+
+Issue has its own list query in ERPNext, which ignores order_by; _issue_list() is a copy of it
+that passes order_by through, so sorting and stable paging work.
+
+COLUMNS format: see templates/includes/sf_table_row.html. register(): see list_engine.register.
+"""
+
 import frappe
 from frappe.utils.user import is_website_user
 
-from sas_fortuna.overrides.portal_list import paginate_list_context, register
+from sas_fortuna.portal.list_engine import paginate_list_context, register
 
 COLUMNS = [
 	{"label": "Subject / Number", "field": "subject", "kind": "name", "sub": "name", "sub_kind": "text"},
@@ -14,7 +22,6 @@ register(
 	"Issue",
 	default="creation desc",
 	sort={"creation", "modified", "priority", "status", "name"},
-	filters=("status", "priority"),
 	paginate=True,
 	date_field="opening_date",
 )

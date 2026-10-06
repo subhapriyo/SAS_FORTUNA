@@ -1,4 +1,9 @@
-from sas_fortuna.overrides.portal_list import paginate_list_context, register
+"""Supplier portal /supplier-quotations (Supplier Quotation): table columns, sorting, paging.
+
+COLUMNS format: see templates/includes/sf_table_row.html. register(): see list_engine.register.
+"""
+
+from sas_fortuna.portal.list_engine import paginate_list_context, register
 
 COLUMNS = [
 	{
@@ -19,7 +24,6 @@ register(
 	"Supplier Quotation",
 	default="transaction_date desc",
 	sort={"transaction_date", "valid_till", "grand_total", "status", "name"},
-	filters=("status",),
 	paginate=True,
 	date_field="transaction_date",
 )

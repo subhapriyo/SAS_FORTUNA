@@ -265,15 +265,22 @@ fixtures = [
 # to the Customer and Supplier portal list pages (Quotations, Orders, Invoices,
 # Shipments, Issues, RFQ, Supplier Quotations, Purchase Orders, Purchase Invoices).
 # The patch is applied lazily on each request to avoid importing ERPNext while
-# this app is loading. Per-page config lives in sas_fortuna/overrides/<doctype>.py.
+# this app is loading. Engine: sas_fortuna/portal/list_engine.py; per-page
+# config: sas_fortuna/portal/lists/<doctype>.py; filter bar: public/js/portal.js.
 
-before_request = ["sas_fortuna.overrides.apply_portal_overrides"]
+before_request = ["sas_fortuna.portal.apply_portal_overrides"]
 
 web_include_css = "/assets/sas_fortuna/css/portal.css"
 web_include_js = "/assets/sas_fortuna/js/portal.js"
 
 
+# ============================================================================
+# MIGRATE HOOKS
+# ============================================================================
+# Run on every `bench migrate` (idempotent): KYC entries in the portal sidebar
+# and the Customer KYC custom fields. See sas_fortuna/setup/.
+
 after_migrate = [
-	"sas_fortuna.patches.supplier_portal.execute",
-	"sas_fortuna.patches.customer_portal.execute",
+	"sas_fortuna.setup.portal_menu.execute",
+	"sas_fortuna.setup.customer_fields.execute",
 ]

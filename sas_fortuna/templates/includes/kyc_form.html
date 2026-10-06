@@ -1,0 +1,261 @@
+{#- Shared KYC form for the Customer (/customer) and Supplier (/supplier) portal pages.
+
+    Set by the including page:
+        party        "customer" | "supplier"   (input names <party>_code / <party>_name, API module)
+        party_label  "Customer" | "Supplier"
+        show_tan     show the TAN No. input
+
+    Input `name`s are the keys sent to / read from sas_fortuna.api.<party> (see api/party_kyc.py).
+    Behaviour (loading, address / contact rows, toggles, save) is in public/js/portal_kyc.js;
+    styling in public/css/portal_kyc.css. -#}
+{% set file_fields = [
+	("custom_gst_certificate", "GST Certificate"),
+	("custom_pan_card", "PAN Card"),
+	("custom_certificate_of_incorporation__partnership_deed", "Certificate of Incorporation / Partnership Deed"),
+	("custom_cancelled_cheque", "Cancelled Cheque"),
+	("custom_last_itr__acknowledgement", "Last ITR / Acknowledgement"),
+	("custom_msme_certificate", "MSME Certificate"),
+] %}
+<link rel="stylesheet" href="/assets/sas_fortuna/css/portal_kyc.css" />
+
+<div class="container mt-4 kyc-page">
+	<!-- Full-screen overlay: shown while loading, and again while saving -->
+	<div id="kyc-form-loading" class="kyc-form-loading" aria-live="polite" aria-busy="true">
+		<div class="kyc-form-loading__content">
+			<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+			<span data-loading-message>Loading...</span>
+		</div>
+	</div>
+
+	<form id="kyc-form" class="kyc-form" enctype="multipart/form-data">
+		<!-- Basic details: read-only, identify the party record -->
+		<section>
+			<h5>Basic Details</h5>
+			<hr />
+			<div class="row">
+				<div class="col-md-6 mb-2">
+					<label>{{ party_label }} Code</label>
+					<input type="text" name="{{ party }}_code" class="form-control" readonly />
+				</div>
+				<div class="col-md-6 mb-2">
+					<label>Name of {{ party_label }}</label>
+					<input type="text" name="{{ party }}_name" class="form-control" readonly />
+				</div>
+			</div>
+		</section>
+
+		<!-- Addresses: rows are drawn by portal_kyc.js; row 1 is the primary address -->
+		<section>
+			<h5>Address</h5>
+			<hr />
+			<div id="address-rows-container"></div>
+			<button type="button" class="btn btn-outline-info btn-sm mt-2 mb-3" data-kyc-add="address">
+				+ Add Address
+			</button>
+		</section>
+
+		<!-- Contacts: rows are drawn by portal_kyc.js; row 1 is the primary contact -->
+		<section>
+			<h5>Contact Details</h5>
+			<hr />
+			<div id="contact-rows-container"></div>
+			<button type="button" class="btn btn-outline-info btn-sm mt-2 mb-3" data-kyc-add="contact">
+				+ Add Contact
+			</button>
+		</section>
+
+		<!-- Statutory details: GSTIN / PAN / Aadhaar are validated in the browser before saving -->
+		<section>
+			<h5>Statutory Details</h5>
+			<hr />
+			<div class="row">
+				<div class="col-md-6 mb-3">
+					<label>GST No. (GSTIN)</label>
+					<input type="text" name="gstin" class="form-control" placeholder="GST No." />
+				</div>
+				<div class="col-md-6 mb-3">
+					<label>GST Category</label>
+					<select name="gst_category" id="gst_category" class="form-control">
+						<option value="">Select GST Category</option>
+					</select>
+				</div>
+				<div class="col-md-6 mb-3">
+					<label>PAN No.</label>
+					<input type="text" name="pan" class="form-control" placeholder="PAN No." />
+				</div>
+				{% if show_tan %}
+				<div class="col-md-6 mb-3">
+					<label>TAN No.</label>
+					<input type="text" name="custom_tan_no" class="form-control" placeholder="TAN No." />
+				</div>
+				{% endif %}
+				<div class="col-md-6 mb-3">
+					<label>Tax ID</label>
+					<input
+						type="text"
+						name="tax_id"
+						class="form-control"
+						placeholder="Tax ID"
+						title="{{ party_label }}'s tax identification number (e.g. PAN, VAT, GST)"
+					/>
+				</div>
+				<div class="col-md-6 mb-3">
+					<label>Aadhaar Number</label>
+					<input
+						type="text"
+						name="custom_aadhaar_number"
+						class="form-control"
+						placeholder="Aadhaar Number"
+					/>
+				</div>
+			</div>
+		</section>
+
+		<!-- TDS / TCS: the withholding category only applies when TDS is "Yes" -->
+		<section>
+			<h5>Tax Identification</h5>
+			<hr />
+			<div class="row">
+				<div class="col-md-6">
+					<div class="col-12 mb-3">
+						<label>TDS Applicability</label>
+						<!-- saved to the custom_tds_applicability field (api/party_kyc.py FORM_ALIASES) -->
+						<select name="custom_tds_applicable" id="custom_tds_applicable" class="form-control mb-2">
+							<option value="">Select TDS Applicability</option>
+							<option value="No">No</option>
+							<option value="Yes">Yes</option>
+						</select>
+					</div>
+					<div class="col-12 mb-3" id="tds_section" style="display: none">
+						<label>Tax Withholding Category</label>
+						<select name="tax_withholding_category" id="tax_withholding_category" class="form-control">
+							<option value="">Select Tax Withholding Category</option>
+						</select>
+					</div>
+				</div>
+				<div class="col-md-6">
+					<div class="col-12 mb-3">
+						<label>TCS Applicability</label>
+						<select name="custom_tcs_applicable" id="custom_tcs_applicable" class="form-control mb-2">
+							<option value="">Select TCS Applicability</option>
+							<option value="No">No</option>
+							<option value="Yes">Yes</option>
+						</select>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- MSME: the registration details only apply when MSME is "Yes".
+		     Option values must match the Select options of the custom fields (setup/customer_fields.py). -->
+		<section>
+			<h5>MSME Details</h5>
+			<hr />
+			<div class="row">
+				<div class="col-md-6 mb-3">
+					<label>MSME</label>
+					<select name="custom_msme" id="custom_msme" class="form-control">
+						<option value="">Select MSME</option>
+						<option value="No">No</option>
+						<option value="Yes">Yes</option>
+					</select>
+				</div>
+			</div>
+			<div id="msme_fields" style="display: none">
+				<div class="row">
+					<div class="col-md-6 mb-3">
+						<label>Udyam Registration Number</label>
+						<input
+							name="custom_udyam_registration_number"
+							class="form-control"
+							placeholder="Udyam Registration Number"
+						/>
+					</div>
+					<div class="col-md-6 mb-3">
+						<label>Date of Registration</label>
+						<input type="date" name="custom_date_of_registration" class="form-control" />
+					</div>
+					<div class="col-md-6 mb-3">
+						<label>Type of Enterprise</label>
+						<select name="custom_type_of_enterprise" class="form-control">
+							<option value="">Select Type of Enterprise</option>
+							<option>Micro</option>
+							<option>Small</option>
+							<option>Medium</option>
+						</select>
+					</div>
+					<div class="col-md-6 mb-3">
+						<label>Type of Industry</label>
+						<input type="text" name="custom_type_of_industry" class="form-control" />
+					</div>
+					<div class="col-md-6 mb-3">
+						<label>Major Activity</label>
+						<select name="custom_major_activity" class="form-control">
+							<option value="">Select Major Activity</option>
+							<option>Manufacturer</option>
+							<option>Traders</option>
+							<option>Service Provider</option>
+						</select>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Bank: saved as the party's default Bank Account (IFSC goes to Bank Account.branch_code) -->
+		<section>
+			<h5>Bank Details</h5>
+			<hr />
+			<div class="row">
+				<div class="col-md-4 mb-3">
+					<input name="custom_bank_name" class="form-control" placeholder="Bank Name" />
+				</div>
+				<div class="col-md-4 mb-3">
+					<input name="custom_account_no" class="form-control" placeholder="Account Number" />
+				</div>
+				<div class="col-md-4 mb-3">
+					<input name="custom_ifsc_code" class="form-control" placeholder="IFSC Code" />
+				</div>
+			</div>
+		</section>
+
+		<!-- Attachments: uploaded as private files on save, then attached to the party record.
+		     File inputs have no `name`: portal_kyc.js uploads them and sends back the file URL. -->
+		<section>
+			<h5>Attachments</h5>
+			<hr />
+			<div class="row">
+				{% for fieldname, label in file_fields %}
+				<div class="col-md-6 mb-3">
+					<label>{{ label }}</label>
+					<input
+						type="file"
+						class="form-control"
+						id="{{ fieldname }}"
+						accept=".pdf, image/*"
+					/>
+					<a
+						id="link_{{ fieldname }}"
+						href="#"
+						target="_blank"
+						style="display: none !important; text-decoration: none; font-weight: bold"
+						class="mt-1 mb-1 small text-primary d-block"
+						title="{{ label }}"
+						>&#128206; View Uploaded File</a
+					>
+				</div>
+				{% endfor %}
+			</div>
+		</section>
+
+		<section>
+			<div class="kyc-form-actions">
+				<button type="submit" class="btn btn-success btn-lg">Save</button>
+			</div>
+		</section>
+	</form>
+</div>
+
+<script src="/assets/sas_fortuna/js/portal_kyc.js"></script>
+<script>
+	SASPortalKyc.initPage({ party: "{{ party }}", label: "{{ party_label }}" });
+</script>

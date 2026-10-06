@@ -1,7 +1,7 @@
 /* sas_fortuna portal: shared filter bar for list pages.
  * Order (same on every page): Filter by Status | Filter by Date Range | Sort by | Sort order | Clear | Items per Page.
  * Items per Page is always the last control. All values go to the server as URL params
- * (status, sf_from, sf_to, sort_by, sort_dir, sf_len); see sas_fortuna/overrides/portal_list.py.
+ * (status, sf_from, sf_to, sort_by, sort_dir, sf_len); see sas_fortuna/portal/list_engine.py.
  * The bar is only shown when the list has rows (or a filter is active, so it can still be cleared). */
 frappe.ready(() => {
 	const PAGE_SIZES = ["10", "25", "50", "100", "all"];
@@ -239,7 +239,7 @@ frappe.ready(() => {
  *     or stacked cards (phones); item code + name on line 1, description below, extras (serial nos,
  *     Renew AMC, ...) kept and indented.
  *  2. extra "Label: value" lines under the status badge + item names + currency-symbol money, fetched
- *     from sas_fortuna.overrides.detail_extras.get_detail_extras (permission checked server-side).
+ *     from sas_fortuna.portal.detail_extras.get_detail_extras (permission checked server-side).
  * The layout works without the fetch; the fetch only adds the extra text. */
 (() => {
 	const DETAIL = {
@@ -315,7 +315,7 @@ frappe.ready(() => {
 		});
 
 		frappe.call({
-			method: "sas_fortuna.overrides.detail_extras.get_detail_extras",
+			method: "sas_fortuna.portal.detail_extras.get_detail_extras",
 			type: "GET",
 			args: { doctype, name: decodeURIComponent(parts.slice(1).join("/")) },
 			callback: ({ message }) => {

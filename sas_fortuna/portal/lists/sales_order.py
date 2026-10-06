@@ -1,4 +1,9 @@
-from sas_fortuna.overrides.portal_list import paginate_list_context, register
+"""Customer portal /orders (Sales Order): table columns, sorting, paging.
+
+COLUMNS format: see templates/includes/sf_table_row.html. register(): see list_engine.register.
+"""
+
+from sas_fortuna.portal.list_engine import paginate_list_context, register
 
 COLUMNS = [
 	{
@@ -25,7 +30,6 @@ register(
 	"Sales Order",
 	default="transaction_date desc",
 	sort={"transaction_date", "po_no", "po_date", "delivery_date", "grand_total", "status", "name"},
-	filters=("status",),
 	paginate=True,
 	date_field="transaction_date",
 )

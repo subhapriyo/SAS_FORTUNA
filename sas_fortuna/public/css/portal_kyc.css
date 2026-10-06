@@ -1,0 +1,108 @@
+/* sas_fortuna: Customer / Supplier KYC pages (/customer, /supplier).
+ * Markup: templates/includes/kyc_form.html. Behaviour: public/js/portal_kyc.js. */
+
+/* ---- Page + form card layout ---- */
+.kyc-page {
+	width: 100%;
+	max-width: 100%;
+	padding: 0 10px 24px;
+	box-sizing: border-box;
+}
+.kyc-form {
+	width: 100%;
+}
+.kyc-form .row {
+	margin-left: -8px;
+	margin-right: -8px;
+}
+.kyc-form .row > [class*="col-"] {
+	padding-left: 8px;
+	padding-right: 8px;
+}
+.kyc-form section {
+	background: #fff;
+	border: 1px solid #e6eaf0;
+	border-radius: 10px;
+	padding: 18px 18px 12px;
+	margin-bottom: 18px;
+	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.kyc-form section h5 {
+	margin-bottom: 12px;
+	font-weight: 600;
+}
+.kyc-form-actions {
+	display: flex;
+	justify-content: center;
+	padding-top: 12px;
+}
+.kyc-form-actions .btn {
+	min-width: 180px;
+	padding: 10px 24px;
+	font-size: 1rem;
+}
+
+/* ---- Full-screen loading / saving overlay ---- */
+.kyc-form-loading {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100vw;
+	height: 100vh;
+	background: rgba(255, 255, 255, 0.72);
+	z-index: 9999;
+}
+.kyc-form-loading__content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	font-weight: 600;
+	color: #1f2937;
+}
+.kyc-form-loading__content .spinner-border {
+	width: 2.25rem;
+	height: 2.25rem;
+}
+
+/* ---- Repeating address / contact rows ---- */
+.address-row,
+.contact-row {
+	border: 1px solid #dee2e6;
+	border-radius: 6px;
+	padding: 12px 16px;
+	margin-bottom: 10px;
+	background: #f8f9fa;
+	position: relative;
+}
+.address-row-label,
+.contact-row-label {
+	font-weight: 600;
+	font-size: 13px;
+	color: #555;
+	margin-bottom: 8px;
+}
+.remove-address-btn,
+.remove-contact-btn {
+	position: absolute;
+	top: 10px;
+	right: 12px;
+	background: none;
+	border: none;
+	color: #dc3545;
+	font-size: 18px;
+	cursor: pointer;
+	line-height: 1;
+}
+.remove-address-btn:hover,
+.remove-contact-btn:hover {
+	color: #a71d2a;
+}
+
+@media (max-width: 767px) {
+	.kyc-page {
+		padding: 0 6px 20px;
+	}
+}
