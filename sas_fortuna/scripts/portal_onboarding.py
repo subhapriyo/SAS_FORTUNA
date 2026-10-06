@@ -36,6 +36,7 @@ FIELDS = [
 		"default": "0",
 		"read_only": 1,
 		"no_copy": 1,
+		"in_standard_filter": 1,  # filter Customer/Supplier lists by it
 	},
 	{
 		"fieldname": "custom_welcome_email_sent_on",
@@ -55,7 +56,7 @@ FIELDS = [
 ]
 
 # Properties enforced on fields that already exist (position is NOT touched).
-ENFORCED_PROPS = ("label", "fieldtype", "options", "read_only", "no_copy")
+ENFORCED_PROPS = ("label", "fieldtype", "options", "read_only", "no_copy", "in_standard_filter")
 
 
 def _app_module():
