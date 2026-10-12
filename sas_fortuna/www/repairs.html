@@ -1,0 +1,36 @@
+{% extends "templates/web.html" %}
+{% block page_content %}
+<h3>{{ _("My Repairs") }}</h3>
+{% if not repairs %}
+  <p class="text-muted">{{ _("No repair orders yet.") }}</p>
+{% endif %}
+{% for r in repairs %}
+<div class="card mb-3"><div class="card-body">
+  <h5 class="card-title">{{ r.name }} &middot; {{ r.product_model }} ({{ r.serial_no }})</h5>
+  <p class="mb-1">{{ _("Status") }}: <b>{{ r.status }}</b> &middot; {{ _("Cover") }}: {{ r.support_type }}</p>
+  {% if r.loaner %}
+  <p class="mb-1">{{ _("Loaner unit") }} {{ r.loaner.serial_no }} &middot;
+     {{ _("please return by") }} {{ frappe.format_date(r.loaner.expected_return_date) }}</p>
+  {% endif %}
+  {% if r.delivery_note %}
+  <p class="mb-1">{{ _("Dispatched on") }} {{ r.delivery_note }}</p>
+  {% endif %}
+  {% if r.quotation %}
+  <a href="/quotations/{{ r.quotation }}">{{ _("View quotation") }}</a>
+    {% if r.can_accept %}
+    <button class="btn btn-primary btn-sm ml-2" onclick="acceptQuotation('{{ r.quotation }}')">{{ _("Accept quotation") }}</button>
+    {% endif %}
+  {% endif %}
+</div></div>
+{% endfor %}
+<script>
+  // Calls the whitelisted method; Fortuna confirms the draft order.
+  function acceptQuotation(name) {
+    frappe.call({
+      method: "sas_fortuna.support.portal.accept_quotation",
+      args: { quotation: name },
+      callback: () => { frappe.msgprint("{{ _('Thank you. Fortuna will confirm your order shortly.') }}"); },
+    });
+  }
+</script>
+{% endblock %}

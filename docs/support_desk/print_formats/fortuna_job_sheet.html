@@ -1,0 +1,31 @@
+{# Fortuna Job Sheet  (D8)  - Print Format on "Repair Order", type Jinja #}
+<h3 style="margin:0">{{ _("Service Job Sheet") }} &middot; {{ doc.name }}</h3>
+<p class="text-muted">{{ frappe.format_date(doc.creation) }} &middot; {{ _("Ticket") }} {{ doc.helpdesk_ticket or "-" }}</p>
+
+<table class="table table-bordered table-condensed">
+  <tr><th>{{ _("Customer") }}</th><td>{{ doc.customer }}</td>
+      <th>{{ _("Cover") }}</th><td><b>{{ doc.support_type }}</b></td></tr>
+  <tr><th>{{ _("Product") }}</th><td>{{ doc.product_model }}</td>
+      <th>{{ _("Serial No") }}</th><td>{{ doc.serial_no }}</td></tr>
+  <tr><th>{{ _("Invoice") }}</th><td>{{ doc.invoice_no or "-" }} {{ frappe.format_date(doc.invoice_date) if doc.invoice_date else "" }}</td>
+      <th>{{ _("Warranty / AMC till") }}</th>
+      <td>{{ frappe.format_date(doc.warranty_end) if doc.warranty_end else "-" }} / {{ frappe.format_date(doc.amc_expiry) if doc.amc_expiry else "-" }}</td></tr>
+</table>
+
+<p><b>{{ _("Complaint") }}:</b> {{ doc.complaint or "" }}</p>
+<p><b>{{ _("Diagnosis") }}:</b> {{ doc.diagnosis or "" }}</p>
+
+{% if doc.parts %}
+<table class="table table-bordered table-condensed">
+  <tr><th>#</th><th>{{ _("Part") }}</th><th class="text-right">{{ _("Qty") }}</th><th>{{ _("Billing") }}</th></tr>
+  {% for p in doc.parts %}
+  <tr><td>{{ loop.index }}</td><td>{{ p.item_name or p.item_code }}</td>
+      <td class="text-right">{{ p.qty }}</td><td>{{ _("Chargeable") if p.is_chargeable else _("Free") }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<table style="width:100%; margin-top:40px"><tr>
+  <td>{{ _("Engineer") }}: {{ frappe.db.get_value("Employee", doc.responsible, "employee_name") or "" }}</td>
+  <td class="text-right">{{ _("Customer signature") }} ____________________</td>
+</tr></table>
