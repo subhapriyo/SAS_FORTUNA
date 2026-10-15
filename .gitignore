@@ -31,3 +31,23 @@ Thumbs.db
 *.key
 sas_fortuna/public/node_modules
 sas_fortuna/public/node_modules
+
+# ----------------------------------------------------------------------------
+# Support Desk / Repair / AMC: kept OUT of git (local only, by decision 15 Oct 2026).
+# Files stay on disk; hooks.py wires them only when present.
+# ----------------------------------------------------------------------------
+docs/support_desk/
+sas_fortuna/support/
+sas_fortuna/setup/support_desk.py
+sas_fortuna/www/repairs.html
+sas_fortuna/www/repairs.py
+sas_fortuna/public/js/hd_ticket.js
+sas_fortuna/public/js/sales_order.js
+sas_fortuna/sas_fortuna/report/
+sas_fortuna/sas_fortuna/doctype/amc_covered_item/
+sas_fortuna/sas_fortuna/doctype/fortuna_support_settings/
+sas_fortuna/sas_fortuna/doctype/fortuna_team_route/
+sas_fortuna/sas_fortuna/doctype/repair_order/
+sas_fortuna/sas_fortuna/doctype/repair_order_part/
+sas_fortuna/sas_fortuna/doctype/returnable_gate_pass/
+tools/

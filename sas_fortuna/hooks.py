@@ -284,3 +284,10 @@ after_migrate = [
 	"sas_fortuna.setup.portal_menu.execute",
 	"sas_fortuna.setup.customer_fields.execute",
 ]
+
+# Support Desk / Repair / AMC is kept OUT of git (see .gitignore). Wire its
+# setup only where its files exist, so a checkout without them still migrates.
+import os as _os
+
+if _os.path.exists(_os.path.join(_os.path.dirname(__file__), "setup", "support_desk.py")):
+	after_migrate.append("sas_fortuna.setup.support_desk.execute")
