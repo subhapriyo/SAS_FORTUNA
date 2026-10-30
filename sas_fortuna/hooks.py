@@ -317,6 +317,7 @@ after_migrate = [
 	"sas_fortuna.setup.portal_menu.execute",
 	"sas_fortuna.setup.customer_fields.execute",
 	"sas_fortuna.setup.landing_page.execute",
+	"sas_fortuna.setup.desktop_layout.execute",
 ]
 
 # ============================================================================
