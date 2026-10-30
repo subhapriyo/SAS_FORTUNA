@@ -1,0 +1,146 @@
+{% extends "templates/web.html" %}
+{#- Customer portal: one repair (/repairs/<name>). Data comes from www/repair.py.
+    Layout: header (status + unit) > hint > progress tracker > cards (unit, problem, parts,
+    documents, loaner) > accept-quotation script. Styles are scoped with the rp- prefix. -#}
+
+{% block title %}{{ doc.name }}{% endblock %}
+
+{% block header %}
+<h3 class="my-account-header">{{ doc.name }}</h3>
+{% endblock %}
+
+{% block page_content %}
+<style>
+	.rp-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+	.rp-head .rp-meta { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+	.rp-hint { background: var(--subtle-fg, #f4f5f6); border-radius: 8px; padding: 10px 14px; margin: 6px 0 20px; font-size: 14px; }
+	.rp-steps { display: flex; gap: 0; margin: 0 0 24px; padding: 0; list-style: none; overflow-x: auto; }
+	.rp-steps li { flex: 1 1 0; min-width: 92px; text-align: center; font-size: 12px; color: var(--text-muted); position: relative; padding-top: 22px; }
+	.rp-steps li::before { content: ""; position: absolute; top: 6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--gray-300, #d1d8dd); z-index: 1; }
+	.rp-steps li::after { content: ""; position: absolute; top: 11px; left: -50%; width: 100%; height: 2px; background: var(--gray-300, #d1d8dd); }
+	.rp-steps li:first-child::after { display: none; }
+	.rp-steps li.done::before, .rp-steps li.done::after, .rp-steps li.current::after { background: var(--green-500, #28a745); }
+	.rp-steps li.current::before { background: var(--primary, #2490ef); box-shadow: 0 0 0 4px rgba(36, 144, 239, .18); }
+	.rp-steps li.current { color: var(--text-color); font-weight: 600; }
+	.rp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
+	.rp-card { border: 1px solid var(--border-color, #e2e6e9); border-radius: 10px; padding: 14px 16px; }
+	.rp-card h5 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 0 0 10px; }
+	.rp-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 14px; }
+	.rp-row span:first-child { color: var(--text-muted); }
+	.rp-text { font-size: 14px; white-space: pre-line; margin: 0 0 8px; }
+	.rp-table { width: 100%; font-size: 14px; }
+	.rp-table th { font-size: 12px; color: var(--text-muted); font-weight: 500; padding: 4px 0; border-bottom: 1px solid var(--border-color, #e2e6e9); }
+	.rp-table td { padding: 6px 0; border-bottom: 1px solid var(--border-color, #f0f2f4); }
+	.rp-table .num { text-align: right; }
+	.rp-actions { margin-top: 10px; }
+	/* Phones: the progress runs top to bottom instead of across. */
+	@media (max-width: 576px) {
+		.rp-steps { flex-direction: column; gap: 10px; }
+		.rp-steps li { text-align: left; padding: 0 0 0 26px; min-width: 0; }
+		.rp-steps li::before { top: 3px; left: 0; margin-left: 0; }
+		.rp-steps li::after { display: none; }
+		.rp-head .text-right { text-align: left !important; }
+	}
+</style>
+
+{# ---- Header: status, opened on, unit ---- #}
+<div class="rp-head">
+	<div>
+		<span class="indicator-pill {{ status_color }}">{{ _(doc.status) }}</span>
+		<div class="rp-meta">{{ _("Opened on") }} {{ created_on }}{% if doc.customer_name %} &middot; {{ doc.customer_name }}{% endif %}</div>
+	</div>
+	<div class="text-right">
+		<div class="rp-meta">{{ _("Unit") }}</div>
+		<div><b>{{ doc.product_model }}</b> &middot; {{ doc.serial_no }}</div>
+	</div>
+</div>
+
+{% if status_hint %}<div class="rp-hint">{{ status_hint }}</div>{% endif %}
+
+{# ---- Progress tracker (hidden for cancelled repairs) ---- #}
+{% if not cancelled %}
+<ol class="rp-steps" aria-label="{{ _('Repair progress') }}">
+	{% for s in steps %}<li class="{{ s.state }}">{{ s.label }}</li>{% endfor %}
+</ol>
+{% endif %}
+
+{# ---- Cards ---- #}
+<div class="rp-grid">
+	<div class="rp-card">
+		<h5>{{ _("Your unit") }}</h5>
+		{% for label, value in unit %}
+		<div class="rp-row"><span>{{ label }}</span><span>{{ value }}</span></div>
+		{% endfor %}
+	</div>
+	<div class="rp-card">
+		<h5>{{ _("Problem") }}</h5>
+		<p class="rp-text">{{ doc.complaint or _("Not recorded yet.") }}</p>
+		{% if doc.diagnosis %}
+		<h5 style="margin-top: 12px">{{ _("Our diagnosis") }}</h5>
+		<p class="rp-text">{{ doc.diagnosis }}</p>
+		{% endif %}
+	</div>
+</div>
+
+<div class="rp-grid">
+	{% if parts %}
+	<div class="rp-card">
+		<h5>{{ _("Parts") }}</h5>
+		<table class="rp-table">
+			<thead><tr><th>{{ _("Part") }}</th><th class="num">{{ _("Qty") }}</th><th class="num">{{ _("Billing") }}</th></tr></thead>
+			<tbody>
+				{% for p in parts %}
+				<tr><td>{{ p.item }}</td><td class="num">{{ p.qty }}</td><td class="num">{{ p.billing }}{% if p.amount %}<div class="text-muted small">{{ p.amount }}</div>{% endif %}</td></tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	{% endif %}
+
+	<div class="rp-card">
+		<h5>{{ _("Documents") }}</h5>
+		{% for l in links %}
+		<div class="rp-row"><span>{{ l.label }}</span><span><a href="{{ l.route }}">{{ l.name }}</a>{% if l.note %} <span class="text-muted small">&middot; {{ l.note }}</span>{% endif %}</span></div>
+		{% else %}
+		<p class="rp-text text-muted">{{ _("No quotation, order or dispatch yet.") }}</p>
+		{% endfor %}
+		{% if can_accept %}
+		<div class="rp-actions">
+			<button class="btn btn-primary btn-sm" id="rp-accept">{{ _("Accept quotation") }}</button>
+		</div>
+		{% endif %}
+	</div>
+
+	{% if loaner %}
+	<div class="rp-card">
+		<h5>{{ _("Loaner unit") }}</h5>
+		<div class="rp-row"><span>{{ _("Unit") }}</span><span>{{ loaner.item_code }} &middot; {{ loaner.serial_no }}</span></div>
+		{% if loaner.status == "Returned" %}
+		<div class="rp-row"><span>{{ _("Returned on") }}</span><span>{{ frappe.format_date(loaner.returned_on) }}</span></div>
+		{% else %}
+		<div class="rp-row"><span>{{ _("Please return by") }}</span><span><b>{{ loaner.return_by }}</b></span></div>
+		{% endif %}
+	</div>
+	{% endif %}
+</div>
+
+{# ---- Accept quotation: creates a draft Sales Order for Fortuna to confirm ---- #}
+{% if can_accept %}
+<script>
+	frappe.ready(() => {
+		document.getElementById("rp-accept").addEventListener("click", (e) => {
+			e.target.disabled = true; // no double orders on a double click
+			frappe.call({
+				method: "sas_fortuna.support.portal.accept_quotation",
+				args: { quotation: {{ quotation | tojson }} },
+				callback: () => {
+					frappe.msgprint({{ _("Thank you. Fortuna will confirm your order shortly.") | tojson }});
+					e.target.closest(".rp-actions").remove();
+				},
+				error: () => { e.target.disabled = false; },
+			});
+		});
+	});
+</script>
+{% endif %}
+{% endblock %}

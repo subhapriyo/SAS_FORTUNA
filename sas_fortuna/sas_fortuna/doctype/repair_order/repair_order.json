@@ -1,0 +1,381 @@
+{
+  "actions": [],
+  "creation": "2026-10-15 12:00:00.000000",
+  "custom": 0,
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "section_ticket",
+    "helpdesk_ticket",
+    "customer",
+    "customer_name",
+    "contact_email",
+    "delivery_address",
+    "column_break_ticket",
+    "status",
+    "responsible",
+    "help_desk_owner",
+    "invoice_method",
+    "section_product",
+    "product_model",
+    "serial_no",
+    "support_type",
+    "column_break_product",
+    "invoice_no",
+    "invoice_date",
+    "warranty_end",
+    "amc_expiry",
+    "section_problem",
+    "complaint",
+    "column_break_problem",
+    "diagnosis",
+    "section_receipt",
+    "repair_receipt",
+    "receipt_confirmed",
+    "section_parts",
+    "parts",
+    "parts_chargeable_total",
+    "section_billing",
+    "material_request",
+    "quotation",
+    "sales_order",
+    "column_break_billing",
+    "payment_cleared",
+    "sales_invoice",
+    "section_dispatch",
+    "delivery_note",
+    "replacement_serial"
+  ],
+  "fields": [
+    {
+      "fieldname": "section_ticket",
+      "fieldtype": "Section Break",
+      "label": "Ticket & Customer"
+    },
+    {
+      "fieldname": "helpdesk_ticket",
+      "fieldtype": "Link",
+      "label": "Helpdesk Ticket",
+      "options": "HD Ticket",
+      "search_index": 1
+    },
+    {
+      "fieldname": "customer",
+      "fieldtype": "Link",
+      "label": "Customer",
+      "options": "Customer",
+      "reqd": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "customer_name",
+      "fieldtype": "Data",
+      "label": "Customer Name",
+      "fetch_from": "customer.customer_name",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "contact_email",
+      "fieldtype": "Data",
+      "label": "Customer Email",
+      "options": "Email",
+      "fetch_from": "customer.email_id",
+      "fetch_if_empty": 1
+    },
+    {
+      "fieldname": "delivery_address",
+      "fieldtype": "Link",
+      "label": "Delivery Address",
+      "options": "Address"
+    },
+    {
+      "fieldname": "column_break_ticket",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Registered\nUnit Received\nAwaiting Payment\nIn Repair\nReady\nDispatched\nClosed\nCancelled",
+      "default": "Registered",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "responsible",
+      "fieldtype": "Link",
+      "label": "Responsible",
+      "options": "Employee",
+      "reqd": 1
+    },
+    {
+      "fieldname": "help_desk_owner",
+      "fieldtype": "Link",
+      "label": "Help Desk Owner",
+      "options": "User",
+      "default": "__user",
+      "description": "Receives the unit-received alert."
+    },
+    {
+      "fieldname": "invoice_method",
+      "fieldtype": "Select",
+      "label": "Invoice Method",
+      "options": "\nFree (Warranty)\nAMC\nChargeable",
+      "in_standard_filter": 1,
+      "description": "Defaults from Support Type; can be changed."
+    },
+    {
+      "fieldname": "section_product",
+      "fieldtype": "Section Break",
+      "label": "Product"
+    },
+    {
+      "fieldname": "product_model",
+      "fieldtype": "Link",
+      "label": "Product Model",
+      "options": "Item",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "serial_no",
+      "fieldtype": "Link",
+      "label": "Serial No",
+      "options": "Serial No",
+      "reqd": 1,
+      "in_list_view": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "support_type",
+      "fieldtype": "Select",
+      "label": "Support Type",
+      "options": "\nWarranty\nAMC\nPaid Service",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "column_break_product",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "invoice_no",
+      "fieldtype": "Data",
+      "label": "Invoice No",
+      "read_only": 1
+    },
+    {
+      "fieldname": "invoice_date",
+      "fieldtype": "Date",
+      "label": "Invoice Date",
+      "read_only": 1
+    },
+    {
+      "fieldname": "warranty_end",
+      "fieldtype": "Date",
+      "label": "Warranty End",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amc_expiry",
+      "fieldtype": "Date",
+      "label": "AMC Expiry",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_problem",
+      "fieldtype": "Section Break",
+      "label": "Problem"
+    },
+    {
+      "fieldname": "complaint",
+      "fieldtype": "Small Text",
+      "label": "Complaint"
+    },
+    {
+      "fieldname": "column_break_problem",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "diagnosis",
+      "fieldtype": "Small Text",
+      "label": "Diagnosis"
+    },
+    {
+      "fieldname": "section_receipt",
+      "fieldtype": "Section Break",
+      "label": "Receipt"
+    },
+    {
+      "fieldname": "repair_receipt",
+      "fieldtype": "Link",
+      "label": "Repair Receipt",
+      "options": "Stock Entry",
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "receipt_confirmed",
+      "fieldtype": "Check",
+      "label": "Receipt Confirmed",
+      "depends_on": "eval:doc.repair_receipt",
+      "no_copy": 1,
+      "description": "Tick after checking the unit; the customer is e-mailed."
+    },
+    {
+      "fieldname": "section_parts",
+      "fieldtype": "Section Break",
+      "label": "Parts"
+    },
+    {
+      "fieldname": "parts",
+      "fieldtype": "Table",
+      "label": "Parts",
+      "options": "Repair Order Part"
+    },
+    {
+      "fieldname": "parts_chargeable_total",
+      "fieldtype": "Currency",
+      "label": "Chargeable Parts Total",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_billing",
+      "fieldtype": "Section Break",
+      "label": "Billing",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "material_request",
+      "fieldtype": "Link",
+      "label": "Material Request",
+      "options": "Material Request",
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "quotation",
+      "fieldtype": "Link",
+      "label": "Quotation",
+      "options": "Quotation",
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "sales_order",
+      "fieldtype": "Link",
+      "label": "Sales Order",
+      "options": "Sales Order",
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "column_break_billing",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "payment_cleared",
+      "fieldtype": "Check",
+      "label": "Payment Cleared",
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "sales_invoice",
+      "fieldtype": "Link",
+      "label": "Sales Invoice",
+      "options": "Sales Invoice",
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "section_dispatch",
+      "fieldtype": "Section Break",
+      "label": "Dispatch",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "delivery_note",
+      "fieldtype": "Link",
+      "label": "Delivery Note",
+      "options": "Delivery Note",
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "replacement_serial",
+      "fieldtype": "Link",
+      "label": "Replacement Serial",
+      "options": "Serial No",
+      "read_only": 1,
+      "no_copy": 1
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-10-15 15:45:00.000000",
+  "modified_by": "Administrator",
+  "module": "SAS Fortuna",
+  "name": "Repair Order",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "print": 1,
+      "email": 1,
+      "report": 1,
+      "export": 1,
+      "share": 1,
+      "delete": 1
+    },
+    {
+      "role": "Stock User",
+      "read": 1,
+      "write": 1,
+      "create": 0,
+      "print": 1,
+      "email": 1,
+      "report": 1,
+      "export": 1,
+      "share": 1
+    },
+    {
+      "role": "Sales User",
+      "read": 1,
+      "write": 0,
+      "create": 0,
+      "print": 1,
+      "email": 1,
+      "report": 1,
+      "export": 1,
+      "share": 1
+    },
+    {
+      "role": "Accounts User",
+      "read": 1,
+      "write": 0,
+      "create": 0,
+      "print": 1,
+      "email": 1,
+      "report": 1,
+      "export": 1,
+      "share": 1
+    }
+  ],
+  "row_format": "Dynamic",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "states": [],
+  "autoname": "REP-.YYYY.-.#####",
+  "naming_rule": "Expression (old style)",
+  "title_field": "customer_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "serial_no,customer",
+  "track_changes": 1
+}

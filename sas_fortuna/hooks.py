@@ -331,9 +331,9 @@ doc_events = {
 	"Supplier Onboarding": {"before_insert": "sas_fortuna.api.supplier_registration.before_insert"},
 }
 
-# Support Desk / Repair / AMC is kept OUT of git until after testing and the
-# demo (see .gitignore). Wire it only where its files exist, so a checkout
-# without them still migrates.
+# Support Desk / Repair / AMC (sas_fortuna/support, setup/support_desk.py). It is in
+# git and deployed; the existence check stays so an older checkout without these
+# files still migrates.
 import os as _os
 
 if _os.path.exists(_os.path.join(_os.path.dirname(__file__), "setup", "support_desk.py")):

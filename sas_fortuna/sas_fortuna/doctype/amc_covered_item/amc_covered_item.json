@@ -1,0 +1,70 @@
+{
+  "actions": [],
+  "creation": "2026-10-15 12:00:00.000000",
+  "custom": 0,
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "serial_no",
+    "item_code",
+    "site",
+    "software_version",
+    "bom_ref"
+  ],
+  "fields": [
+    {
+      "fieldname": "serial_no",
+      "fieldtype": "Link",
+      "label": "Serial No",
+      "options": "Serial No",
+      "reqd": 1,
+      "in_list_view": 1,
+      "columns": 3
+    },
+    {
+      "fieldname": "item_code",
+      "fieldtype": "Link",
+      "label": "Item",
+      "options": "Item",
+      "fetch_from": "serial_no.item_code",
+      "read_only": 1,
+      "in_list_view": 1,
+      "columns": 3
+    },
+    {
+      "fieldname": "site",
+      "fieldtype": "Data",
+      "label": "Site",
+      "in_list_view": 1,
+      "columns": 2
+    },
+    {
+      "fieldname": "software_version",
+      "fieldtype": "Data",
+      "label": "Software Version",
+      "in_list_view": 1,
+      "columns": 2,
+      "description": "Version installed at this site."
+    },
+    {
+      "fieldname": "bom_ref",
+      "fieldtype": "Link",
+      "label": "BoM Ref",
+      "options": "BOM"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-10-15 12:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SAS Fortuna",
+  "name": "AMC Covered Item",
+  "owner": "Administrator",
+  "permissions": [],
+  "row_format": "Dynamic",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "states": [],
+  "istable": 1,
+  "editable_grid": 1
+}

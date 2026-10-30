@@ -1,0 +1,197 @@
+{
+  "actions": [],
+  "creation": "2026-10-15 12:00:00.000000",
+  "custom": 0,
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "customer",
+    "contact_email",
+    "helpdesk_ticket",
+    "repair_order",
+    "item_code",
+    "serial_no",
+    "column_break_main",
+    "issue_date",
+    "expected_return_date",
+    "status",
+    "returned_on",
+    "issue_stock_entry",
+    "return_stock_entry",
+    "amended_from"
+  ],
+  "fields": [
+    {
+      "fieldname": "customer",
+      "fieldtype": "Link",
+      "label": "Customer",
+      "options": "Customer",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "contact_email",
+      "fieldtype": "Data",
+      "label": "Customer Email",
+      "options": "Email",
+      "fetch_from": "customer.email_id",
+      "fetch_if_empty": 1
+    },
+    {
+      "fieldname": "helpdesk_ticket",
+      "fieldtype": "Link",
+      "label": "Helpdesk Ticket",
+      "options": "HD Ticket"
+    },
+    {
+      "fieldname": "repair_order",
+      "fieldtype": "Link",
+      "label": "Repair Order",
+      "options": "Repair Order",
+      "search_index": 1
+    },
+    {
+      "fieldname": "item_code",
+      "fieldtype": "Link",
+      "label": "Item",
+      "options": "Item",
+      "reqd": 1
+    },
+    {
+      "fieldname": "serial_no",
+      "fieldtype": "Link",
+      "label": "Serial No",
+      "options": "Serial No",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "column_break_main",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "issue_date",
+      "fieldtype": "Date",
+      "label": "Issue Date",
+      "default": "Today",
+      "reqd": 1
+    },
+    {
+      "fieldname": "expected_return_date",
+      "fieldtype": "Date",
+      "label": "Expected Return Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Draft\nOpen\nOverdue\nReturned\nCancelled",
+      "default": "Draft",
+      "read_only": 1,
+      "allow_on_submit": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "returned_on",
+      "fieldtype": "Date",
+      "label": "Returned On",
+      "read_only": 1,
+      "allow_on_submit": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "issue_stock_entry",
+      "fieldtype": "Link",
+      "label": "Issue Stock Entry",
+      "options": "Stock Entry",
+      "read_only": 1,
+      "allow_on_submit": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "return_stock_entry",
+      "fieldtype": "Link",
+      "label": "Return Stock Entry",
+      "options": "Stock Entry",
+      "read_only": 1,
+      "allow_on_submit": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "options": "Returnable Gate Pass",
+      "read_only": 1,
+      "no_copy": 1,
+      "print_hide": 1,
+      "search_index": 1
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-10-15 12:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SAS Fortuna",
+  "name": "Returnable Gate Pass",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "print": 1,
+      "email": 1,
+      "report": 1,
+      "export": 1,
+      "share": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    },
+    {
+      "role": "Stock User",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "print": 1,
+      "email": 1,
+      "report": 1,
+      "export": 1,
+      "share": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    },
+    {
+      "role": "Stock Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "print": 1,
+      "email": 1,
+      "report": 1,
+      "export": 1,
+      "share": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    }
+  ],
+  "row_format": "Dynamic",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "states": [],
+  "is_submittable": 1,
+  "autoname": "RGP-.YYYY.-.#####",
+  "naming_rule": "Expression (old style)",
+  "title_field": "customer",
+  "track_changes": 1
+}

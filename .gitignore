@@ -52,26 +52,10 @@ config.json
 Thumbs.db
 
 # ----------------------------------------------------------------------------
-# Support Desk / Repair / AMC: kept OUT of git until after testing and the demo.
-# Files stay on disk; hooks.py wires them only when present.
+# Support Desk / Repair / AMC: the code is now tracked. Its documents (PDFs,
+# demo video, worksheets) and local dev tools stay out of git.
 # ----------------------------------------------------------------------------
 docs/support_desk/
-sas_fortuna/support/
-sas_fortuna/setup/support_desk.py
-sas_fortuna/www/repair.html
-sas_fortuna/www/repair.py
-sas_fortuna/www/ticket.html
-sas_fortuna/www/ticket.py
-sas_fortuna/public/js/hd_ticket.js
-sas_fortuna/public/js/portal_support.js
-sas_fortuna/public/js/sales_order.js
-sas_fortuna/sas_fortuna/report/
-sas_fortuna/sas_fortuna/doctype/amc_covered_item/
-sas_fortuna/sas_fortuna/doctype/fortuna_support_settings/
-sas_fortuna/sas_fortuna/doctype/fortuna_team_route/
-sas_fortuna/sas_fortuna/doctype/repair_order/
-sas_fortuna/sas_fortuna/doctype/repair_order_part/
-sas_fortuna/sas_fortuna/doctype/returnable_gate_pass/
 tools/
 
 # ----------------------------------------------------------------------------

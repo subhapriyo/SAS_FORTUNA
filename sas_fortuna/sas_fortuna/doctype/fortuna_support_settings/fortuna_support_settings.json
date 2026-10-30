@@ -1,0 +1,272 @@
+{
+  "actions": [],
+  "creation": "2026-10-15 12:00:00.000000",
+  "custom": 0,
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "section_general",
+    "company",
+    "section_routing",
+    "team_routing",
+    "section_warehouses",
+    "repair_receipt_entry_type",
+    "repair_in_warehouse",
+    "repair_wip_warehouse",
+    "column_break_wh",
+    "spares_warehouse",
+    "loaner_source_warehouse",
+    "customer_loaner_warehouse",
+    "section_billing",
+    "warranty_expense_account",
+    "chargeable_parts_expense_account",
+    "service_charge_item",
+    "freight_item",
+    "column_break_billing",
+    "advance_percent",
+    "charge_amc_repairs",
+    "replacement_keeps_old_warranty",
+    "section_amc",
+    "default_warranty_days",
+    "amc_enquiry_lead_days",
+    "amc_team_email",
+    "column_break_amc",
+    "create_amc_opportunities",
+    "amc_opportunity_owner",
+    "section_sim",
+    "sim_billing_mode",
+    "sim_recharge_item",
+    "column_break_sim",
+    "sim_order_lead_days"
+  ],
+  "fields": [
+    {
+      "fieldname": "section_general",
+      "fieldtype": "Section Break",
+      "label": "General"
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "section_routing",
+      "fieldtype": "Section Break",
+      "label": "Ticket Routing",
+      "description": "Ticket Type decides the Helpdesk Team; the Team's round-robin rule picks the agent."
+    },
+    {
+      "fieldname": "team_routing",
+      "fieldtype": "Table",
+      "label": "Ticket Type → Team",
+      "options": "Fortuna Team Route"
+    },
+    {
+      "fieldname": "section_warehouses",
+      "fieldtype": "Section Break",
+      "label": "Warehouses"
+    },
+    {
+      "fieldname": "repair_receipt_entry_type",
+      "fieldtype": "Link",
+      "label": "Repair Receipt Entry Type",
+      "options": "Stock Entry Type",
+      "default": "Repair Receipt"
+    },
+    {
+      "fieldname": "repair_in_warehouse",
+      "fieldtype": "Link",
+      "label": "Repair-In Warehouse",
+      "options": "Warehouse",
+      "description": "Customer units under repair (zero value)."
+    },
+    {
+      "fieldname": "repair_wip_warehouse",
+      "fieldtype": "Link",
+      "label": "Repair WIP Warehouse",
+      "options": "Warehouse",
+      "description": "Spares reserved for repairs."
+    },
+    {
+      "fieldname": "column_break_wh",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "spares_warehouse",
+      "fieldtype": "Link",
+      "label": "Spares Warehouse",
+      "options": "Warehouse"
+    },
+    {
+      "fieldname": "loaner_source_warehouse",
+      "fieldtype": "Link",
+      "label": "Loaner / Replacement Source Warehouse",
+      "options": "Warehouse",
+      "description": "Finished-goods store that loaner and replacement units leave from."
+    },
+    {
+      "fieldname": "customer_loaner_warehouse",
+      "fieldtype": "Link",
+      "label": "Customer Loaner Warehouse",
+      "options": "Warehouse",
+      "description": "Loaner units currently with customers."
+    },
+    {
+      "fieldname": "section_billing",
+      "fieldtype": "Section Break",
+      "label": "Repair Billing"
+    },
+    {
+      "fieldname": "warranty_expense_account",
+      "fieldtype": "Link",
+      "label": "Warranty Expense Account",
+      "options": "Account",
+      "description": "Expense head for free (in-warranty) parts."
+    },
+    {
+      "fieldname": "chargeable_parts_expense_account",
+      "fieldtype": "Link",
+      "label": "Chargeable Parts Expense Account",
+      "options": "Account",
+      "description": "Optional. Blank = ERPNext default expense account."
+    },
+    {
+      "fieldname": "service_charge_item",
+      "fieldtype": "Link",
+      "label": "Service Charge Item",
+      "options": "Item"
+    },
+    {
+      "fieldname": "freight_item",
+      "fieldtype": "Link",
+      "label": "Freight Item",
+      "options": "Item",
+      "description": "Optional. When set, added to every repair quotation."
+    },
+    {
+      "fieldname": "column_break_billing",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "advance_percent",
+      "fieldtype": "Percent",
+      "label": "Advance Required %",
+      "default": "100",
+      "description": "Open point: 100 = full payment before repair starts; e.g. 50 = half advance."
+    },
+    {
+      "fieldname": "charge_amc_repairs",
+      "fieldtype": "Check",
+      "label": "Charge AMC Repairs",
+      "default": "0",
+      "description": "Open point: off = AMC repairs are free."
+    },
+    {
+      "fieldname": "replacement_keeps_old_warranty",
+      "fieldtype": "Check",
+      "label": "Replacement Keeps Old Warranty",
+      "default": "1",
+      "description": "Open point: on = replacement unit keeps the old unit's warranty end; off = fresh warranty."
+    },
+    {
+      "fieldname": "section_amc",
+      "fieldtype": "Section Break",
+      "label": "Warranty & AMC"
+    },
+    {
+      "fieldname": "default_warranty_days",
+      "fieldtype": "Int",
+      "label": "Standard Warranty (days)",
+      "default": "365",
+      "description": "Normal warranty is 1 year. Used when the Item has no Warranty Period of its own."
+    },
+    {
+      "fieldname": "amc_enquiry_lead_days",
+      "fieldtype": "Int",
+      "label": "AMC Enquiry Lead Days",
+      "default": "30",
+      "description": "Days before warranty end to alert the AMC team."
+    },
+    {
+      "fieldname": "amc_team_email",
+      "fieldtype": "Data",
+      "label": "AMC Team Email(s)",
+      "description": "Comma separated."
+    },
+    {
+      "fieldname": "column_break_amc",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "create_amc_opportunities",
+      "fieldtype": "Check",
+      "label": "Create Opportunities",
+      "default": "1",
+      "description": "One CRM Opportunity (Request Type: AMC Renewal) per unit in the daily AMC enquiry."
+    },
+    {
+      "fieldname": "amc_opportunity_owner",
+      "fieldtype": "Link",
+      "label": "AMC Opportunity Owner",
+      "options": "User",
+      "depends_on": "create_amc_opportunities",
+      "description": "Blank = first user with the AMC Team role."
+    },
+    {
+      "fieldname": "section_sim",
+      "fieldtype": "Section Break",
+      "label": "SIM Recharge"
+    },
+    {
+      "fieldname": "sim_billing_mode",
+      "fieldtype": "Select",
+      "label": "SIM Billing Mode",
+      "options": "Subscription\nService Order",
+      "default": "Subscription",
+      "description": "Open point: Subscription = billed by ERPNext Subscriptions; Service Order = daily draft Sales Orders."
+    },
+    {
+      "fieldname": "sim_recharge_item",
+      "fieldtype": "Link",
+      "label": "SIM Recharge Item",
+      "options": "Item"
+    },
+    {
+      "fieldname": "column_break_sim",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "sim_order_lead_days",
+      "fieldtype": "Int",
+      "label": "SIM Order Lead Days",
+      "default": "30"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-10-23 14:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SAS Fortuna",
+  "name": "Fortuna Support Settings",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "print": 1,
+      "email": 1,
+      "share": 1
+    }
+  ],
+  "row_format": "Dynamic",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "states": [],
+  "issingle": 1,
+  "track_changes": 1
+}
