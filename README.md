@@ -31,6 +31,7 @@ The authoritative fixture list, with filters, lives in `sas_fortuna/hooks.py`.
 
 - Frappe Framework v16
 - ERPNext v16
+- Helpdesk app (required for HD Ticket and HD Ticket Type links)
 - Python and Node versions matching whatever your bench's `bench version` / `node --version` report (this app has no independent version requirement beyond what Frappe v16 itself needs)
 
 ## Supported Versions

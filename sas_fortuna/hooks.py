@@ -11,6 +11,7 @@ Custom Fields and Property Setters are exported as fixtures.
 app_name = "sas_fortuna"
 app_title = "SAS Fortuna"
 app_publisher = "SAS Infosystem Pvt Ltd"
+required_apps = ["erpnext", "helpdesk"]
 
 app_description = (
 	"Custom Frappe app for Fortuna Impex Pvt Ltd, covering customer and "
