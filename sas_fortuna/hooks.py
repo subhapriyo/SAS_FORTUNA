@@ -22,6 +22,26 @@ app_description = (
 app_email = "subhapriyo@gmail.com"
 app_license = "mit"
 
+# ============================================================================
+# DESK / APPS SCREEN
+# ============================================================================
+# Frappe v16 only gives an app a tile on the desk when it declares this hook:
+#   - "Apps" desk mode reads it directly (frappe.apps.get_apps)
+#   - "Desktop Icons" grid mode creates the App icon from it on install
+# The grid icon for sites that already have the app installed ships in
+# sas_fortuna/desktop_icon/sas_fortuna.json (imported on every migrate).
+
+app_home = "/desk/sas-fortuna"
+
+add_to_apps_screen = [
+	{
+		"name": app_name,
+		"logo": "/assets/sas_fortuna/images/logo.png",
+		"title": app_title,
+		"route": app_home,
+	}
+]
+
 
 # ============================================================================
 # CUSTOMIZED DOCTYPES
