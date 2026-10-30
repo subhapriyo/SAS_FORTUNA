@@ -2,7 +2,11 @@
  * Order (same on every page): Filter by Status | Filter by Date Range | Sort by | Sort order | Clear | Items per Page.
  * Items per Page is always the last control. All values go to the server as URL params
  * (status, sf_from, sf_to, sort_by, sort_dir, sf_len); see sas_fortuna/portal/list_engine.py.
- * The bar is only shown when the list has rows (or a filter is active, so it can still be cleared). */
+ * The bar is only shown when the list has rows (or a filter is active, so it can still be cleared).
+ * A page may filter on another field instead of status: set filter_param (the URL param, a real
+ * field of the doctype), filter_label and filter_all in its config (see "/my-ledger").
+ * search: placeholder for the page's Search box, saying what it searches (the fields themselves
+ * are chosen on the server, e.g. SEARCH_FIELDS in portal/lists/gl_entry.py). */
 frappe.ready(() => {
 	const PAGE_SIZES = ["10", "25", "50", "100", "all"];
 	const DEFAULT_PAGE_SIZE = "10";
@@ -85,10 +89,28 @@ frappe.ready(() => {
 			status: ["Open", "Replied", "On Hold", "Resolved", "Closed"],
 			sort: { creation: "Created", modified: "Last updated", priority: "Priority" },
 		},
+		// Customer and Supplier role: the party's ledger (portal/lists/gl_entry.py)
+		"/my-ledger": {
+			search: "Search voucher no. or remarks",
+			filter_param: "voucher_type",
+			filter_label: "Filter by Voucher Type",
+			filter_all: "All vouchers",
+			status: ["Sales Invoice", "Payment Entry", "Journal Entry", "Purchase Invoice"],
+			sort: {
+				posting_date: "Date",
+				debit: "Debit",
+				credit: "Credit",
+				voucher_no: "Voucher No",
+			},
+		},
 	};
+
+	// Other apps / modules can add pages through window.sf_portal_pages (same shape as above).
+	Object.assign(PAGES, window.sf_portal_pages || {});
 
 	const cfg = PAGES[location.pathname.replace(/\/+$/, "")];
 	if (!cfg) return;
+	const filterParam = cfg.filter_param || "status"; // URL param of the first filter
 
 	const params = new URLSearchParams(location.search);
 	const T = (text) => (typeof __ === "function" ? __(text) : text); // translate when available
@@ -114,9 +136,9 @@ frappe.ready(() => {
 	bar.innerHTML =
 		field(
 			"sf-status",
-			"Filter by Status",
+			cfg.filter_label || "Filter by Status",
 			`<select id="sf-status">
-				<option value="">${T("All statuses")}</option>
+				<option value="">${T(cfg.filter_all || "All statuses")}</option>
 				${cfg.status.map((s) => `<option value="${esc(s)}">${esc(T(s))}</option>`).join("")}
 			</select>`,
 		) +
@@ -172,7 +194,7 @@ frappe.ready(() => {
 	// (re)drawn after load (e.g. the ajax "More" call), so re-check on DOM changes.
 	const ROWS =
 		".sf-table tbody tr, .sf-qrow, .website-list .list-item-container, .website-list .web-list-item";
-	const filtersActive = ["status", "sf_from", "sf_to"].some((key) => params.get(key));
+	const filtersActive = [filterParam, "sf_from", "sf_to"].some((key) => params.get(key));
 	const syncVisibility = () => {
 		const hidden = !(filtersActive || document.querySelector(ROWS));
 		if (bar.hidden !== hidden) bar.hidden = hidden;
@@ -195,7 +217,7 @@ frappe.ready(() => {
 
 	// Simple selects: apply immediately on change.
 	const map = {
-		"sf-status": "status",
+		"sf-status": filterParam,
 		"sf-sort": "sort_by",
 		"sf-dir": "sort_dir",
 		"sf-len": "sf_len",
@@ -223,6 +245,18 @@ frappe.ready(() => {
 		el.addEventListener("keydown", (e) => e.key === "Enter" && applyRange());
 	});
 	const applyRange = () => reload({ sf_from: from.value, sf_to: to.value });
+
+	// Search box (Frappe's list search form): say what it searches, and keep the chosen filters,
+	// sort and page size when searching (the stock form would drop them).
+	const searchForm = document.querySelector(".website-list-filters .form-search");
+	if (searchForm) {
+		const input = searchForm.querySelector("input[name=txt]");
+		if (cfg.search && input) input.placeholder = T(cfg.search);
+		searchForm.addEventListener("submit", (e) => {
+			e.preventDefault();
+			reload({ txt: input.value.trim() });
+		});
+	}
 	document.getElementById("sf-apply").addEventListener("click", applyRange);
 
 	document.getElementById("sf-clear").addEventListener("click", () => {

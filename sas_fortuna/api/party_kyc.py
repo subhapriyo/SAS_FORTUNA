@@ -5,7 +5,7 @@ a PartyConfig; customer.py and supplier.py only expose thin whitelisted wrappers
 paths the pages call stay stable.
 
 	get_party_kyc()     -> the party's KYC fields + linked addresses / contacts / default bank account
-	update_party_kyc()  -> writes the same structure back
+	update_party_kyc()  -> checks the form (validate_kyc), then writes the same structure back
 
 Security model: the logged-in user can only read or change the party they are a Portal User of,
 and only Address / Contact records already linked to that party. Writes use ignore_permissions
@@ -14,11 +14,14 @@ behind those two checks.
 """
 
 import json
+import re
 from dataclasses import dataclass
 
 import frappe
 from frappe import _
-from frappe.utils import cstr
+from frappe.utils import cstr, validate_email_address
+
+from sas_fortuna.api.validation import FORMATS, PINCODE, check_formats, check_phone
 
 # ---------------------------------------------------------------------------
 # Field configuration
@@ -149,9 +152,7 @@ def _read_addresses(cfg, doc):
 	primary = doc.get(cfg.primary_address_field)
 	rows = []
 	for name in _primary_first(_linked_names(cfg, doc.name, "Address"), primary):
-		address = frappe.db.get_value(
-			"Address", name, ["address_line1", "address_line2", "city", "state", "pincode"], as_dict=True
-		)
+		address = frappe.db.get_value("Address", name, ADDRESS_FIELDS, as_dict=True)
 		if not address:
 			continue
 		rows.append(
@@ -212,17 +213,117 @@ def _read_bank_account(cfg, doc):
 
 
 # ---------------------------------------------------------------------------
+# Validation (the page runs the same checks first: validate() in public/js/portal_kyc.js)
+# ---------------------------------------------------------------------------
+
+ADDRESS_FIELDS = ("address_line1", "address_line2", "city", "state", "pincode")
+CONTACT_FIELDS = ("first_name", "designation", "phone", "mobile", "email", "website")
+
+# GST categories that do not need a GSTIN
+NO_GSTIN_CATEGORIES = ("Unregistered", "Overseas")
+
+BANK_FIELDS = {
+	"custom_bank_name": "Enter the bank name.",
+	"custom_account_no": "Enter the account number.",
+	"custom_ifsc_code": "Enter the IFSC.",
+}
+ADDRESS_REQUIRED = {
+	"address_line1": "Enter the address.",
+	"city": "Enter the city.",
+	"state": "Enter the state.",
+	"pincode": "Enter the PIN code.",
+}
+
+
+def validate_kyc(data):
+	"""Check the KYC form; returns a list of problems, empty when all is well.
+
+	Each problem is {"field": <input name>, "message": ...}; a problem inside an address / contact
+	row also has "row_type" ("address" / "contact") and "row" (1 = first row), so the page can
+	highlight the exact box. Values are tidied in place on the way (trimmed, IDs upper-cased,
+	phone numbers as "+91-9830012345"), so what gets saved is clean.
+	"""
+	errors = []
+
+	def problem(field, message, row_type=None, row=None):
+		errors.append({"field": field, "message": _(message), "row_type": row_type, "row": row})
+
+	_trim(data)
+
+	# Formats: GSTIN (+ check digit, + PAN match), PAN, TAN, Aadhaar, Udyam, IFSC, account number
+	check_formats(data, FORMATS, problem)
+
+	# Required, depending on other answers
+	gstin, category = data.get("gstin"), data.get("gst_category")
+	if not category:
+		problem("gst_category", "Choose the GST category.")
+	elif category not in NO_GSTIN_CATEGORIES and not gstin:
+		problem("gstin", "This GST category needs a GSTIN. Enter it, or choose Unregistered.")
+	if data.get("custom_tds_applicable") == "Yes" and not data.get("tax_withholding_category"):
+		problem("tax_withholding_category", "Choose the tax withholding category.")
+	if data.get("custom_msme") == "Yes" and not data.get("custom_udyam_registration_number"):
+		problem("custom_udyam_registration_number", "Enter the Udyam registration number.")
+	if any(data.get(f) for f in BANK_FIELDS):  # bank details: all or nothing
+		for field, message in BANK_FIELDS.items():
+			if not data.get(field):
+				problem(field, message)
+
+	# Address rows: a started row needs the full address
+	for row_no, row in enumerate(data.get("addresses") or [], 1):
+		_trim(row)
+		if _is_blank(row, ADDRESS_FIELDS):
+			continue
+		for field, message in ADDRESS_REQUIRED.items():
+			if not row.get(field):
+				problem(field, message, "address", row_no)
+		if row.get("pincode") and not re.fullmatch(PINCODE, row["pincode"]):
+			problem("pincode", "Enter the 6-digit PIN code.", "address", row_no)
+
+	# Contact rows: e-mail format and phone numbers
+	for row_no, row in enumerate(data.get("contacts") or [], 1):
+		_trim(row)
+		if row.get("email") and not validate_email_address(row["email"]):
+			problem("email", "Enter a valid e-mail address, for example name@company.com.", "contact", row_no)
+		for field in ("phone", "mobile"):
+			if row.get(field):
+				row[field], message = check_phone(row[field], mobile_only=field == "mobile")
+				if message:
+					problem(field, message, "contact", row_no)
+	return errors
+
+
+def _trim(values):
+	for key, value in values.items():
+		if isinstance(value, str):
+			values[key] = value.strip()
+
+
+def _is_blank(row, fields):
+	"""An empty address / contact row (the form always shows at least one): skipped, not saved."""
+	return not any(row.get(field) for field in fields)
+
+
+# ---------------------------------------------------------------------------
 # Write
 # ---------------------------------------------------------------------------
 
 
 def update_party_kyc(cfg, data):
-	"""Save the KYC form. Returns {"status": "success", "skipped": [labels of values not saved]}."""
+	"""Save the KYC form.
+
+	Returns {"status": "success", "skipped": [labels of values not saved]}, or, when the form has
+	mistakes, {"status": "invalid", "errors": [...]} (see validate_kyc) and nothing is saved.
+	"""
 	if isinstance(data, str):
 		data = json.loads(data)
 
 	party = get_linked_party(cfg)
+	errors = validate_kyc(data)
+	if errors:
+		return {"status": "invalid", "errors": errors}
+
 	doc = frappe.get_doc(cfg.doctype, party)
+	before = doc.as_dict()
 
 	skipped = _apply_fields(doc, data)
 	skipped += _apply_attachments(doc, data)
@@ -233,8 +334,42 @@ def update_party_kyc(cfg, data):
 		_sync_contacts(cfg, doc, data["contacts"])
 	_sync_bank_account(cfg, doc, data)
 
-	doc.save(ignore_permissions=True)
+	_save_as_system(_on_latest(doc, before))
 	return {"status": "success", "skipped": skipped}
+
+
+def _save_as_system(doc):
+	"""Save the party as the system user, then hand control back to the portal user.
+
+	ERPNext's Customer.on_update marks the primary Contact with frappe.set_value(), which checks the
+	logged-in user's Desk permissions; a portal user has none, so the save failed with "Not
+	permitted". Safe here: get_linked_party() already proved this is the user's own party.
+	"""
+	user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		doc.save(ignore_permissions=True)
+	finally:
+		frappe.set_user(user)
+
+
+def _on_latest(doc, before):
+	"""The party document to save: `doc`, or a fresh copy with the form's changes on it.
+
+	Saving the addresses and contacts above runs ERPNext's own hooks, which update the party
+	(primary contact, mobile, e-mail...). Our copy is then out of date and Frappe refuses to save
+	it ("has been modified after you have opened it"). So, if the party changed meanwhile, reload it
+	and copy over only the fields this form changed; the hooks' updates are kept.
+	"""
+	if frappe.db.get_value(doc.doctype, doc.name, "modified") == doc.modified:
+		return doc
+	latest = frappe.get_doc(doc.doctype, doc.name)
+	for df in doc.meta.fields:
+		if df.fieldtype in frappe.model.table_fields:
+			continue
+		if doc.get(df.fieldname) != before.get(df.fieldname):
+			latest.set(df.fieldname, doc.get(df.fieldname))
+	return latest
 
 
 def _apply_fields(doc, data):
@@ -327,8 +462,8 @@ def _sync_addresses(cfg, doc, rows):
 	kept = []
 
 	for idx, row in enumerate(rows):
-		if not any((row.get("address_line1"), row.get("city"), row.get("pincode"))):
-			continue  # blank row
+		if _is_blank(row, ADDRESS_FIELDS):
+			continue
 
 		# Only reuse an Address that is already linked to this party, never one named by the client
 		name = row.get("address_name")
@@ -338,9 +473,11 @@ def _sync_addresses(cfg, doc, rows):
 			address = frappe.new_doc("Address")
 			address.address_title = doc.name
 			address.address_type = "Billing"
+			# Country is mandatory on Address and the form has no country box: use the site's country
+			address.country = frappe.db.get_single_value("System Settings", "country") or "India"
 
 		is_primary = idx == 0
-		for fieldname in ("address_line1", "address_line2", "city", "state", "pincode"):
+		for fieldname in ADDRESS_FIELDS:
 			address.set(fieldname, row.get(fieldname) or "")
 		address.is_primary_address = 1 if is_primary else 0
 		_relink(address, cfg, doc.name)
@@ -358,15 +495,15 @@ def _sync_contacts(cfg, doc, rows):
 	kept = []
 
 	# Some sites make Contact Phone.custom_mobile_number mandatory; fill it when the field exists.
+	# It is a Phone field, so Frappe only accepts it with a country code (see check_phone).
 	has_custom_mobile = frappe.get_meta("Contact Phone").has_field("custom_mobile_number")
 
 	for idx, row in enumerate(rows):
-		phone = (row.get("phone") or "").strip()
-		mobile = (row.get("mobile") or "").strip()
-		email = (row.get("email") or "").strip()
-		first_name = (row.get("first_name") or "").strip()
-		if not any((phone, mobile, email, first_name)):
-			continue  # blank row (checked before first_name falls back to the party name)
+		if _is_blank(row, CONTACT_FIELDS):
+			continue
+		# Values were trimmed and phone numbers normalised by validate_kyc
+		phone, mobile, email = row.get("phone"), row.get("mobile"), row.get("email")
+		first_name = row.get("first_name")
 
 		# Only reuse a Contact that is already linked to this party, never one named by the client
 		name = row.get("contact_name")

@@ -1,58 +1,161 @@
 /* sas_fortuna: Customer / Supplier KYC pages (/customer, /supplier).
  * Markup: templates/includes/kyc_form.html. Behaviour: public/js/portal_kyc.js. */
 
-/* ---- Page + form card layout ---- */
-.kyc-page {
-	width: 100%;
-	max-width: 100%;
-	padding: 0 10px 24px;
-	box-sizing: border-box;
+.kyc-page,
+.kyc-intro {
+	--kyc-border: #e5e7eb;
+	--kyc-muted: #6b7280;
+	--kyc-error: #dc2626;
 }
-.kyc-form {
-	width: 100%;
-}
-.kyc-form .row {
-	margin-left: -8px;
-	margin-right: -8px;
-}
-.kyc-form .row > [class*="col-"] {
-	padding-left: 8px;
-	padding-right: 8px;
-}
-.kyc-form section {
-	background: #fff;
-	border: 1px solid #e6eaf0;
-	border-radius: 10px;
-	padding: 18px 18px 12px;
-	margin-bottom: 18px;
-	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-.kyc-form section h5 {
-	margin-bottom: 12px;
-	font-weight: 600;
-}
-.kyc-form-actions {
-	display: flex;
-	justify-content: center;
-	padding-top: 12px;
-}
-.kyc-form-actions .btn {
-	min-width: 180px;
-	padding: 10px 24px;
-	font-size: 1rem;
+.kyc-intro {
+	color: var(--kyc-muted);
+	margin: -4px 0 20px;
 }
 
-/* ---- Full-screen loading / saving overlay ---- */
+/* ---- Section cards ---- */
+.kyc-card {
+	background: #fff;
+	border: 1px solid var(--kyc-border);
+	border-radius: 12px;
+	padding: 20px 20px 8px;
+	margin-bottom: 16px;
+}
+.kyc-card h5 {
+	font-size: 1rem;
+	font-weight: 600;
+	margin: 0 0 4px;
+}
+.kyc-hint {
+	color: var(--kyc-muted);
+	font-size: 0.85rem;
+	margin: 0 0 12px;
+}
+.kyc-card h5 + .row,
+.kyc-card h5 + div {
+	margin-top: 12px;
+}
+
+/* ---- Fields: label, input, error message ---- */
+.kyc-field {
+	margin-bottom: 14px;
+}
+.kyc-label {
+	display: block;
+	font-size: 0.8rem;
+	font-weight: 500;
+	color: #374151;
+	margin-bottom: 4px;
+}
+.kyc-req {
+	color: var(--kyc-error);
+}
+.kyc-form .form-control[readonly] {
+	background: #f9fafb;
+	color: var(--kyc-muted);
+}
+.kyc-form .form-control.is-invalid,
+.kyc-phone.is-invalid input {
+	border-color: var(--kyc-error);
+	box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+}
+.kyc-error {
+	color: var(--kyc-error);
+	font-size: 0.8rem;
+	margin-top: 4px;
+}
+.kyc-file-link {
+	display: inline-block;
+	font-size: 0.8rem;
+	font-weight: 500;
+	margin-top: 4px;
+}
+
+/* ---- Repeating address / contact rows ---- */
+.kyc-row {
+	border: 1px solid var(--kyc-border);
+	border-radius: 10px;
+	padding: 12px 16px 0;
+	margin-bottom: 12px;
+	background: #fafbfc;
+}
+.kyc-row__head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	margin-bottom: 10px;
+}
+.kyc-badge {
+	font-size: 0.7rem;
+	font-weight: 500;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: #e0f2fe;
+	color: #0369a1;
+}
+.kyc-remove {
+	margin-left: auto;
+	border: 0;
+	background: none;
+	color: var(--kyc-error);
+	font-size: 0.8rem;
+	cursor: pointer;
+}
+.kyc-add {
+	padding-left: 0;
+	margin-bottom: 12px;
+}
+
+/* ---- Phone / Mobile: Frappe's Phone control (flag + dial code in front of the number) ---- */
+.kyc-phone .frappe-control {
+	max-width: none;
+	margin: 0;
+}
+.kyc-phone .form-group {
+	margin-bottom: 0;
+}
+/* The field's own label is used; the control's label, help and tooltip are not needed. */
+.kyc-phone .clearfix,
+.kyc-phone .help-box,
+.kyc-phone .tooltip-content,
+.kyc-phone .control-value {
+	display: none !important;
+}
+
+/* ---- Save bar: stays at the bottom of the screen while scrolling ---- */
+.kyc-form-actions {
+	position: sticky;
+	bottom: 0;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 16px;
+	padding: 12px 20px;
+	background: rgba(255, 255, 255, 0.95);
+	border: 1px solid var(--kyc-border);
+	border-radius: 12px;
+	box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+}
+.kyc-form-actions .btn {
+	min-width: 140px;
+}
+.kyc-error-summary {
+	color: var(--kyc-error);
+	font-size: 0.85rem;
+	font-weight: 500;
+}
+
+/* ---- Loading / saving overlay ---- */
 .kyc-form-loading {
 	position: fixed;
 	inset: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 100vw;
-	height: 100vh;
-	background: rgba(255, 255, 255, 0.72);
-	z-index: 9999;
+	background: rgba(255, 255, 255, 0.75);
+	z-index: 1050;
 }
 .kyc-form-loading__content {
 	display: flex;
@@ -60,49 +163,25 @@
 	align-items: center;
 	gap: 10px;
 	font-weight: 600;
-	color: #1f2937;
-}
-.kyc-form-loading__content .spinner-border {
-	width: 2.25rem;
-	height: 2.25rem;
 }
 
-/* ---- Repeating address / contact rows ---- */
-.address-row,
-.contact-row {
-	border: 1px solid #dee2e6;
-	border-radius: 6px;
-	padding: 12px 16px;
-	margin-bottom: 10px;
-	background: #f8f9fa;
-	position: relative;
-}
-.address-row-label,
-.contact-row-label {
-	font-weight: 600;
-	font-size: 13px;
-	color: #555;
-	margin-bottom: 8px;
-}
-.remove-address-btn,
-.remove-contact-btn {
-	position: absolute;
-	top: 10px;
-	right: 12px;
-	background: none;
-	border: none;
-	color: #dc3545;
-	font-size: 18px;
-	cursor: pointer;
-	line-height: 1;
-}
-.remove-address-btn:hover,
-.remove-contact-btn:hover {
-	color: #a71d2a;
-}
-
+/* ---- Phones ---- */
 @media (max-width: 767px) {
-	.kyc-page {
-		padding: 0 6px 20px;
+	.kyc-card {
+		padding: 16px 14px 4px;
+	}
+	.kyc-row {
+		padding: 12px 12px 0;
+	}
+	.kyc-form-actions {
+		flex-direction: column-reverse;
+		align-items: stretch;
+		gap: 8px;
+		padding: 10px 12px;
+		border-radius: 0;
+		margin: 0 -15px;
+	}
+	.kyc-error-summary:empty {
+		display: none;
 	}
 }

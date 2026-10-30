@@ -1,0 +1,155 @@
+1
+00:00:00,350 --> 00:00:16,000
+Welcome. In the next few minutes, you'll see how Fortuna Impex brings new suppliers and customers on board in E R P Next, with the S A S Fortuna app. From the first application, to a working portal login.
+
+2
+00:00:16,900 --> 00:00:42,030
+Here's the big picture. Suppliers apply online, the form checks their details, and a purchase manager approves. Approval creates the supplier, the contact and the portal login, and sends a welcome email. For customers, the welcome email goes out automatically with their first submitted sales order. Every email is logged, and can be re-sent in bulk.
+
+3
+00:00:42,930 --> 00:00:46,840
+Part one. Supplier onboarding.
+
+4
+00:00:47,740 --> 00:00:55,680
+A new supplier opens the Supplier Registration page on Fortuna's website. No login is needed.
+
+5
+00:00:56,580 --> 00:01:15,920
+As they type, the form helps. The PAN is filled in from the GSTIN. And here, the PIN code doesn't belong to West Bengal, so the form says exactly what to fix. It also checks the GSTIN, the mobile number, and whether the supplier is already registered.
+
+6
+00:01:16,820 --> 00:01:23,300
+Once it's corrected, the application is submitted, and the supplier sees a thank-you message.
+
+7
+00:01:24,200 --> 00:01:31,690
+Inside E R P Next, the application appears in the Supplier Onboarding list, marked Pending Approval.
+
+8
+00:01:32,590 --> 00:01:38,660
+The purchase team opens it, and reviews the company, tax and contact details.
+
+9
+00:01:39,560 --> 00:01:47,530
+A purchase manager then chooses Approve, or Reject. There's also a field to note a rejection reason.
+
+10
+00:01:48,430 --> 00:01:55,050
+On approval, the status turns to Approved, and the new supplier record is linked automatically.
+
+11
+00:01:55,950 --> 00:02:05,810
+Behind the scenes, the system has created the supplier, a contact, and a portal login with the supplier role, linked here under Portal Users.
+
+12
+00:02:06,710 --> 00:02:15,060
+The supplier receives a welcome email, with their login, a Set My Password button, and Fortuna's support contacts.
+
+13
+00:02:15,960 --> 00:02:21,770
+The supplier record now shows when the welcome email was sent, and by whom.
+
+14
+00:02:22,670 --> 00:02:30,130
+And every attempt is recorded in the Supplier Welcome Email Log, as sent, skipped, or failed.
+
+15
+00:02:31,030 --> 00:02:34,800
+Part two. Customer onboarding.
+
+16
+00:02:35,700 --> 00:02:44,290
+For customers, Fortuna's office team creates the customer as usual, and adds the contact's login under Portal Users.
+
+17
+00:02:45,190 --> 00:02:49,250
+At this point, no welcome email has been sent.
+
+18
+00:02:50,150 --> 00:02:54,420
+Now, the customer's first sales order is submitted...
+
+19
+00:02:55,320 --> 00:03:06,820
+...and the welcome email goes out automatically. The log records it, along with the sales order that triggered it. Later orders don't send it again.
+
+20
+00:03:07,720 --> 00:03:10,670
+The customer record is stamped too.
+
+21
+00:03:11,570 --> 00:03:18,270
+The customer's email explains how to set a password, and how to track orders and invoices.
+
+22
+00:03:19,170 --> 00:03:31,750
+Need to welcome existing customers, or send it again? Select them in the customer list, and choose Bulk Send Welcome Email. The same button is on the supplier list.
+
+23
+00:03:32,650 --> 00:03:40,500
+A summary shows who was emailed, and who was skipped. Here, one customer has no portal login yet.
+
+24
+00:03:41,400 --> 00:03:46,060
+Part three. The customer and supplier portals.
+
+25
+00:03:46,960 --> 00:03:54,470
+Once logged in, customers land on their portal. The menu on the left takes them to every page.
+
+26
+00:03:55,370 --> 00:04:03,630
+Quotations, orders, invoices and shipments all have search, status and date filters, sorting, and paging.
+
+27
+00:04:04,530 --> 00:04:07,290
+Here are the customer's orders...
+
+28
+00:04:08,190 --> 00:04:11,910
+...and each one opens with its items and totals.
+
+29
+00:04:12,810 --> 00:04:17,150
+Invoices show the due date, and what's still outstanding.
+
+30
+00:04:18,050 --> 00:04:21,050
+Shipments list every delivery.
+
+31
+00:04:21,950 --> 00:04:27,490
+My Ledger shows every invoice and payment, with a summary of the totals.
+
+32
+00:04:28,390 --> 00:04:36,670
+And on the Customer K Y C page, customers keep their own details up to date. Addresses and contacts...
+
+33
+00:04:37,570 --> 00:04:46,210
+...tax numbers, T D S and T C S, M S M E status, and bank details, each checked for the right format...
+
+34
+00:04:47,110 --> 00:04:53,160
+...plus uploads, like the G S T certificate, PAN card, and a cancelled cheque.
+
+35
+00:04:54,060 --> 00:05:05,170
+Suppliers get their own menu: requests for quotation, supplier quotations, purchase orders, purchase invoices, their ledger, and Supplier K Y C.
+
+36
+00:05:06,070 --> 00:05:12,930
+For a brand-new supplier, these lists start empty, and fill up as Fortuna does business with them.
+
+37
+00:05:13,830 --> 00:05:18,970
+The Supplier K Y C page is already filled in from the application...
+
+38
+00:05:19,870 --> 00:05:25,680
+...with the PAN and GSTIN carried over, so the supplier only completes the rest.
+
+39
+00:05:26,580 --> 00:05:39,300
+Details checked as they're typed, approval in one click, logins and welcome emails created for you, and portals your customers and suppliers can use from day one. Thank you for watching.

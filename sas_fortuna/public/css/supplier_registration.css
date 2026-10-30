@@ -1,0 +1,47 @@
+/* sas_fortuna: public Supplier Registration form (/supplier-registration).
+ * Loaded with public/js/supplier_registration.js by the Web Form's Client Script. */
+
+/* A field with a problem: red outline + message under it (supplier_registration.js) */
+.web-form .sf-invalid input,
+.web-form .sf-invalid select {
+	border-color: #dc2626 !important;
+	box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+}
+.web-form .sf-error {
+	color: #dc2626;
+	font-size: 0.8rem;
+	margin-top: 4px;
+}
+
+/* Footer: problem count next to Submit; no Discard on a public application */
+.web-form-footer .right-area {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.sf-error-summary {
+	color: #dc2626;
+	font-size: 0.85rem;
+	font-weight: 500;
+	white-space: nowrap;
+}
+.web-form-footer .discard-btn {
+	display: none;
+}
+.web-form-footer .submit-btn {
+	min-width: 160px;
+}
+
+/* Introduction and field hints */
+.web-form .web-form-introduction,
+.web-form .help-box {
+	color: #6b7280;
+}
+
+@media (max-width: 767px) {
+	.web-form-footer .right-area {
+		flex: 1;
+		flex-direction: column-reverse;
+		align-items: stretch;
+	}
+}

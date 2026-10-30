@@ -270,6 +270,18 @@ fixtures = [
 
 before_request = ["sas_fortuna.portal.apply_portal_overrides"]
 
+# /issues: serve the portal list (sidebar, columns, filters) instead of ERPNext's
+# standard "issues" Web Form list. See sas_fortuna/portal/renderers.py.
+page_renderer = ["sas_fortuna.portal.renderers.PortalListPage"]
+
+# Portal page tweaks, see sas_fortuna/portal/sidebar.py: the left menu on Web Form pages
+# (/my-ledger/<entry>), then no "Fortuna - " title prefix in portal headings (order matters:
+# the second one only acts on pages that have the left menu).
+update_website_context = [
+	"sas_fortuna.portal.sidebar.add_portal_menu",
+	"sas_fortuna.portal.sidebar.drop_title_prefix",
+]
+
 web_include_css = "/assets/sas_fortuna/css/portal.css"
 web_include_js = "/assets/sas_fortuna/js/portal.js"
 
@@ -277,17 +289,43 @@ web_include_js = "/assets/sas_fortuna/js/portal.js"
 # ============================================================================
 # MIGRATE HOOKS
 # ============================================================================
-# Run on every `bench migrate` (idempotent): KYC entries in the portal sidebar
-# and the Customer KYC custom fields. See sas_fortuna/setup/.
+# Run on every `bench migrate` (idempotent): KYC entries in the portal sidebar,
+# the Customer KYC custom fields and the /desk/sas-fortuna landing page.
+# See sas_fortuna/setup/.
 
 after_migrate = [
 	"sas_fortuna.setup.portal_menu.execute",
 	"sas_fortuna.setup.customer_fields.execute",
+	"sas_fortuna.setup.landing_page.execute",
 ]
 
-# Support Desk / Repair / AMC is kept OUT of git (see .gitignore). Wire its
-# setup only where its files exist, so a checkout without them still migrates.
+# ============================================================================
+# DOCUMENT EVENTS
+# ============================================================================
+# Supplier Registration (/supplier-registration): the form's own checks run again when the
+# application is saved, so nothing invalid gets in even if the page is bypassed. (Supplier
+# Onboarding is a custom DocType, so a controller file would be ignored.)
+
+doc_events = {
+	"Supplier Onboarding": {"before_insert": "sas_fortuna.api.supplier_registration.before_insert"},
+}
+
+# Support Desk / Repair / AMC is kept OUT of git until after testing and the
+# demo (see .gitignore). Wire it only where its files exist, so a checkout
+# without them still migrates.
 import os as _os
 
 if _os.path.exists(_os.path.join(_os.path.dirname(__file__), "setup", "support_desk.py")):
 	after_migrate.append("sas_fortuna.setup.support_desk.execute")
+
+	# Its document events, form scripts and daily jobs, switched on phase by
+	# phase in sas_fortuna/support/wiring.py.
+	import sas_fortuna.support.wiring as _support
+
+	doc_events = {**doc_events, **_support.doc_events}
+	doctype_js = _support.doctype_js
+	scheduler_events = _support.scheduler_events
+	# Customer portal: /repairs list and /repairs/<name> detail page.
+	website_route_rules = _support.website_route_rules
+	# Filter bar settings for /repairs; loaded before portal.js.
+	web_include_js = ["/assets/sas_fortuna/js/portal_support.js", web_include_js]

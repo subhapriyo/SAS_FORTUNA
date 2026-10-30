@@ -3,6 +3,22 @@
   "custom_menu": [
    {
     "enabled": 1,
+    "reference_doctype": "HD Ticket",
+    "role": "Customer",
+    "route": "/tickets",
+    "target": null,
+    "title": "Tickets"
+   },
+   {
+    "enabled": 1,
+    "reference_doctype": "Repair Order",
+    "role": "Customer",
+    "route": "/repairs",
+    "target": null,
+    "title": "Repairs"
+   },
+   {
+    "enabled": 1,
     "reference_doctype": "GL Entry",
     "role": "Customer",
     "route": "/my-ledger",
@@ -113,7 +129,7 @@
     "title": "Shipments"
    },
    {
-    "enabled": 1,
+    "enabled": 0,
     "reference_doctype": "Issue",
     "role": "Customer",
     "route": "/issues",
@@ -145,7 +161,7 @@
     "title": "Material Request"
    }
   ],
-  "modified": "2026-10-06 15:27:17.838143",
+  "modified": "2026-10-26 12:32:47.551612",
   "name": "Portal Settings"
  }
 ]

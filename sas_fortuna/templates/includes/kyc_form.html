@@ -5,9 +5,33 @@
         party_label  "Customer" | "Supplier"
         show_tan     show the TAN No. input
 
-    Input `name`s are the keys sent to / read from sas_fortuna.api.<party> (see api/party_kyc.py).
-    Behaviour (loading, address / contact rows, toggles, save) is in public/js/portal_kyc.js;
-    styling in public/css/portal_kyc.css. -#}
+    Input `name`s are the keys sent to / read from sas_fortuna.api.<party> (see api/party_kyc.py),
+    and the keys its error list points back to. Every input sits in a `.kyc-field` box, where
+    portal_kyc.js shows that field's error. Styling: public/css/portal_kyc.css. -#}
+
+{#- Bump when portal_kyc.js / .css change, so browsers fetch the new copy instead of a cached one. -#}
+{% set asset_version = "20261026.7" %}
+
+{%- macro input(name, label, placeholder="", type="text", col=6, readonly=False) -%}
+<div class="col-md-{{ col }} kyc-field">
+	<label class="kyc-label" for="{{ name }}">{{ label }}</label>
+	<input id="{{ name }}" name="{{ name }}" type="{{ type }}" class="form-control"
+		placeholder="{{ placeholder }}"{% if readonly %} readonly{% endif %} />
+</div>
+{%- endmacro %}
+
+{%- macro select(name, label, options=[], col=6, required=False, wrap_id=None) -%}
+<div class="col-md-{{ col }} kyc-field"{% if wrap_id %} id="{{ wrap_id }}" hidden{% endif %}>
+	<label class="kyc-label" for="{{ name }}">{{ label }}{% if required %} <span class="kyc-req">*</span>{% endif %}</label>
+	<select id="{{ name }}" name="{{ name }}" class="form-control">
+		<option value="">Select</option>
+		{%- for option in options %}
+		<option>{{ option }}</option>
+		{%- endfor %}
+	</select>
+</div>
+{%- endmacro %}
+
 {% set file_fields = [
 	("custom_gst_certificate", "GST Certificate"),
 	("custom_pan_card", "PAN Card"),
@@ -16,10 +40,11 @@
 	("custom_last_itr__acknowledgement", "Last ITR / Acknowledgement"),
 	("custom_msme_certificate", "MSME Certificate"),
 ] %}
-<link rel="stylesheet" href="/assets/sas_fortuna/css/portal_kyc.css" />
 
-<div class="container mt-4 kyc-page">
-	<!-- Full-screen overlay: shown while loading, and again while saving -->
+<link rel="stylesheet" href="/assets/sas_fortuna/css/portal_kyc.css?v={{ asset_version }}" />
+
+<div class="kyc-page">
+	<!-- Overlay: shown while loading, and again while saving -->
 	<div id="kyc-form-loading" class="kyc-form-loading" aria-live="polite" aria-busy="true">
 		<div class="kyc-form-loading__content">
 			<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
@@ -27,235 +52,113 @@
 		</div>
 	</div>
 
-	<form id="kyc-form" class="kyc-form" enctype="multipart/form-data">
-		<!-- Basic details: read-only, identify the party record -->
-		<section>
+	<form id="kyc-form" class="kyc-form" novalidate>
+		<!-- Basic details: read-only, they identify the record -->
+		<section class="kyc-card">
 			<h5>Basic Details</h5>
-			<hr />
 			<div class="row">
-				<div class="col-md-6 mb-2">
-					<label>{{ party_label }} Code</label>
-					<input type="text" name="{{ party }}_code" class="form-control" readonly />
-				</div>
-				<div class="col-md-6 mb-2">
-					<label>Name of {{ party_label }}</label>
-					<input type="text" name="{{ party }}_name" class="form-control" readonly />
-				</div>
+				{{ input(party ~ "_code", party_label ~ " Code", readonly=True) }}
+				{{ input(party ~ "_name", "Name of " ~ party_label, readonly=True) }}
 			</div>
 		</section>
 
-		<!-- Addresses: rows are drawn by portal_kyc.js; row 1 is the primary address -->
-		<section>
+		<!-- Addresses / contacts: rows are drawn by portal_kyc.js; row 1 is the primary one -->
+		<section class="kyc-card">
 			<h5>Address</h5>
-			<hr />
+			<p class="kyc-hint">The first address is your primary (billing) address.</p>
 			<div id="address-rows-container"></div>
-			<button type="button" class="btn btn-outline-info btn-sm mt-2 mb-3" data-kyc-add="address">
-				+ Add Address
-			</button>
+			<button type="button" class="btn btn-link btn-sm kyc-add" data-kyc-add="address">+ Add Address</button>
 		</section>
 
-		<!-- Contacts: rows are drawn by portal_kyc.js; row 1 is the primary contact -->
-		<section>
+		<section class="kyc-card">
 			<h5>Contact Details</h5>
-			<hr />
+			<p class="kyc-hint">Choose the country from the flag, then type the number.</p>
 			<div id="contact-rows-container"></div>
-			<button type="button" class="btn btn-outline-info btn-sm mt-2 mb-3" data-kyc-add="contact">
-				+ Add Contact
-			</button>
+			<button type="button" class="btn btn-link btn-sm kyc-add" data-kyc-add="contact">+ Add Contact</button>
 		</section>
 
-		<!-- Statutory details: GSTIN / PAN / Aadhaar are validated in the browser before saving -->
-		<section>
+		<section class="kyc-card">
 			<h5>Statutory Details</h5>
-			<hr />
 			<div class="row">
-				<div class="col-md-6 mb-3">
-					<label>GST No. (GSTIN)</label>
-					<input type="text" name="gstin" class="form-control" placeholder="GST No." />
-				</div>
-				<div class="col-md-6 mb-3">
-					<label>GST Category</label>
-					<select name="gst_category" id="gst_category" class="form-control">
-						<option value="">Select GST Category</option>
-					</select>
-				</div>
-				<div class="col-md-6 mb-3">
-					<label>PAN No.</label>
-					<input type="text" name="pan" class="form-control" placeholder="PAN No." />
-				</div>
-				{% if show_tan %}
-				<div class="col-md-6 mb-3">
-					<label>TAN No.</label>
-					<input type="text" name="custom_tan_no" class="form-control" placeholder="TAN No." />
-				</div>
-				{% endif %}
-				<div class="col-md-6 mb-3">
-					<label>Tax ID</label>
-					<input
-						type="text"
-						name="tax_id"
-						class="form-control"
-						placeholder="Tax ID"
-						title="{{ party_label }}'s tax identification number (e.g. PAN, VAT, GST)"
-					/>
-				</div>
-				<div class="col-md-6 mb-3">
-					<label>Aadhaar Number</label>
-					<input
-						type="text"
-						name="custom_aadhaar_number"
-						class="form-control"
-						placeholder="Aadhaar Number"
-					/>
-				</div>
+				{{ select("gst_category", "GST Category", required=True) }}
+				{{ input("gstin", "GST No. (GSTIN)", "e.g. 19AABCF1234A1ZB") }}
+				{{ input("pan", "PAN", "e.g. ABCDE1234F") }}
+				{% if show_tan %}{{ input("custom_tan_no", "TAN", "e.g. KOLA12345B") }}{% endif %}
+				{{ input("tax_id", "Tax ID", "Tax identification number") }}
+				{{ input("custom_aadhaar_number", "Aadhaar Number", "12 digits") }}
 			</div>
 		</section>
 
-		<!-- TDS / TCS: the withholding category only applies when TDS is "Yes" -->
-		<section>
-			<h5>Tax Identification</h5>
-			<hr />
+		<!-- The withholding category only applies when TDS is "Yes" (portal_kyc.js toggles it).
+		     custom_tds_applicable is saved to custom_tds_applicability (api/party_kyc.py FORM_ALIASES). -->
+		<section class="kyc-card">
+			<h5>TDS / TCS</h5>
 			<div class="row">
-				<div class="col-md-6">
-					<div class="col-12 mb-3">
-						<label>TDS Applicability</label>
-						<!-- saved to the custom_tds_applicability field (api/party_kyc.py FORM_ALIASES) -->
-						<select name="custom_tds_applicable" id="custom_tds_applicable" class="form-control mb-2">
-							<option value="">Select TDS Applicability</option>
-							<option value="No">No</option>
-							<option value="Yes">Yes</option>
-						</select>
-					</div>
-					<div class="col-12 mb-3" id="tds_section" style="display: none">
-						<label>Tax Withholding Category</label>
-						<select name="tax_withholding_category" id="tax_withholding_category" class="form-control">
-							<option value="">Select Tax Withholding Category</option>
-						</select>
-					</div>
-				</div>
-				<div class="col-md-6">
-					<div class="col-12 mb-3">
-						<label>TCS Applicability</label>
-						<select name="custom_tcs_applicable" id="custom_tcs_applicable" class="form-control mb-2">
-							<option value="">Select TCS Applicability</option>
-							<option value="No">No</option>
-							<option value="Yes">Yes</option>
-						</select>
-					</div>
-				</div>
+				{{ select("custom_tds_applicable", "TDS Applicable", ["No", "Yes"], col=4) }}
+				{{ select("tax_withholding_category", "Tax Withholding Category", col=4, wrap_id="tds_section") }}
+				{{ select("custom_tcs_applicable", "TCS Applicable", ["No", "Yes"], col=4) }}
 			</div>
 		</section>
 
-		<!-- MSME: the registration details only apply when MSME is "Yes".
-		     Option values must match the Select options of the custom fields (setup/customer_fields.py). -->
-		<section>
+		<!-- MSME details only apply when MSME is "Yes". Options must match the custom fields'
+		     Select options (setup/customer_fields.py). -->
+		<section class="kyc-card">
 			<h5>MSME Details</h5>
-			<hr />
 			<div class="row">
-				<div class="col-md-6 mb-3">
-					<label>MSME</label>
-					<select name="custom_msme" id="custom_msme" class="form-control">
-						<option value="">Select MSME</option>
-						<option value="No">No</option>
-						<option value="Yes">Yes</option>
-					</select>
-				</div>
+				{{ select("custom_msme", "Registered as MSME?", ["No", "Yes"]) }}
 			</div>
-			<div id="msme_fields" style="display: none">
-				<div class="row">
-					<div class="col-md-6 mb-3">
-						<label>Udyam Registration Number</label>
-						<input
-							name="custom_udyam_registration_number"
-							class="form-control"
-							placeholder="Udyam Registration Number"
-						/>
-					</div>
-					<div class="col-md-6 mb-3">
-						<label>Date of Registration</label>
-						<input type="date" name="custom_date_of_registration" class="form-control" />
-					</div>
-					<div class="col-md-6 mb-3">
-						<label>Type of Enterprise</label>
-						<select name="custom_type_of_enterprise" class="form-control">
-							<option value="">Select Type of Enterprise</option>
-							<option>Micro</option>
-							<option>Small</option>
-							<option>Medium</option>
-						</select>
-					</div>
-					<div class="col-md-6 mb-3">
-						<label>Type of Industry</label>
-						<input type="text" name="custom_type_of_industry" class="form-control" />
-					</div>
-					<div class="col-md-6 mb-3">
-						<label>Major Activity</label>
-						<select name="custom_major_activity" class="form-control">
-							<option value="">Select Major Activity</option>
-							<option>Manufacturer</option>
-							<option>Traders</option>
-							<option>Service Provider</option>
-						</select>
-					</div>
-				</div>
+			<div id="msme_fields" class="row" hidden>
+				{{ input("custom_udyam_registration_number", "Udyam Registration Number", "e.g. UDYAM-WB-10-0012345") }}
+				{{ input("custom_date_of_registration", "Date of Registration", type="date") }}
+				{{ select("custom_type_of_enterprise", "Type of Enterprise", ["Micro", "Small", "Medium"]) }}
+				{{ input("custom_type_of_industry", "Type of Industry") }}
+				{{ select("custom_major_activity", "Major Activity", ["Manufacturer", "Traders", "Service Provider"]) }}
 			</div>
 		</section>
 
-		<!-- Bank: saved as the party's default Bank Account (IFSC goes to Bank Account.branch_code) -->
-		<section>
+		<!-- Saved as the party's default Bank Account (the IFSC goes to Bank Account.branch_code) -->
+		<section class="kyc-card">
 			<h5>Bank Details</h5>
-			<hr />
+			<p class="kyc-hint">Fill in all three, or leave all three empty.</p>
 			<div class="row">
-				<div class="col-md-4 mb-3">
-					<input name="custom_bank_name" class="form-control" placeholder="Bank Name" />
-				</div>
-				<div class="col-md-4 mb-3">
-					<input name="custom_account_no" class="form-control" placeholder="Account Number" />
-				</div>
-				<div class="col-md-4 mb-3">
-					<input name="custom_ifsc_code" class="form-control" placeholder="IFSC Code" />
-				</div>
+				{{ input("custom_bank_name", "Bank Name", "e.g. State Bank of India", col=4) }}
+				{{ input("custom_account_no", "Account Number", "9 to 18 digits", col=4) }}
+				{{ input("custom_ifsc_code", "IFSC", "e.g. SBIN0001234", col=4) }}
 			</div>
 		</section>
 
-		<!-- Attachments: uploaded as private files on save, then attached to the party record.
-		     File inputs have no `name`: portal_kyc.js uploads them and sends back the file URL. -->
-		<section>
+		<!-- Uploaded as private files on save, then attached to the party record. File inputs have
+		     no `name`: portal_kyc.js uploads them and sends back the file URL under the input's id. -->
+		<section class="kyc-card">
 			<h5>Attachments</h5>
-			<hr />
+			<p class="kyc-hint">PDF or image, up to 10 MB each.</p>
 			<div class="row">
 				{% for fieldname, label in file_fields %}
-				<div class="col-md-6 mb-3">
-					<label>{{ label }}</label>
-					<input
-						type="file"
-						class="form-control"
-						id="{{ fieldname }}"
-						accept=".pdf, image/*"
-					/>
-					<a
-						id="link_{{ fieldname }}"
-						href="#"
-						target="_blank"
-						style="display: none !important; text-decoration: none; font-weight: bold"
-						class="mt-1 mb-1 small text-primary d-block"
-						title="{{ label }}"
-						>&#128206; View Uploaded File</a
-					>
+				<div class="col-md-6 kyc-field">
+					<label class="kyc-label" for="{{ fieldname }}">{{ label }}</label>
+					<input type="file" class="form-control" id="{{ fieldname }}" accept=".pdf,image/*" />
+					<a id="link_{{ fieldname }}" href="#" target="_blank" class="kyc-file-link" hidden>View uploaded file</a>
 				</div>
 				{% endfor %}
 			</div>
 		</section>
 
-		<section>
-			<div class="kyc-form-actions">
-				<button type="submit" class="btn btn-success btn-lg">Save</button>
-			</div>
-		</section>
+		<!-- Sticks to the bottom of the screen; shows how many fields need attention -->
+		<div class="kyc-form-actions">
+			<span id="kyc-error-summary" class="kyc-error-summary" role="alert"></span>
+			<button type="submit" class="btn btn-primary">Save</button>
+		</div>
 	</form>
 </div>
 
-<script src="/assets/sas_fortuna/js/portal_kyc.js"></script>
+<script src="/assets/sas_fortuna/js/sf_validation.js?v={{ asset_version }}"></script>
+<script src="/assets/sas_fortuna/js/portal_kyc.js?v={{ asset_version }}"></script>
 <script>
-	SASPortalKyc.initPage({ party: "{{ party }}", label: "{{ party_label }}" });
+	SASPortalKyc.initPage({
+		party: "{{ party }}",
+		label: "{{ party_label }}",
+		// Frappe's form controls (the Desk Phone field with its country picker), for Phone / Mobile.
+		// Loaded by portal_kyc.js once the page is ready: it needs jQuery, which loads after this block.
+		controls_bundle: "{{ bundled_asset('controls.bundle.js') }}",
+	});
 </script>

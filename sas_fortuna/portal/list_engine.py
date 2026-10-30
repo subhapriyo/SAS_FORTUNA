@@ -97,6 +97,9 @@ def paginate_list_context(module_path, get_list=None, columns=None):
 			list_context = original(context)
 			if not is_active():
 				return list_context
+			# Without a list_template Frappe sets context.template = None (doctypes with no
+			# templates/<doctype>_list.html, e.g. Issue), and the page fails to render.
+			list_context.setdefault("list_template", "templates/includes/list/list.html")
 			base = list_context.get("row_template")
 			if columns:
 				list_context["sf_columns"] = columns
@@ -112,6 +115,19 @@ def paginate_list_context(module_path, get_list=None, columns=None):
 		module.get_list_context = get_list_context
 
 	add_patch(_patch)
+
+
+def search_filters(doctype, txt, fields):
+	"""OR-filters for the list's Search box: `txt` anywhere in any of `fields`.
+
+	Frappe's own search only looks at the doctype's "search fields" (often just the name). Our
+	lists pass the fields a customer would actually type (subject, serial no, voucher no...)
+	and call frappe.www.list.get_list with txt=None and these as or_filters.
+	"""
+	txt = (txt or "").strip()
+	if not txt:
+		return None
+	return [[doctype, field, "like", f"%{txt}%"] for field in fields]
 
 
 # ---------------------------------------------------------------------------
@@ -315,11 +331,15 @@ def _patch_portal_get():
 
 	original = portal.get
 
-	def get(doctype, **kwargs):
+	# Pass every argument through unchanged. Frappe v16's signature is
+	# get(list_context=None, /, doctype=None, ...): the page calls get(list_context, doctype=...),
+	# older releases called get(doctype, ...). Read the doctype from wherever it is.
+	def get(*args, **kwargs):
+		doctype = kwargs.get("doctype") or next((a for a in args if isinstance(a, str)), None)
 		cfg = REGISTRY.get(doctype)
 		if cfg and cfg["paginate"] and is_active():
 			kwargs["limit"] = _page_len()
-		return original(doctype, **kwargs)
+		return original(*args, **kwargs)
 
 	portal.get = get
 

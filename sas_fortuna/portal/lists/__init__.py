@@ -7,6 +7,7 @@ to public/js/portal.js (PAGES).
 
 from sas_fortuna.portal.lists import (
 	delivery_note,
+	gl_entry,  # /my-ledger
 	issue,
 	purchase_invoice,
 	purchase_order,

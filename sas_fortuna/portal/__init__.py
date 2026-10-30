@@ -9,3 +9,8 @@ hooks.py runs apply_portal_overrides before every request.
 
 from sas_fortuna.portal import lists  # registers every list page
 from sas_fortuna.portal.list_engine import apply as apply_portal_overrides
+
+try:  # /repairs and /tickets lists (Support Desk, kept out of git until go-live; absent on a plain checkout)
+	from sas_fortuna.support import portal_repairs, portal_tickets
+except ImportError:
+	pass

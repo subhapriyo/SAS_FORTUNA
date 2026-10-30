@@ -11,6 +11,8 @@
 	"To Bill": "orange", "To Deliver": "orange", "To Deliver and Bill": "orange", "To Receive": "orange",
 	"To Receive and Bill": "orange", "Return Issued": "gray", "Expired": "gray", "Ordered": "green", "Debit Note Issued": "gray"
 } %}
+{#- a list can add its own status colours through sf_status_colors in its list context -#}
+{% if sf_status_colors %}{% set colors = dict(colors, **sf_status_colors) %}{% endif %}
 {% set items = doc.get("items") %}
 {% set preview = doc.get("items_preview") or ((items[0].get("item_name") or items[0].get("item_code")) if items else "") %}
 

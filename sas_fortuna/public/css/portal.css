@@ -150,6 +150,7 @@
 	border-bottom: 1px solid #e2e6ea;
 }
 .sf-qrow {
+	font-size: 13px; /* same text size as the table lists (.sf-table): /invoices, /orders, ... */
 	padding: 14px 10px;
 	border-bottom: 1px solid #eef0f2;
 	color: inherit;
@@ -626,4 +627,61 @@ body[data-path^="purchase-invoices/"] .indicator-pill {
 		min-width: 0;
 		margin-right: 0;
 	}
+}
+
+/* ---- List Search box (Frappe's list filters.html) ----
+   Frappe gives it half the row (col-6), too narrow for hints like "Search repair no., serial no.,
+   model or problem" (portal.js sets the hint per page). Let it grow, within reason. */
+.website-list-filters > .row > .col-6 {
+	flex: 1 1 auto;
+	max-width: 440px;
+}
+.website-list-filters .form-search,
+.website-list-filters .form-search .input-group {
+	width: 100%;
+}
+
+/* ---- My Ledger: summary under the list (portal/lists/gl_entry.py, _summary) ---- */
+.sf-ledger-summary {
+	max-width: 420px;
+	margin: 18px 0 8px auto; /* right-aligned, under the amount columns */
+	padding: 12px 16px;
+	border: 1px solid #e2e6ea;
+	border-radius: 10px;
+	font-size: 14px;
+}
+.sf-ledger-summary h5 {
+	margin: 0 0 8px;
+	font-size: 13px;
+	color: #6b7280;
+}
+.sf-ledger-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 4px 0;
+}
+.sf-ledger-row span:last-child {
+	text-align: right;
+}
+.sf-ledger-total {
+	margin-top: 4px;
+	padding-top: 8px;
+	border-top: 1px solid #e2e6ea;
+	font-weight: 600;
+	color: #111827;
+}
+@media (max-width: 576px) {
+	.sf-ledger-summary {
+		max-width: none;
+		margin-left: 0;
+	}
+}
+
+/* ---- My Ledger, old Web Form list (/my-ledger/list) ----
+   Frappe draws a select checkbox on every web-form list row, even though customers cannot delete
+   ledger entries. Hide the checkbox column (header "select all" + each row). */
+body[data-path^="my-ledger"] .web-list-table th:has(.select-all),
+body[data-path^="my-ledger"] .web-list-table .list-col-checkbox {
+	display: none;
 }
