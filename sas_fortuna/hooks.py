@@ -314,8 +314,12 @@ web_include_js = "/assets/sas_fortuna/js/portal.js"
 # "Repair Receipt" Stock Entry Type. install-app saves every Single with its
 # defaults (init_singles) and validates links before after_migrate ever runs,
 # so that Stock Entry Type must exist first. See sas_fortuna/setup/install.py.
+#
+# install-app never runs after_migrate either, so after_install runs those
+# steps once (landing page block, portal menu, custom fields, roles, perms).
 
 before_install = "sas_fortuna.setup.install.before_install"
+after_install = "sas_fortuna.setup.install.after_install"
 
 
 # ============================================================================
