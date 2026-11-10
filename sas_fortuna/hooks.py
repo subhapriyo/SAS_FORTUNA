@@ -308,6 +308,17 @@ web_include_js = "/assets/sas_fortuna/js/portal.js"
 
 
 # ============================================================================
+# INSTALL HOOKS
+# ============================================================================
+# Fortuna Support Settings (a Single) defaults repair_receipt_entry_type to the
+# "Repair Receipt" Stock Entry Type. install-app saves every Single with its
+# defaults (init_singles) and validates links before after_migrate ever runs,
+# so that Stock Entry Type must exist first. See sas_fortuna/setup/install.py.
+
+before_install = "sas_fortuna.setup.install.before_install"
+
+
+# ============================================================================
 # MIGRATE HOOKS
 # ============================================================================
 # Run on every `bench migrate` (idempotent): KYC entries in the portal sidebar,
