@@ -93,26 +93,23 @@ li {
 							<!-- Login details (as in the client's letter) -->
 							<p style="margin-bottom:4px;"><strong>Your Login Details:</strong></p>
 							<p style="margin:0;"><strong>Login ID:</strong> <a href="mailto:{{ portal_email }}" target="_blank">{{ portal_email }}</a></p>
-							<p style="margin:0 0 12px 0;"><strong>{{ _portal }}:</strong> <a href="{{ (portal_url or '').rstrip('/') }}/login" target="_blank">Click here to login</a></p>
+							<p style="margin:0 0 12px 0;"><strong>{{ _portal }}:</strong> <a href="{{ (portal_url or '').rstrip('/') }}/login" target="_blank">Click Here to Login</a></p>
+
+							<div style="margin:15px auto 15px 0;">
+							  <a href="{{ (portal_url or '').rstrip('/') }}/login" target="_blank"
+							  style="background-color:#6a2c70;color:#ffffff;padding:10px 20px;display:inline-block;border-radius:4px;">Go to My Account</a>
+							</div>
 
 							<!-- Password setup: real reset link if provided, else point to Forgot Password -->
 							{% if reset_password_url %}
-							<p>Since this is your first login, please set your password using the button below:</p>
+							<p>As this is your first login, please set your password first:</p>
 							<div style="margin:15px auto;">
 							  <a href="{{ reset_password_url }}" target="_blank"
-							  style="background-color:#6a2c70;color:#ffffff;padding:10px;display:inline-block;">Set My Password</a>
+							  style="background-color:#6a2c70;color:#ffffff;padding:10px 20px;display:inline-block;border-radius:4px;">Set My Password</a>
 							</div>
-							<p>Once your password is set, you can log in with the button below:</p>
 							{% else %}
 							<p>Since this is your first login, click <strong>Forgot Password</strong> on the login page to set your password.</p>
 							{% endif %}
-
-							<div style="margin:15px auto;">
-							  <a href="{{ (portal_url or '').rstrip('/') }}/login" target="_blank"
-								 style="background-color:#6a2c70;color:#ffffff;padding:10px;display:inline-block;">
-								Go to My Account
-							  </a>
-							</div>
 							<p>You can now access our {{ _portal }} using the above link.</p>
 
 							<p><strong>How to Get Started:</strong></p>
