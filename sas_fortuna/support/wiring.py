@@ -22,7 +22,11 @@ doc_events = {
 	"Customer": {"after_insert": S + "customer_sync.customer_after_insert"},
 	"Contact": {"validate": S + "customer_sync.contact_validate"},
 	# Phase 2: ticket classification and routing; stamp serials on sale
-	"HD Ticket": {"validate": S + "hd_ticket.validate", "on_update": S + "hd_ticket.on_update"},
+	"HD Ticket": {
+		"before_insert": S + "hd_ticket.before_insert",
+		"validate": S + "hd_ticket.validate",
+		"on_update": S + "hd_ticket.on_update",
+	},
 	"Sales Invoice": {
 		"on_submit": [S + "sales.sales_invoice_on_submit", S + "repair.sales_invoice_on_submit"]
 	},

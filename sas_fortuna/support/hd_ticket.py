@@ -7,7 +7,6 @@ SLA and assignment stay in Helpdesk configuration.
 
 import frappe
 from frappe import _
-from frappe.utils import today
 
 from sas_fortuna.support.utils import (
 	get_erpnext_customer,
@@ -19,11 +18,21 @@ from sas_fortuna.support.utils import (
 RESOLVED_STATES = ("Resolved", "Closed")
 
 
+def before_insert(doc, method=None):
+	# Runs before Helpdesk resets a new ticket's status to Open: remember an imported ticket's status.
+	from sas_fortuna.support.legacy_import import remember_legacy_status
+
+	remember_legacy_status(doc)
+
+
 def validate(doc, method=None):
+	from sas_fortuna.support.legacy_import import validate_legacy
+
 	route_to_team(doc)
 	apply_serial_details(doc)
 	apply_customer_from_sender(doc)  # after the serial: the unit's owner wins
 	require_resolution_notes(doc)
+	validate_legacy(doc)  # imported old tickets only: number, dates
 
 
 # ---------------------------------------------------------------------------
@@ -66,9 +75,29 @@ def sender_customer(doc):
 
 
 def on_update(doc, method=None):
-	# F7: remember when this unit was last serviced.
-	if doc.has_value_changed("status") and doc.status in RESOLVED_STATES and doc.get("custom_serial_no"):
-		frappe.db.set_value("Serial No", doc.custom_serial_no, "custom_last_service_date", today())
+	# F7: remember when this unit was last serviced. Imported old tickets use their own closing
+	# date and never move the date back (legacy_import.last_service_date).
+	from sas_fortuna.support.legacy_import import (
+		guard_legacy_reopen,
+		keep_legacy_resolution_date,
+		last_service_date,
+	)
+
+	guard_legacy_reopen(doc)  # before the rest: it may put doc.status back to a finished state
+	keep_legacy_resolution_date(doc)
+	if not doc.get("custom_serial_no") or doc.status not in RESOLVED_STATES:
+		return
+	# A normal ticket only stamps the unit the moment it becomes Resolved/Closed, not on every later
+	# edit of an already-finished ticket (that would keep bumping the date forward). A legacy ticket
+	# can go through more than one on_update during import (Helpdesk turns its own description into
+	# an inbound "first communication", which re-saves the ticket - see legacy_import.py), so for
+	# those has_value_changed() on any one save isn't reliable; last_service_date() is itself
+	# idempotent and never moves the date backwards, so it is safe to (re)apply on every call.
+	if not doc.get("custom_is_legacy") and not doc.has_value_changed("status"):
+		return
+	serviced = last_service_date(doc)
+	if serviced:
+		frappe.db.set_value("Serial No", doc.custom_serial_no, "custom_last_service_date", serviced)
 
 
 # ---------------------------------------------------------------------------

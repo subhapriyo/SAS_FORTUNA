@@ -247,6 +247,41 @@ HD_TICKET_FIELDS = _chain(
 		_ro(fieldname="custom_sales_order", fieldtype="Link", label="Sales Order", options="Sales Order"),
 		_ro(fieldname="custom_repair_order", fieldtype="Link", label="Repair Order", options="Repair Order"),
 		_ro(fieldname="custom_repair_status", fieldtype="Data", label="Repair Status"),
+		# Tickets imported from Fortuna's old system (support/legacy_import.py). Shown only on them.
+		{
+			"fieldname": "custom_legacy_section",
+			"fieldtype": "Section Break",
+			"label": "Legacy (Old System)",
+			"collapsible": 1,
+			"depends_on": "eval:doc.custom_is_legacy",
+		},
+		{
+			"fieldname": "custom_is_legacy",
+			"fieldtype": "Check",
+			"label": "Is Legacy",
+			"read_only": 1,
+			"in_standard_filter": 1,
+		},
+		{
+			"fieldname": "custom_legacy_ticket_no",
+			"fieldtype": "Data",
+			"label": "Legacy Ticket No",
+			"unique": 1,
+			"in_standard_filter": 1,
+			"in_global_search": 1,
+			"search_index": 1,
+		},
+		{"fieldname": "custom_legacy_source", "fieldtype": "Data", "label": "Legacy Source"},
+		{"fieldname": "custom_legacy_engineer", "fieldtype": "Data", "label": "Legacy Engineer"},
+		{"fieldname": "custom_legacy_cb", "fieldtype": "Column Break"},
+		{"fieldname": "custom_legacy_opened_on", "fieldtype": "Datetime", "label": "Legacy Opened On"},
+		{"fieldname": "custom_legacy_closed_on", "fieldtype": "Datetime", "label": "Legacy Closed On"},
+		{
+			"fieldname": "custom_legacy_serial_no",
+			"fieldtype": "Data",
+			"label": "Legacy Serial No",
+			"in_global_search": 1,
+		},
 	]
 )
 
