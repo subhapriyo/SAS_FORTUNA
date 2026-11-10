@@ -16,6 +16,13 @@ so it is version-controlled alongside the scripts that render it.
 execute() only CREATES the template when it is missing. An existing template
 is never overwritten; execute() reports whether its subject/body differ from
 the app's copy so you can decide what to do.
+
+To replace the site's template with the app's copy, keeping the old one:
+
+    bench --site <site> execute sas_fortuna.scripts.portal_welcome_email_template.update
+
+update() first copies the current template to a new Email Template named
+"Portal Welcome Email (backup YYYY-MM-DD HH-MM)", then writes the app's body.
 """
 
 import frappe
@@ -72,6 +79,38 @@ def execute():
 	).insert(ignore_permissions=True)
 	frappe.db.commit()
 	print(f"Created Email Template '{TEMPLATE_NAME}'.")
+
+
+def update():
+	"""Back up the site's template, then replace its body with the app's copy."""
+	if not frappe.db.exists("Email Template", TEMPLATE_NAME):
+		execute()
+		return
+
+	template = frappe.get_doc("Email Template", TEMPLATE_NAME)
+	if not _compare(template):
+		print(f"Email Template '{TEMPLATE_NAME}' already matches the app copy - nothing to do.")
+		return
+
+	stamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H-%M")
+	backup_name = f"{TEMPLATE_NAME} (backup {stamp})"
+	frappe.get_doc(
+		{
+			"doctype": "Email Template",
+			"name": backup_name,
+			"subject": template.subject,
+			"use_html": template.get("use_html"),
+			"response_html": template.get("response_html"),
+			"response": template.get("response"),
+		}
+	).insert(ignore_permissions=True)
+
+	template.subject = SUBJECT
+	template.use_html = 1
+	template.response_html = _app_body()
+	template.save(ignore_permissions=True)
+	frappe.db.commit()
+	print(f"Backed up to '{backup_name}' and updated '{TEMPLATE_NAME}' from the app copy.")
 
 
 def verify():

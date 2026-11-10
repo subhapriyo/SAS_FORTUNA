@@ -1,8 +1,37 @@
+{#-
+  Portal Welcome Email for Customers and Suppliers.
+  Layout and wording: portal_welcome_email.backup-2026-11-06.html (primary).
+  Contact section: the client's "Annexure" (previous portal_welcome_email.html).
+  The "Your Account / Name of Customer / Name of Contact" block is intentionally left out.
+
+  Expected context from the four welcome-email Server Scripts:
+    doc, party_type ("Customer" | "Supplier"), first_name, full_name,
+    portal_email, portal_url, reset_password_url, company
+
+  Company name and logo come from the system, never hard-coded:
+    name:  `company` (Sales Order's company), else Global Defaults > Default Company
+    logo:  that Company's "Company Logo", else Website Settings > App Logo
+    phone / e-mail in the footer: that Company's Phone No and Email (shown only if filled)
+  The logo must be a PUBLIC file (/files/...), or mail clients cannot load it.
+-#}
+{%- set _company_id = company or frappe.db.get_single_value("Global Defaults", "default_company") or "" -%}
+{%- set _company = _company_id | title -%}  {#- shown name: "FORTUNA IMPEX PVT LTD" -> "Fortuna Impex Pvt Ltd" -#}
+{%- set _logo = (frappe.db.get_value("Company", _company_id, "company_logo") if _company_id else "") or frappe.db.get_single_value("Website Settings", "app_logo") or "" -%}
+{%- if _logo and not (_logo.startswith("http://") or _logo.startswith("https://")) -%}
+  {%- set _logo = (portal_url or "").rstrip("/") ~ "/" ~ _logo.lstrip("/") -%}
+{%- endif -%}
+{%- set _brand = (_company.split(" ")[0] if _company else "our") -%}
+{%- set _is_supplier = party_type == "Supplier" -%}
+{%- set _portal = "Supplier Portal" if _is_supplier else "Customer Portal" -%}
+{%- set _party_name = (doc.supplier_name if _is_supplier else doc.customer_name) if doc else "" -%}
+{%- set _contact = full_name or _party_name or first_name  -%}
+{%- set _company_phone = frappe.db.get_value("Company", _company_id, "phone_no") if _company_id else "" -%}
+{%- set _company_email = frappe.db.get_value("Company", _company_id, "email") if _company_id else "" -%}
 <!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Welcome to Fortuna Impex Pvt Ltd!</title>
+<title>Welcome to {{ _company }}!</title>
 <style type="text/css">
 body {
     font-style: italic;
@@ -38,12 +67,14 @@ li {
                 <td align="center"><table border="0" cellpadding="0" cellspacing="0" width="590">
                     <tbody>
                       <tr>
-                        <td valign="middle">&nbsp;</td>
-                        <td valign="middle" align="right"><img width="80" alt="FORTUNA IMPEX PVT.LTD." src="https://fortunaimpex.com/wp-content/uploads/2023/12/Footer-Logo.png"></td>
+                        <td valign="middle">{% if not _logo %}<strong style="font-style:normal;font-size:18px;">{{ _company }}</strong>{% else %}&nbsp;{% endif %}</td>
+                        <td valign="middle" align="right">{% if _logo %}<img width="80" alt="{{ _company }}" src="{{ _logo }}">{% endif %}</td>
                       </tr>
                       <tr>
-                        <td colspan="2"><hr width="100%"></td>
-                      </tr>
+                      <td colspan="2" style="padding-top:14px;">
+                        <hr style="border:0;border-top:1px solid #cccccc;">
+                      </td>
+                    </tr>
                     </tbody>
                   </table></td>
               </tr>
@@ -53,21 +84,17 @@ li {
                       <tr>
                         <td valign="top">
 							<div>
-							<!-- Greeting: prefer first_name, else fall back to party name -->
-							<!-- Fixed: check top-level party_type (passed by the scripts), not doc.get("party_type") which is never set -->
-							<p>Dear {{ first_name or (doc.supplier_name if party_type == "Supplier" else doc.customer_name) }},</p>
-							<p><strong>Welcome to Fortuna Family!</strong></p>
+							<!-- Greeting: prefer first_name, else fall back to the party name -->
+							<p>Dear {{ _contact or "Sir / Madam" }},</p>
+							<p><strong>Welcome to {{ _brand }} Family!</strong></p>
 
-							<!-- Party-type specific blurb: only renders if party_type was passed in context -->
-							{% if party_type %}
-							  {% if party_type == "Customer" %}
-								<p>Your Customer Portal account has been created. You can now log in to track your orders, invoices, and update your account details.</p>
-							  {% elif party_type == "Supplier" %}
-								<p>Your Supplier Portal account has been created. You can now log in to view and respond to your RFQs, review purchase orders, and manage your supplier account details.</p>
-							  {% endif %}
-							{% endif %}
+							<p>We are pleased to inform you that your {{ _portal | lower }} account has been successfully created.</p>
 
-                            <p>Your login email is: <strong><a href="mailto:{{ portal_email }}" target="_blank">{{ portal_email }}</a></strong></p>
+							<!-- Login details (as in the client's letter) -->
+							<p style="margin-bottom:4px;"><strong>Your Login Details:</strong></p>
+							<p style="margin:0;"><strong>Login ID:</strong> <a href="mailto:{{ portal_email }}" target="_blank">{{ portal_email }}</a></p>
+							<p style="margin:0 0 12px 0;"><strong>{{ _portal }}:</strong> <a href="{{ (portal_url or '').rstrip('/') }}/login" target="_blank">Click here to login</a></p>
+
 							<!-- Password setup: real reset link if provided, else point to Forgot Password -->
 							{% if reset_password_url %}
 							<p>Since this is your first login, please set your password using the button below:</p>
@@ -75,83 +102,59 @@ li {
 							  <a href="{{ reset_password_url }}" target="_blank"
 							  style="background-color:#6a2c70;color:#ffffff;padding:10px;display:inline-block;">Set My Password</a>
 							</div>
+							<p>Once your password is set, you can log in with the button below:</p>
 							{% else %}
 							<p>Since this is your first login, click <strong>Forgot Password</strong> on the login page to set your password.</p>
 							{% endif %}
 
-							<p>Once your password is set, you can log in and access your account here:</p>
-
 							<div style="margin:15px auto;">
-							  <a href="{{ portal_url }}/login" target="_blank"
+							  <a href="{{ (portal_url or '').rstrip('/') }}/login" target="_blank"
 								 style="background-color:#6a2c70;color:#ffffff;padding:10px;display:inline-block;">
 								Go to My Account
 							  </a>
 							</div>
-                            <p>We're thrilled to have you on board and look forward to a successful partnership.<br />To ensure a smooth onboarding process, we&rsquo;ve outlined the key contacts and escalation matrix below:</p>
-                            <ul>
-                              <li>Escalation Matrix</li>
-                              <li><u>Service Department</u>: Service Call Logging / Registration:
-                                <ol>
-                                  <li>Ms. Ansari Begum (Support Co Ordinator)<br />Mobile No.: +919903992343, Email: <a href="mailto:amc@fortunaindia.com" target="_blank">amc@fortunaindia.com</a></li>
-                                  <li>Rakhi Naskar (Contract &amp; Subscription)<br />Mobile No.: +919147424538, Email: <a href="mailto:subscription@fortunaindia.com" target="_blank">subscription@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-                              <li><u>Software Support</u>:
-                                <ol>
-                                  <li>Insan Habib Ali<br /> Email: <a href="mailto:support@fortunaindia.com" target="_blank">support@fortunaindia.com</a></li>
-                                  <li>Shreyashi Dutta<br /> Email: <a href="mailto:helpdesk@fortunaindia.com" target="_blank">helpdesk@fortunaindia.com</a></li>
-                                  <li>Manisha Shaw<br /> Email: <a href="mailto:software@fortunaindia.com" target="_blank">software@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-                              <li><u>2nd Level Software Support / Escalation</u>:
-                                <ol>
-                                  <li>Shashikant Samal (HOD Software Support)<br />Email: <a href="mailto:ezeehr@fortunaindia.com" target="_blank">ezeehr@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-                              <li><u>Level 2 Hardware Support/Escalation</u>:
-                                <ol>
-                                  <li>Manoranjan Naskar (HOD Hardware Support)<br />Email: <a href="mailto:project@fortunaindia.com" target="_blank">project@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-                              <li><u>Integration, POC, Technical Clarification</u>:
-                                <ol>
-                                  <li>Nidhuram Mondal<br />Email: <a href="mailto:project1@fortunaindia.com" target="_blank">project1@fortunaindia.com</a></li>
-                                  <li>Md. Faisal<br />Email: <a href="mailto:project2@fortunaindia.com" target="_blank">project2@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-                              <li><u>TRC (Technical Repairing Centre)</u>:
-                                <ol>
-                                  <li>Ms Moutusi Manna<br />Email: <a href="mailto:service1@fortunaindia.com" target="_blank">service1@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-                              <li><u>Regional Technical Support</u>:
-                                <ol>
-                                  <li><strong>Hyderabad (Telangana/AP)</strong>: Gopala Rao<br />
-                                    Mobile No.: +919330900547, Email: <a href="mailto:hyd.support@fortunaindia.com" target="_blank">hyd.support@fortunaindia.com</a></li>
-                                  <li><strong>Mumbai</strong>: Raj Kumar Sahu<br />
-                                    Mobile No.: +917044468443, Email: <a href="mailto:mum.support@fortunaindia.com" target="_blank">mum.support@fortunaindia.com</a></li>
-                                  <li><strong>Bangalore/Karnataka/TN</strong>: Rajendra Prasad<br />
-                                    Mobile No.: +917044434401, Email: <a href="mailto:blore@fortunaindia.com" target="_blank">blore@fortunaindia.com</a></li>
-                                  <li><strong>Bihar &amp; UP</strong> : Kaushal Prasad<br />
-                                  Mobile No.: +917604012207, Email: <a href="mailto:bup@fortunaindia.com" target="_blank">bup@fortunaindia.com</a></li>
-                                  <li><strong>Odisha : </strong>Suresh Bahera<br />Mobile No.: +919330900543, Email: <a href="mailto:bbsr@fortunaindia.com" target="_blank">bbsr@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-								<li><u>Pre-Sales Support</u>:
-                                <ol>
-                                  <li>Ms. Nandini Dey, MarCOM<br />Mobile: +919903964859, Email: <a href="mailto:dealersales@fortunaindia.com" target="_blank">dealersales@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-								<li><u>Level 3 Escalation of any sort</u>:
-                                <ol>
-                                  <li>Ms. Keya Ghosh<br /> Mobile: +919903992344, Email: <a href="mailto:info@fortunaindia.com" target="_blank">info@fortunaindia.com</a></li>
-                                </ol>
-                              </li>
-                            </ul>
-                            <p>If you have any questions or concerns, Please don't hesitate to reach out to your primary contact or the support team. If your issue requires escalation, please refer to the matrix above.</p>
-                            <!-- Signature: fixed to use the top-level `company` variable (already passed by the scripts), not doc.company which doesn't exist on either Customer or the Supplier staging doc -->
-                            <p>Regards,<br>{{ company or "Company" }} Team</p>
-					</div>
+							<p>You can now access our {{ _portal }} using the above link.</p>
+
+							<p><strong>How to Get Started:</strong></p>
+							<p>To ensure smooth and efficient service support, we request you to:</p>
+							<ol>
+							  {% if _is_supplier %}
+							  <li>Log in to the {{ _brand }} {{ _portal }} using your registered email ID.</li>
+							  <li>View and respond to our Requests for Quotation, and track your quotations.</li>
+							  <li>Track your Purchase Orders, Purchase Invoices and payments through your ledger.</li>
+							  <li>Keep your company, tax and bank details up to date on the Supplier KYC page.</li>
+							  {% else %}
+							  <li>Log in to the {{ _brand }} {{ _portal }} using your registered email ID.</li>
+							  <li>Register your service request by creating a ticket through the portal.</li>
+							  <li>Use the ticket system to track the status and progress directly through the ticket management system.</li>
+							  <li>Use your portal login credentials to track the status of your Sales Orders, Deliveries, Invoices and other relevant transactions.</li>
+							  {% endif %}
+							</ol>
+							<p>If you have not yet created your portal login or need assistance with the login process, please refer to the &ldquo;Annexure&rdquo; below for the relevant contact details.</p>
+
+							<!-- Annexure (from the client's letter) -->
+							<p style="text-align:center;font-weight:bold;">&ldquo;Annexure&rdquo;</p>
+							<ul>
+							  <li><u>Service Department Contact Details</u>:
+							    <p style="font-weight:normal;margin:6px 0;">For assistance with service call registration and ticket logging, please contact the respective representatives:</p>
+							    <ol>
+							      <li><strong>All India Service Call Logging / Registration:</strong><br />Ms. Ansari Begum<br />Mobile No.: +919903992343, Email: <a href="mailto:amc@fortunaindia.com" target="_blank">amc@fortunaindia.com</a></li>
+							      <li><strong>South India Service Call Logging / Registration:</strong><br />Ms. Anusha Penchala<br />Mobile No.: +919147169986, Email: <a href="mailto:crm1@fortunaindia.com" target="_blank">crm1@fortunaindia.com</a></li>
+							      <li><strong>Odisha Service Call Logging / Registration:</strong><br />Mr. Suresh Bahera<br />Mobile No.: +919903992338, Email: <a href="mailto:bbsr@fortunaindia.com" target="_blank">bbsr@fortunaindia.com</a></li>
+							    </ol>
+							  </li>
+							  <li><u>Escalation Matrix</u>:
+							    <p style="font-weight:normal;margin:6px 0;">For any unresolved service issues, delays, or further assistance, please contact:</p>
+							    <ol>
+							      <li>Ms. Keya Ghosh<br />Mobile: +919903992344, Email: <a href="mailto:info@fortunaindia.com" target="_blank">info@fortunaindia.com</a></li>
+							    </ol>
+							  </li>
+							</ul>
+
+							<p>We sincerely appreciate your association with {{ _brand }} and look forward to building a strong and successful business relationship.</p>
+							<p>Thank you for choosing {{ _brand }}!</p>
+							<p>Best Regards,<br>{{ _brand }} Family<br>{{ _company }}</p>
+						</div>
                           </td>
                       </tr>
                       <tr>
@@ -164,11 +167,13 @@ li {
                 <td align="center"><table border="0" cellpadding="0" cellspacing="0" width="590">
                     <tbody>
                       <tr>
-                        <td valign="middle" align="left">{{ company or "Company" }}</td>
+                        <td valign="middle" align="left">{{ _company }}</td>
                       </tr>
+                      {% if _company_phone or _company_email %}
                       <tr>
-                        <td valign="middle" align="left">033 2443 2270 | <a href="mailto:accounts@fortunaindia.com" target="_blank">accounts@fortunaindia.com</a></td>
+                        <td valign="middle" align="left">{% if _company_phone %}{{ _company_phone }}{% endif %}{% if _company_phone and _company_email %} | {% endif %}{% if _company_email %}<a href="mailto:{{ _company_email }}" target="_blank">{{ _company_email }}</a>{% endif %}</td>
                       </tr>
+                      {% endif %}
                     </tbody>
                   </table></td>
               </tr>
