@@ -45,20 +45,8 @@ SECTIONS = [
 			),
 		],
 	},
-	{
-		"title": "Portal Setup",
-		"intro": "The forms and menus behind the customer and supplier portal.",
-		"links": [
-			("Web Form", "doctype", "Web Form", "Edit the supplier registration and ledger forms.", "form"),
-			(
-				"Portal Settings",
-				"doctype",
-				"Portal Settings",
-				"Choose what customers and suppliers see in the portal menu.",
-				"settings",
-			),
-		],
-	},
+	# "Portal Setup" section (Web Form, Portal Settings) hidden on 2026-11-12 at the
+	# client's request -- not deleted, just left out of SECTIONS below.
 ]
 
 ICONS = {
