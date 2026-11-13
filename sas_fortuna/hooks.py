@@ -37,7 +37,7 @@ app_home = "/desk/sas-fortuna"
 add_to_apps_screen = [
 	{
 		"name": app_name,
-		"logo": "/assets/sas_fortuna/images/logo.svg",
+		"logo": "/assets/sas_fortuna/images/logo.png",
 		"title": app_title,
 		"route": app_home,
 	}
