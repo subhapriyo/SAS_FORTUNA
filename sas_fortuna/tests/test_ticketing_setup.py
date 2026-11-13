@@ -248,3 +248,50 @@ class TestWiring(IntegrationTestCase):
 		ensure.assert_called_once()
 		# after the custom fields and the New ticket form exist
 		self.assertEqual(calls, ["ticket_form", "ensure"])
+
+	def test_report_is_an_after_migrate_hook_right_after_the_setup(self):
+		# hooks.py: the report runs after setup.support_desk.execute, so it shows the result.
+		# after_install runs the same after_migrate list, so a fresh install prints it too.
+		hooks = frappe.get_hooks("after_migrate")
+		self.assertIn("sas_fortuna.setup.ticketing.run", hooks)
+		self.assertLess(
+			hooks.index("sas_fortuna.setup.support_desk.execute"),
+			hooks.index("sas_fortuna.setup.ticketing.run"),
+		)
+
+
+class TestReport(IntegrationTestCase):
+	"""run(): the check() report printed in the migrate / install log (Frappe Cloud shows it, no SSH)."""
+
+	def _findings(self, *statuses):
+		return [frappe._dict(status=s, item=f"ZZ item {i}", fix="ZZ fix") for i, s in enumerate(statuses)]
+
+	def _report_logs(self):
+		return frappe.db.count("Error Log", {"method": ["like", "%ticketing prerequisites%"]})
+
+	def test_prints_every_finding_and_a_summary(self):
+		with (
+			patch.object(tk, "check", return_value=self._findings(tk.OK, tk.WARN)),
+			patch("builtins.print") as printed,
+		):
+			tk.run()
+		text = "\n".join(str(c.args[0]) for c in printed.call_args_list if c.args)
+		self.assertIn("ZZ item 0", text)
+		self.assertIn("ZZ item 1", text)
+		self.assertIn("1 OK, 1 WARN, 0 FAIL", text)
+
+	def test_a_failure_goes_to_the_error_log(self):
+		before = self._report_logs()
+		with patch.object(tk, "check", return_value=self._findings(tk.OK, tk.FAIL)), patch("builtins.print"):
+			tk.run()
+		self.assertEqual(self._report_logs(), before + 1)
+
+	def test_no_error_log_without_failures(self):
+		before = self._report_logs()
+		with patch.object(tk, "check", return_value=self._findings(tk.OK, tk.WARN)), patch("builtins.print"):
+			tk.run()
+		self.assertEqual(self._report_logs(), before)
+
+	def test_never_blocks_a_migrate(self):
+		with patch.object(tk, "check", side_effect=RuntimeError("boom")), patch("builtins.print"):
+			tk.run()  # must not raise

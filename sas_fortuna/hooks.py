@@ -354,6 +354,10 @@ import os as _os
 
 if _os.path.exists(_os.path.join(_os.path.dirname(__file__), "setup", "support_desk.py")):
 	after_migrate.append("sas_fortuna.setup.support_desk.execute")
+	# Ticketing prerequisites report (read-only), right after the setup that creates them:
+	# printed in every migrate / install log (Frappe Cloud too); a FAIL also goes to Error Log.
+	# after_install runs this same after_migrate list. See sas_fortuna/setup/ticketing.py.
+	after_migrate.append("sas_fortuna.setup.ticketing.run")
 
 	# Its document events, form scripts and daily jobs, switched on phase by
 	# phase in sas_fortuna/support/wiring.py.

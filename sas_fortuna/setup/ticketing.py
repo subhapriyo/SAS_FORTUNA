@@ -4,7 +4,9 @@
 	            1. Ticket Types, the Paused status, the Teams and Team Routing - ONCE per site
 	            2. an HD Customer for every ERPNext Customer that has none - every migrate
 	check()   read-only list of findings (OK / WARN / FAIL, each with its fix)
-	run()     prints check():   bench --site <site> execute sas_fortuna.setup.ticketing.run
+	run()     prints check(); also an after_migrate hook in hooks.py, so the report is in
+	          every migrate / install log. FAILs go to the Error Log too.
+	            bench --site <site> execute sas_fortuna.setup.ticketing.run
 	seed()    first-time seeding again, by hand (commits):
 	            bench --site <site> execute sas_fortuna.setup.ticketing.seed
 
@@ -330,9 +332,23 @@ def _check_ticket_form(add):
 
 
 def run():
-	"""Print check(). Read-only."""
-	findings = check()
+	"""Print check(). Read-only. Also an after_migrate hook (hooks.py), right after
+	setup.support_desk.execute, so every migrate / install log (Frappe Cloud's too) shows
+	the prerequisites. Any FAIL is also written to the Error Log. Never raises."""
+	try:
+		findings = check()
+	except Exception:
+		frappe.log_error(title="sas_fortuna: ticketing prerequisites check crashed")
+		print("sas_fortuna ticketing prerequisites: check crashed, see Error Log")
+		return
+	print("\nsas_fortuna ticketing prerequisites")
 	for f in findings:
 		print(f"[{f.status:4}] {f.item}" + (f"\n         fix: {f.fix}" if f.fix else ""))
 	counts = {s: sum(f.status == s for f in findings) for s in (OK, WARN, FAIL)}
-	print(f"\n{counts[OK]} OK, {counts[WARN]} WARN, {counts[FAIL]} FAIL")
+	print(f"{counts[OK]} OK, {counts[WARN]} WARN, {counts[FAIL]} FAIL")
+	failed = [f for f in findings if f.status == FAIL]
+	if failed:
+		frappe.log_error(
+			title="sas_fortuna: ticketing prerequisites missing",
+			message="\n".join(f"{f.item}\n  fix: {f.fix}" for f in failed),
+		)
