@@ -15,6 +15,8 @@ Permissions Manager:
   7. Portal menu ......... Tickets + Repairs in the customer portal; Issues switched off once
   8. Helpdesk role ....... "HD Customer" for portal users (New ticket / Reply on /tickets)
   9. New ticket form ..... Ticket Type + Serial No on Helpdesk's customer form (Default template)
+ 10. Ticketing ........... setup/ticketing.py ensure(): Ticket Types, Paused status, Teams,
+                           Team Routing (once per site) and missing HD Customers. Runs last.
 
 The new DocTypes themselves (Repair Order, Returnable Gate Pass, ...) are app
 files under sas_fortuna/sas_fortuna/doctype and are synced by migrate before
@@ -24,6 +26,9 @@ them as fixtures.
 
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
+from sas_fortuna.setup import ticketing
+from sas_fortuna.setup.ticketing import TEAM_ROUTES, TICKET_TYPES
 
 MODULE = "SAS Fortuna"
 
@@ -42,6 +47,8 @@ def execute():
 	_portal_menu()
 	_helpdesk_role_for_portal_users()
 	_helpdesk_ticket_form()
+	# Last: needs the custom fields and the New ticket form above.
+	ticketing.ensure()
 
 
 # ---------------------------------------------------------------------------
@@ -617,17 +624,7 @@ SERVICE_ITEMS = {
 	"sim_recharge_item": ("SIM Recharge", "998422"),
 	None: ("AMC Service", "998713"),  # used on AMC quotations, not in settings
 }
-TICKET_TYPES = {
-	"Software": "Software / firmware problems, settings, updates.",
-	"Hardware": "Faulty units, parts and repairs.",
-	"Post-Installation": "Questions and issues just after installation.",
-}
-# Team per ticket type. Post-Installation goes to Hardware until Fortuna decides.
-TEAM_ROUTES = {
-	"Software": "Software Support",
-	"Hardware": "Hardware Support",
-	"Post-Installation": "Hardware Support",
-}
+# TICKET_TYPES and TEAM_ROUTES: see setup/ticketing.py
 
 
 def create_masters():
@@ -679,40 +676,8 @@ def create_masters():
 		if field and not settings.get(field):
 			settings.set(field, code)
 
-	# Helpdesk ticket types
-	for name, description in TICKET_TYPES.items():
-		if not frappe.db.exists("HD Ticket Type", name):
-			doc = frappe.new_doc("HD Ticket Type")
-			doc.name = name
-			doc.description = description
-			doc.insert(set_name=name)
-			done.append(f"Ticket Type {name}")
-
-	# Paused status: SLA timer stops while waiting on customer, spares or payment
-	if not frappe.db.exists("HD Ticket Status", "Paused"):
-		frappe.get_doc(
-			{
-				"doctype": "HD Ticket Status",
-				"label_agent": "Paused",
-				"label_customer": "On Hold",
-				"different_view": 1,
-				"category": "Paused",
-				"color": "Orange",
-				"order": 3,
-				"enabled": 1,
-			}
-		).insert()
-		done.append("Status Paused")
-
-	# Teams (Helpdesk adds a round-robin Assignment Rule to each new team).
-	# Members: every active agent for now; adjust in Helpdesk > Teams.
-	agents = frappe.get_all("HD Agent", filters={"is_active": 1}, pluck="name")
-	for team in sorted(set(TEAM_ROUTES.values())):
-		if not frappe.db.exists("HD Team", team):
-			frappe.get_doc(
-				{"doctype": "HD Team", "team_name": team, "users": [{"user": a} for a in agents]}
-			).insert()
-			done.append(f"Team {team}")
+	# Helpdesk ticket types, Paused status, teams (shared with migrate)
+	done += ticketing.create_masters()
 
 	# Routing rows in settings
 	have = {row.ticket_type for row in settings.team_routing}
