@@ -63,3 +63,7 @@ tools/
 # ----------------------------------------------------------------------------
 Claude outputs/
 docs/onboarding/*.mp4
+
+# Scratch / inspection files used during dev, never committed
+_tmp_*
+*.tmp
