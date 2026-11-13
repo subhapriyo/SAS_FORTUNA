@@ -29,6 +29,28 @@ from sas_fortuna.support.utils import (
 
 PART_PENDING, PART_REQUESTED, PART_RESERVED, PART_CONSUMED = "Pending", "Requested", "Reserved", "Consumed"
 
+# ---------------------------------------------------------------------------
+# When a paid repair must be paid (Fortuna Support Settings > Payment Due Before)
+# ---------------------------------------------------------------------------
+DUE_BEFORE_DISPATCH, DUE_BEFORE_REPAIR = "Dispatch", "Repair Start"
+
+# Workflow condition of "Awaiting Payment -> Start Repair" (support_desk.WORKFLOW_TRANSITIONS).
+# Kept as config: the workflow reads the setting itself, so switching the policy needs no deploy.
+#   Dispatch (Fortuna) ... work starts once the customer confirmed the quotation (Sales Order submitted)
+#   Repair Start ......... work starts once the advance is paid (payment_cleared)
+# Workflow conditions only get frappe.db.get_value (not get_single_value); it reads Singles too.
+START_REPAIR_CONDITION = (
+	"doc.payment_cleared == 1 or (doc.sales_order and frappe.db.get_value("
+	'"Fortuna Support Settings", "Fortuna Support Settings", "payment_due_before") != "Repair Start")'
+)
+
+REPLACEMENT_KEEP, REPLACEMENT_NEW = "Keep Original Warranty", "New Warranty"
+
+
+def payment_due_before():
+	"""'Dispatch' (Fortuna's answer, also when blank) or 'Repair Start'."""
+	return get_settings().get("payment_due_before") or DUE_BEFORE_DISPATCH
+
 
 # ===========================================================================
 # Buttons
@@ -152,29 +174,55 @@ def make_quotation(repair_order):
 	"""D5 / N7 / N8: quotation for chargeable parts + service charge."""
 	ro = _get_ro(repair_order)
 	settings = get_settings()
-	if ro.support_type == SUPPORT_AMC and not settings.charge_amc_repairs:
-		frappe.throw(_("AMC repairs are free as per Fortuna Support Settings."))
-	if ro.invoice_method == "Free (Warranty)":
-		frappe.throw(_("This is a free warranty repair: no quotation is needed."))
 	if ro.quotation:
 		frappe.throw(_("Quotation {0} already exists.").format(ro.quotation))
+	lines = quotation_lines(ro, settings)
 
 	qtn = frappe.new_doc("Quotation")
 	qtn.company = _company()
 	qtn.quotation_to = "Customer"
 	qtn.party_name = ro.customer
 	qtn.custom_repair_order = ro.name
-	for p in ro.parts:
-		if p.is_chargeable:
-			# Rate left blank on purpose: the Selling Price List fills it.
-			qtn.append("items", {"item_code": p.item_code, "qty": p.qty})
-	qtn.append("items", {"item_code": require_setting("service_charge_item"), "qty": 1})
-	if settings.freight_item:
-		qtn.append("items", {"item_code": settings.freight_item, "qty": 1})
+	for line in lines:
+		qtn.append("items", line)
+	apply_quotation_terms(qtn, settings.get("repair_terms"), settings)
 	qtn.insert()
 
 	ro.db_set("quotation", qtn.name)
 	return qtn.name
+
+
+def quotation_lines(ro, settings):
+	"""Quotation rows for a repair. Rates stay blank: the Selling Price List fills them
+	(Fortuna: Repair Service Charge Rs 1800, Freight Rs 200 per device).
+
+	  Chargeable repair ......... chargeable parts + service charge + freight
+	  AMC repair (free) ......... only the parts the AMC excludes (sensor, battery, ...)
+	  AMC repair, AMC charged ... like a chargeable repair (setting Charge AMC Repairs)
+	  Free warranty repair ...... nothing to quote
+	"""
+	if ro.invoice_method == "Free (Warranty)":
+		frappe.throw(_("This is a free warranty repair: no quotation is needed."))
+	lines = [{"item_code": p.item_code, "qty": p.qty} for p in ro.parts if p.is_chargeable]
+	free_amc = ro.invoice_method == SUPPORT_AMC and not settings.charge_amc_repairs
+	if free_amc:
+		if not lines:
+			frappe.throw(_("AMC repairs are free: only parts not covered by the AMC can be quoted."))
+		return lines
+	lines.append({"item_code": require_setting("service_charge_item"), "qty": 1})
+	if settings.freight_item:
+		lines.append({"item_code": settings.freight_item, "qty": 1})
+	return lines
+
+
+def apply_quotation_terms(doc, tc_name, settings=None):
+	"""Fill Terms and Conditions and Payment Terms from settings, only where still blank."""
+	settings = settings or get_settings()
+	if tc_name and not doc.get("tc_name"):
+		doc.tc_name = tc_name
+		doc.terms = doc.get("terms") or frappe.db.get_value("Terms and Conditions", tc_name, "terms")
+	if settings.get("payment_terms_template") and not doc.get("payment_terms_template"):
+		doc.payment_terms_template = settings.payment_terms_template
 
 
 @frappe.whitelist()
@@ -187,8 +235,7 @@ def make_dispatch(repair_order, replacement_serial=None):
 	ro = _get_ro(repair_order)
 	if ro.status != "Ready":
 		frappe.throw(_("Repair Order must be in status Ready to dispatch."))
-	if ro.is_chargeable and not _service_invoice_submitted(ro):
-		frappe.throw(_("Submit the Sales Invoice for this paid repair before dispatch."))
+	check_paid_before_dispatch(ro)
 	reserved = [p.item_code for p in ro.parts if p.status == PART_RESERVED]
 	if reserved:
 		# Reserved spares would sit in Repair WIP forever.
@@ -222,6 +269,26 @@ def make_dispatch(repair_order, replacement_serial=None):
 	)
 	dn.insert()
 	return dn.name
+
+
+def check_paid_before_dispatch(ro):
+	"""Fortuna: a repair the customer pays for ships only when it is paid in full.
+	Used by the Make Dispatch button and again when the Delivery Note is submitted."""
+	if not ro.is_billable:
+		return
+	if not _service_invoice_submitted(ro):
+		frappe.throw(_("Submit the Sales Invoice for this paid repair before dispatch."))
+	if not is_fully_paid(ro.sales_order, ro.sales_invoice):
+		frappe.throw(
+			_("Repair {0} is not fully paid: payment in full is due before dispatch.").format(ro.name)
+		)
+
+
+def delivery_note_before_submit(doc, method=None):
+	"""Same payment rule when a repair Delivery Note is submitted (also one made by hand)."""
+	if doc.is_return or not doc.get("custom_repair_order"):
+		return
+	check_paid_before_dispatch(frappe.get_doc("Repair Order", doc.custom_repair_order))
 
 
 def _service_invoice_submitted(ro):
@@ -337,34 +404,48 @@ def payment_entry_changed(doc, method=None):
 
 
 def refresh_payment_status(repair_order):
-	"""Set Repair Order.payment_cleared.
+	"""Set Repair Order.payment_cleared: the payment needed to START the repair is in.
 
-	Cleared when money received >= (order total x 'Advance Required %').
-	'Money received' = the larger of advances against the order and amount
-	paid on its invoices (an advance later allocated to the invoice would
-	otherwise be counted twice). The workflow transition 'Start Repair' only
-	allows the move when payment_cleared = 1  (pure config condition).
+	Only in 'Repair Start' mode does this gate the workflow (START_REPAIR_CONDITION):
+	money received >= order total x 'Advance Required %'. In 'Dispatch' mode (Fortuna)
+	it simply shows whether the order is paid in full; dispatch checks that itself.
 	"""
 	so_name = frappe.db.get_value("Repair Order", repair_order, "sales_order")
 	cleared = 0
 	if so_name:
-		so = frappe.db.get_value(
-			"Sales Order", so_name, ["docstatus", "grand_total", "advance_paid"], as_dict=True
-		)
+		so = frappe.db.get_value("Sales Order", so_name, ["docstatus", "grand_total"], as_dict=True)
 		if so.docstatus == 1:
-			percent = flt(get_settings().advance_percent) or 100
+			percent = 100
+			if payment_due_before() == DUE_BEFORE_REPAIR:
+				percent = flt(get_settings().advance_percent) or 100
 			required = flt(so.grand_total) * percent / 100
-			invoiced_paid = sum(
-				flt(r.grand_total) - flt(r.outstanding_amount)
-				for r in frappe.get_all(
-					"Sales Invoice",
-					filters={"docstatus": 1, "name": ["in", _invoices_for_order(so_name)]},
-					fields=["grand_total", "outstanding_amount"],
-				)
-			)
-			received = max(flt(so.advance_paid), invoiced_paid)
-			cleared = 1 if received + 0.01 >= required else 0
+			cleared = 1 if amount_received(so_name) + 0.01 >= required else 0
 	frappe.db.set_value("Repair Order", repair_order, "payment_cleared", cleared)
+
+
+def amount_received(so_name):
+	"""Money in for a repair order: the larger of advances against the order and the amount
+	paid on its invoices (an advance later allocated to the invoice would otherwise count twice)."""
+	advance = flt(frappe.db.get_value("Sales Order", so_name, "advance_paid"))
+	invoiced_paid = sum(
+		flt(r.grand_total) - flt(r.outstanding_amount)
+		for r in frappe.get_all(
+			"Sales Invoice",
+			filters={"docstatus": 1, "name": ["in", _invoices_for_order(so_name)]},
+			fields=["grand_total", "outstanding_amount"],
+		)
+	)
+	return max(advance, invoiced_paid)
+
+
+def is_fully_paid(so_name=None, invoice=None):
+	"""Nothing left to collect on the repair's order (or, without one, on its invoice)."""
+	if so_name:
+		total = flt(frappe.db.get_value("Sales Order", so_name, "grand_total"))
+		return amount_received(so_name) + 0.01 >= total
+	if invoice:
+		return flt(frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount")) <= 0.01
+	return False
 
 
 def _invoices_for_order(so_name):
@@ -408,7 +489,9 @@ def _carry_warranty_to_replacement(dn):
 		["custom_invoice_no", "custom_invoice_date", "custom_warranty_end"],
 		as_dict=True,
 	)
-	keep_old_warranty = get_settings().replacement_keeps_old_warranty
+	keep_old_warranty = keeps_old_warranty(
+		frappe.db.get_value("Repair Order", dn.custom_repair_order, "replacement_warranty")
+	)
 	new_serials = []
 	for row in dn.items:
 		warranty_end = (
@@ -431,3 +514,13 @@ def _carry_warranty_to_replacement(dn):
 			)
 	if new_serials:
 		frappe.db.set_value("Repair Order", dn.custom_repair_order, "replacement_serial", new_serials[0])
+
+
+def keeps_old_warranty(choice):
+	"""Replacement unit warranty, decided case by case on the Repair Order;
+	blank = the setting (Fortuna: normally the original warranty is kept)."""
+	if choice == REPLACEMENT_KEEP:
+		return True
+	if choice == REPLACEMENT_NEW:
+		return False
+	return bool(get_settings().replacement_keeps_old_warranty)

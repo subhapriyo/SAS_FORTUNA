@@ -16,14 +16,18 @@ from frappe.utils import cint, flt, validate_email_address
 
 class FortunaSupportSettings(Document):
 	def validate(self):
-		if not 0 < flt(self.advance_percent) <= 100:
+		# The advance only matters when payment is due before the repair starts;
+		# Fortuna's default (Dispatch) always needs 100% before the unit ships.
+		if self.payment_due_before == "Repair Start" and not 0 < flt(self.advance_percent) <= 100:
 			frappe.throw(_("Advance Required % must be between 1 and 100."))
 		for field in ("default_warranty_days", "amc_enquiry_lead_days", "sim_order_lead_days"):
 			if cint(self.get(field)) < 0:
 				frappe.throw(_("{0} cannot be negative.").format(_(self.meta.get_label(field))))
-		if self.amc_team_email:
-			# Throws on any address that is not a valid e-mail.
-			validate_email_address(self.amc_team_email, throw=True)
+		# Mail lists: throws on any address that is not a valid e-mail.
+		for field in ("amc_team_email", "amc_alert_cc", "sim_reminder_cc"):
+			if self.get(field):
+				validate_email_address(self.get(field), throw=True)
+		self._check_reminder_days()
 		self._check_warehouses_belong_to_company()
 		self._check_dedicated_warehouses()
 		self._check_unique_routes()
@@ -58,6 +62,12 @@ class FortunaSupportSettings(Document):
 							self.meta.get_label(field), self.meta.get_label(other), warehouse
 						)
 					)
+
+	def _check_reminder_days(self):
+		"""'30, 15' style list of whole days; anything else is a typo worth stopping on."""
+		for part in (self.sim_reminder_days or "").split(","):
+			if part.strip() and not part.strip().isdigit():
+				frappe.throw(_("Customer Reminder Days: use whole days separated by commas, e.g. 30, 15."))
 
 	def _check_unique_routes(self):
 		seen = set()

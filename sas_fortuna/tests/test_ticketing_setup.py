@@ -202,6 +202,17 @@ class TestCheck(TicketingCase):
 			tk.ensure()
 		self.assertEqual(_finding(tk.check(), T_TEAM, "agent").status, tk.WARN)
 
+	def test_routed_type_without_sla_is_a_warning(self):
+		# Without an SLA the ticket gets no response deadline (Fortuna: attend within 48 hours).
+		tk.ensure()
+		frappe.db.set_value("HD Service Level Agreement", {"default_sla": 1}, "default_sla", 0)  # rolled back
+		self.assertEqual(_finding(tk.check(), "SLA", T_TYPE).status, tk.WARN)
+
+	def test_routed_type_with_sla_passes(self):
+		tk.ensure()
+		with patch.object(tk, "_sla_for", return_value="ZZ SLA"):
+			self.assertEqual(_finding(tk.check(), "SLA", T_TYPE).status, tk.OK)
+
 	def test_missing_helpdesk_is_a_failure(self):
 		with patch.object(tk, "helpdesk_installed", return_value=False):
 			findings = tk.check()

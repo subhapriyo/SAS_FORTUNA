@@ -419,6 +419,72 @@ AMC_ANNEXURE = _page(
 	signs=("", "Authorised signatory", ""),
 )
 
+# ---------------------------------------------------------------------------
+# 8. AMC quotation / pro-forma (Quotation), laid out like Fortuna's 1QTN-1906/24-25
+# ---------------------------------------------------------------------------
+# Same layout, two titles: the pro-forma is the quotation printed for "100% against
+# Pro-Forma Invoice" payment. Covered units are listed per model with their serials.
+AMC_QUOTE_BODY = """
+{%- set rate = doc.taxes | selectattr("charge_type", "equalto", "On Net Total") | sum(attribute="rate") -%}
+{%- set seller = (doc.sales_team[0].sales_person if doc.get("sales_team") else None)
+	or frappe.db.get_value("User", doc.owner, "full_name") -%}
+<div class="ff-cols">
+  <div class="ff-box"><h4>{{ _("To") }}</h4>
+    <b>{{ doc.customer_name or doc.party_name }}</b>
+    {%- if doc.address_display %}<div class="ff-muted">{{ doc.address_display }}</div>{% endif %}
+    {%- if doc.get("billing_address_gstin") %}<div>GSTIN: {{ doc.billing_address_gstin }}</div>{% endif %}
+  </div>
+  <div class="ff-box"><h4>{{ _("Details") }}</h4>
+    <table class="ff-grid">
+      <tr><td class="ff-k">{{ _("Recurring Plan") }}</td><td>{{ _("Renewal of {0}").format(doc.custom_renewal_of) if doc.custom_renewal_of else _("Yearly AMC") }}</td></tr>
+      <tr><td class="ff-k">{{ _("Start Date") }}</td><td>{{ frappe.format_date(doc.custom_amc_start_date) if doc.custom_amc_start_date else "-" }}</td></tr>
+      <tr><td class="ff-k">{{ _("Date") }}</td><td>{{ frappe.format_date(doc.transaction_date) }}</td></tr>
+      <tr><td class="ff-k">{{ _("Salesperson") }}</td><td>{{ seller or "-" }}</td></tr>
+    </table>
+  </div>
+</div>
+<table class="ff-items">
+  <tr><th style="width:5%">{{ _("SN") }}</th><th>{{ _("Description") }}</th><th class="ff-r" style="width:9%">{{ _("Qty") }}</th>
+      <th class="ff-r" style="width:13%">{{ _("Unit Price") }}</th><th class="ff-c" style="width:10%">{{ _("Taxes") }}</th>
+      <th class="ff-r" style="width:15%">{{ _("Amount") }}</th></tr>
+  {%- for row in doc.items %}
+  <tr><td>{{ loop.index }}</td>
+      <td>{{ row.description|striptags if row.description else row.item_name }}
+        {%- if row.gst_hsn_code %}<div class="ff-muted">{{ _("HSN/SAC Code") }}: {{ row.gst_hsn_code }}</div>{% endif %}</td>
+      <td class="ff-r">{{ row.get_formatted("qty") }} {{ row.uom or "" }}</td>
+      <td class="ff-r">{{ row.get_formatted("rate", doc) }}</td>
+      <td class="ff-c">{{ ("GST " ~ (rate|round(2)|string).rstrip("0").rstrip(".") ~ "%") if rate else "-" }}</td>
+      <td class="ff-r">{{ row.get_formatted("amount", doc) }}</td></tr>
+  {%- endfor %}
+</table>
+{%- set models = doc.custom_covered_items | groupby("item_code") if doc.get("custom_covered_items") else [] %}
+{%- for model in models %}
+<div class="ff-box">
+  <table class="ff-grid">
+    <tr><td class="ff-k">{{ _("Model Name") }}</td><td><b>{{ frappe.db.get_value("Item", model.grouper, "item_name") or model.grouper }}</b></td></tr>
+    <tr><td class="ff-k">{{ _("Qty") }}</td><td>{{ "%02d" % (model.list | length) }} {{ _("Nos.") }}</td></tr>
+    <tr><td class="ff-k">{{ _("SL No.") }}</td><td>{{ model.list | map(attribute="serial_no") | join(", ") }}</td></tr>
+  </table>
+</div>
+{%- endfor %}
+<table class="ff-totals">
+  <tr><td>{{ _("Untaxed Amount") }}</td><td class="ff-r">{{ doc.get_formatted("net_total") }}</td></tr>
+  {%- for t in doc.taxes %}{% if t.tax_amount %}
+  <tr><td>{{ t.description }}</td><td class="ff-r">{{ t.get_formatted("tax_amount", doc) }}</td></tr>
+  {%- endif %}{% endfor %}
+  <tr class="ff-grand"><td>{{ _("Total") }}</td><td class="ff-r">{{ doc.get_formatted("rounded_total" if doc.rounded_total else "grand_total") }}</td></tr>
+</table>
+<div class="ff-words"><span class="ff-muted">{{ _("In words") }}:</span> {{ doc.in_words or "" }}</div>
+{%- if doc.payment_terms_template %}
+<div class="ff-note"><b>{{ _("Payment Terms") }}:</b> {{ doc.payment_terms_template }}</div>
+{%- endif %}
+{%- if doc.terms %}<div class="ff-box"><div class="ff-muted">{{ doc.terms }}</div></div>{% endif %}
+<div style="margin-top:24px">{{ _("For") }} <b>{{ doc.company }}</b></div>
+"""
+
+AMC_QUOTATION = _page("Quotation", AMC_QUOTE_BODY, tag="AMC", signs=("", "", "Authorised Signatory"))
+AMC_PROFORMA = _page("Pro-Forma Invoice", AMC_QUOTE_BODY, tag="AMC", signs=("", "", "Authorised Signatory"))
+
 FORMATS = {
 	"Fortuna Job Sheet": ("Repair Order", JOB_SHEET),
 	"Fortuna Gate Pass": ("Returnable Gate Pass", GATE_PASS),
@@ -427,15 +493,23 @@ FORMATS = {
 	"Fortuna AMC Agreement": ("Sales Order", AMC_AGREEMENT),
 	"Fortuna Delivery Challan": ("Delivery Note", DELIVERY_CHALLAN),
 	"Fortuna AMC Annexure": ("Sales Invoice", AMC_ANNEXURE),
+	"Fortuna AMC Quotation": ("Quotation", AMC_QUOTATION),
+	"Fortuna AMC Pro-Forma": ("Quotation", AMC_PROFORMA),
 }
 # Made the default print format of their DocType (only our own DocTypes).
 DEFAULT_FOR = {"Repair Order": "Fortuna Job Sheet", "Returnable Gate Pass": "Fortuna Gate Pass"}
 
 
-def create_print_formats():
-	"""Create or update every Fortuna print format. Safe to re-run."""
+def create_print_formats(only_missing=False):
+	"""Create or update every Fortuna print format. Safe to re-run.
+
+	only_missing=True (used on migrate by setup/fortuna_impex.py): create the ones a site
+	lacks and leave existing ones, and any Desk edits to them, as they are.
+	"""
 	done = []
 	for name, (doctype, html) in FORMATS.items():
+		if only_missing and frappe.db.exists("Print Format", name):
+			continue
 		values = {
 			"doc_type": doctype,
 			"module": MODULE,
@@ -470,5 +544,6 @@ def create_print_formats():
 			},
 			validate_fields_for_doctype=False,
 		)
-	frappe.db.commit()
+	if not only_missing:
+		frappe.db.commit()  # run by hand (bench execute); on migrate the caller's transaction decides
 	return done

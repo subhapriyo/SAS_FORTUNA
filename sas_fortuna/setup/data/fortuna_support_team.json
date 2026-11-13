@@ -1,0 +1,213 @@
+{
+  "_source": "EMP_DETAILS_OF_SUPPORT_TEAM.xlsx from Fortuna (13 Nov 2026), plus the supplier approver named in the same reply. Rows are kept as sent, so a duplicate e-mail stays visible; setup/fortuna_impex.py uses the first row per e-mail. SUPPORT MANAGER was blank in the sheet for the people the support staff report to.",
+  "staff": [
+    {
+      "name": "Shashi Kant Samal",
+      "email": "software@fortunaindia.com",
+      "mobile": "9903992335",
+      "job_role": "SW SUPPORT",
+      "reports_to": "Keya Ghosh/Manoranjan Naskar",
+      "location": "Fortuna Kolkata"
+    },
+    {
+      "name": "Insan Habib Ali",
+      "email": "support@fortunaindia.com",
+      "mobile": "9330900542",
+      "job_role": "SW SUPPORT",
+      "reports_to": "Shashi Kant Samal",
+      "location": "Fortuna Kolkata"
+    },
+    {
+      "name": "Vidita Mishra",
+      "email": "helpdesk@fortunaindia.com",
+      "mobile": "7596032011",
+      "job_role": "SW SUPPORT",
+      "reports_to": "Insan Habib Ali",
+      "location": "Fortuna Kolkata"
+    },
+    {
+      "name": "Twinkle Roy",
+      "email": "ezeehr@fortunaindia.com",
+      "mobile": "9903992348",
+      "job_role": "SW SUPPORT",
+      "reports_to": "Insan Habib Ali",
+      "location": "Fortuna Kolkata"
+    },
+    {
+      "name": "Ansari Begum",
+      "email": "amc@fortunaindia.com",
+      "mobile": "9903992343",
+      "job_role": "SUPPORT COORDINATOR",
+      "reports_to": "Keya Ghosh",
+      "location": "Fortuna Kolkata"
+    },
+    {
+      "name": "Binita Rajak",
+      "email": "subscription@fortunaindia.com",
+      "mobile": "9147424538",
+      "job_role": "AMC & CREDIT CONTROL EXECUTIVE",
+      "reports_to": "Keya Ghosh",
+      "location": "Fortuna Kolkata"
+    },
+    {
+      "name": "Dipak Kumar Shee",
+      "email": "sales@fortunaindia.com",
+      "mobile": "9903992355",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Keya Ghosh/Manoranjan Naskar",
+      "location": "Kolkata"
+    },
+    {
+      "name": "Rohit Bhagwan Madke",
+      "email": "mum.support@fortunaindia.com",
+      "mobile": "7044468443",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Taher Shaikh",
+      "location": "Mumbai"
+    },
+    {
+      "name": "Saubhagya Ranjan Samal",
+      "email": "soubhagya.fipl26@gmail.com",
+      "mobile": "9147164129",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Suresh Kumar Behera",
+      "location": "Bhubaneswar"
+    },
+    {
+      "name": "Vallamkonda Gopalarao",
+      "email": "hyd.support@fortunaindia.com",
+      "mobile": "9330900547",
+      "job_role": "SW SUPPORT",
+      "reports_to": "Md.Faisal Ahmed",
+      "location": "Hyderabad"
+    },
+    {
+      "name": "Keya Ghosh",
+      "email": "info@fortunaindia.com",
+      "mobile": "9903992344",
+      "job_role": "SUPPORT MANAGER",
+      "reports_to": null,
+      "location": null
+    },
+    {
+      "name": "Manoranjan Naskar",
+      "email": "project@fortunaindia.com",
+      "mobile": "9903992356",
+      "job_role": "SUPPORT MANAGER",
+      "reports_to": null,
+      "location": null
+    },
+    {
+      "name": "Taher Shaikh",
+      "email": "mum.sales@fortunaindia.com",
+      "mobile": "9903992342",
+      "job_role": "SUPPORT MANAGER",
+      "reports_to": null,
+      "location": null
+    },
+    {
+      "name": "Ashish Ranjan Samal",
+      "email": "hyd@fortunaindia.com",
+      "mobile": "9700910537",
+      "job_role": "SUPPORT MANAGER",
+      "reports_to": null,
+      "location": null
+    },
+    {
+      "name": "Md.Faisal Ahmed",
+      "email": "project2@fortunaindia.com",
+      "mobile": "7044468447",
+      "job_role": "SUPPORT MANAGER",
+      "reports_to": null,
+      "location": null
+    },
+    {
+      "name": "Vallamkonda Gopalarao",
+      "email": null,
+      "mobile": null,
+      "job_role": null,
+      "reports_to": null,
+      "location": null
+    },
+    {
+      "name": "Biprojeet Dey",
+      "email": "deybiprojeet489@gmail.com",
+      "mobile": "9831664890",
+      "job_role": "SW SUPPORT",
+      "reports_to": "Insan Habib Ali",
+      "location": "Kolkata"
+    },
+    {
+      "name": "Milan Giri",
+      "email": "milangiri15032000@gmail.com",
+      "mobile": "9382358408",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Manoranjan Naskar",
+      "location": "Kolkata"
+    },
+    {
+      "name": "Subhom Karan",
+      "email": "subhomkaran41@gmail.com",
+      "mobile": "9230959461",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Manoranjan Naskar",
+      "location": "Kolkata"
+    },
+    {
+      "name": "Arpan Halder",
+      "email": "halderarpan743@gmail.com",
+      "mobile": "9230374877",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Manoranjan Naskar",
+      "location": "Kolkata"
+    },
+    {
+      "name": "Kaushal Kishore Prasad",
+      "email": "bup@fortunaindia.com",
+      "mobile": "7604012207",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Ansari Begum/Manoranjan Naskar",
+      "location": "Bihar"
+    },
+    {
+      "name": "Dixit Banker",
+      "email": "bankardixit315@gmail.com",
+      "mobile": "9230374876",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Manoranjan Naskar/Ashish Ranjan Samal",
+      "location": "Nagpur"
+    },
+    {
+      "name": "Kashetti Rakesh Kumar",
+      "email": "hyd.support@fortunaindia.com",
+      "mobile": "9147169985",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Vallamkonda Gopalarao",
+      "location": "Hyderabad"
+    },
+    {
+      "name": "Prashanth Kumar",
+      "email": "hyd.support@fortunaindia.com",
+      "mobile": "7044434406",
+      "job_role": "HW SUPPORT",
+      "reports_to": "Vallamkonda Gopalarao",
+      "location": "Hyderabad"
+    },
+    {
+      "name": "Vallamkonda Gopalarao",
+      "email": "hyd.support@fortunaindia.com",
+      "mobile": "9330900547",
+      "job_role": "SW SUPPORT",
+      "reports_to": "Md.Faisal Ahmed",
+      "location": "Hyderabad"
+    },
+    {
+      "name": "Shiladitya Bhowmik",
+      "email": "vendor@fortunaindia.com",
+      "mobile": null,
+      "job_role": "SUPPLIER APPROVER",
+      "reports_to": null,
+      "location": null
+    }
+  ]
+}

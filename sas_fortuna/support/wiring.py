@@ -31,7 +31,9 @@ doc_events = {
 		"on_submit": [S + "sales.sales_invoice_on_submit", S + "repair.sales_invoice_on_submit"]
 	},
 	"Delivery Note": {
-		"on_submit": [S + "sales.delivery_note_on_submit", S + "repair.delivery_note_on_submit"]
+		# Fortuna: a paid repair ships only when paid in full
+		"before_submit": [S + "repair.delivery_note_before_submit"],
+		"on_submit": [S + "sales.delivery_note_on_submit", S + "repair.delivery_note_on_submit"],
 	},
 	# Phase 3: repair receipt
 	"Stock Entry": {
@@ -85,5 +87,6 @@ scheduler_events = {
 		S + "tasks.send_amc_enquiries",
 		S + "tasks.mark_overdue_gate_passes",
 		S + "tasks.create_sim_recharge_orders",
+		S + "tasks.send_sim_renewal_reminders",  # Fortuna: customer e-mail 30 / 15 days before
 	],
 }

@@ -139,7 +139,7 @@ def _return_same_unit(emp):
 
 
 def _paid_dispatch_needs_invoice(emp):
-	print("\n== 3. Paid repair: no dispatch before the invoice")
+	print("\n== 3. Paid repair: no dispatch before the invoice is paid")
 	si = _sell("Sales Invoice", "TSN-0002", update_stock=1)
 	frappe.db.set_value("Serial No", "TSN-0002", "custom_warranty_end", "2026-01-01")
 	ro, _t = _ready_order("TSN-0002", emp, via_workflow=False)
@@ -152,7 +152,15 @@ def _paid_dispatch_needs_invoice(emp):
 	frappe.db.set_value(
 		"Repair Order", ro.name, "sales_invoice", si.name
 	)  # stands in for the Phase 4 service invoice
-	check("Allowed once the invoice is submitted", bool(repair.make_dispatch(ro.name)))
+	# Fortuna (13 Nov 2026): payment in full before shipment of the repaired unit.
+	frappe.db.set_value("Sales Invoice", si.name, "outstanding_amount", 100)
+	expect_error(
+		"Dispatch refused while the invoice is not fully paid",
+		lambda: repair.make_dispatch(ro.name),
+		"not fully paid",
+	)
+	frappe.db.set_value("Sales Invoice", si.name, "outstanding_amount", 0)  # stands in for the payment
+	check("Allowed once the invoice is submitted and paid", bool(repair.make_dispatch(ro.name)))
 
 
 def _replacement(emp):

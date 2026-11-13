@@ -234,6 +234,19 @@ def check():
 		else:
 			add(OK, item)
 
+	# SLA: every routed ticket type needs one (response deadline), or a default SLA.
+	for r in routes:
+		sla = _sla_for(r.ticket_type)
+		if sla:
+			add(OK, f"SLA for {r.ticket_type}: {sla}")
+		else:
+			add(
+				WARN,
+				f"No SLA for {r.ticket_type}: its tickets get no response deadline",
+				"Helpdesk > SLA policies: add one with condition doc.ticket_type == "
+				f'"{r.ticket_type}" (Fortuna Impex sites get it on migrate)',
+			)
+
 	active = set(_active_agents())
 	has_rule = frappe.get_meta("HD Team").has_field("assignment_rule")
 	for team in sorted(teams):
@@ -308,6 +321,19 @@ def check():
 			"Email Account: enable incoming for the support address",
 		)
 	return findings
+
+
+def _sla_for(ticket_type):
+	"""Name of an enabled SLA whose condition names this ticket type, else the default SLA."""
+	if not frappe.db.exists("DocType", "HD Service Level Agreement"):
+		return None
+	slas = frappe.get_all(
+		"HD Service Level Agreement", filters={"enabled": 1}, fields=["name", "condition", "default_sla"]
+	)
+	for sla in slas:
+		if f'"{ticket_type}"' in (sla.condition or "") or f"'{ticket_type}'" in (sla.condition or ""):
+			return sla.name
+	return next((s.name for s in slas if s.default_sla), None)
 
 
 def _check_ticket_form(add):

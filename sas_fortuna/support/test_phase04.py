@@ -232,8 +232,19 @@ def _quotation_and_payment(emp):
 	so.submit()
 	ro.reload()
 	check("Order confirmed: repair knows its Sales Order", ro.sales_order == so.name)
+
+	# Fortuna (13 Nov 2026): payment in full is due before DISPATCH, so work starts on confirmation.
+	_set_setting("payment_due_before", "Dispatch")
 	check(
-		"Not paid yet: payment not cleared, no Start Repair",
+		"Payment due before dispatch: Start Repair offered once the order is confirmed",
+		not ro.payment_cleared and "Start Repair" in _actions(ro),
+	)
+	# The rest of this section is the other policy: an advance before work starts.
+	_set_setting("payment_due_before", "Repair Start")
+	repair.refresh_payment_status(ro.name)
+	ro.reload()
+	check(
+		"Payment due before repair start, not paid yet: no Start Repair",
 		not ro.payment_cleared and "Start Repair" not in _actions(ro),
 	)
 
@@ -259,6 +270,7 @@ def _quotation_and_payment(emp):
 	check("Paid in full: cleared", ro.payment_cleared == 1)
 	ro = apply_workflow(frappe.get_doc("Repair Order", ro.name), "Start Repair")
 	check("Start Repair -> In Repair", ro.status == "In Repair")
+	_set_setting("payment_due_before", "Dispatch")
 
 	print("\n== 5. Service invoice links back (D9)")
 	from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice

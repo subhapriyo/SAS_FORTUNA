@@ -8,7 +8,7 @@ Permissions Manager:
   2. Stock Entry Type .... Repair Receipt (Material Receipt)
   3. Custom Fields ....... Serial No, HD Ticket, HD Customer, Stock Entry, Material
                            Request, Quotation, Sales Order, Sales Invoice, Delivery
-                           Note, Opportunity
+                           Note, Opportunity, Item (AMC exclusion, extended warranty)
   4. Permissions ......... custom roles + Helpdesk "Agent" on the new DocTypes
   5. Report roles ........ the same roles on the four Query Reports
   6. Landing page ........ LANDING_SECTIONS, shown on /desk/sas-fortuna by setup/landing_page.py
@@ -29,6 +29,7 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 from sas_fortuna.setup import ticketing
 from sas_fortuna.setup.ticketing import TEAM_ROUTES, TICKET_TYPES
+from sas_fortuna.support.repair import START_REPAIR_CONDITION
 
 MODULE = "SAS Fortuna"
 
@@ -210,6 +211,8 @@ SERIAL_NO_FIELDS = _chain(
 		{"fieldname": "custom_sim_cb", "fieldtype": "Column Break"},
 		{"fieldname": "custom_sim_activation_date", "fieldtype": "Date", "label": "SIM Activation Date"},
 		{"fieldname": "custom_sim_valid_till", "fieldtype": "Date", "label": "SIM Valid Till"},
+		# Renewal reminders already e-mailed for this validity (support/tasks.py); reset on a new date.
+		_ro(fieldname="custom_sim_reminders_sent", fieldtype="Int", label="SIM Reminders Sent"),
 		_ro(fieldname="custom_sim_order", fieldtype="Link", label="SIM Service Order", options="Sales Order"),
 	]
 )
@@ -355,8 +358,33 @@ def _service_tab(extra=()):
 	return _chain(fields)
 
 
+# Item: what Fortuna's answers need on the product master.
+ITEM_FIELDS = _chain(
+	[
+		{
+			# AMC contract exclusions: consumables are charged even on an AMC repair.
+			"fieldname": "custom_amc_excluded",
+			"fieldtype": "Check",
+			"label": "Not Covered by AMC",
+			"description": "Consumable (e.g. biometric sensor, maintenance-free battery): "
+			"charged on AMC repairs as per the AMC contract.",
+		},
+		{
+			# Extended warranty is a service line on the sale bill (Fortuna's answer).
+			"fieldname": "custom_extended_warranty_months",
+			"fieldtype": "Int",
+			"label": "Extended Warranty (Months)",
+			"description": "For an extended-warranty service item: months added to the warranty "
+			"of the units sold on the same Sales Invoice.",
+			"non_negative": 1,
+		},
+	],
+	after="warranty_period",
+)
+
 CUSTOM_FIELDS = {
 	"Serial No": SERIAL_NO_FIELDS,
+	"Item": ITEM_FIELDS,
 	"HD Ticket": HD_TICKET_FIELDS,
 	"HD Customer": _chain(
 		[
@@ -572,10 +600,88 @@ LANDING_SECTIONS = [
 				"Fortuna Support Settings",
 				"doctype",
 				"Fortuna Support Settings",
-				"Warehouses, accounts and switches for repairs.",
+				"Payment policy, AMC and SIM alerts, terms, warehouses and accounts.",
 				"settings",
 			),
 			("Helpdesk", "url", "/helpdesk", "Where agents pick up and answer tickets.", "headset"),
+		],
+	},
+	# Go-live configuration from Fortuna's answers (setup/fortuna_impex.py creates the records;
+	# these links are where they are kept up to date).
+	{
+		"title": "Helpdesk & Alerts Setup",
+		"intro": "Response targets, working days, teams and the mails that go out.",
+		"links": [
+			(
+				"SLA Policies",
+				"doctype",
+				"HD Service Level Agreement",
+				"Response target per team: attend within 48 hours.",
+				"clock",
+			),
+			(
+				"Support Holidays",
+				"doctype",
+				"HD Service Holiday List",
+				"Weekly off and public holidays the SLA clock skips.",
+				"calendar",
+			),
+			(
+				"Helpdesk Teams",
+				"doctype",
+				"HD Team",
+				"Software, Hardware and Post-Installation agents.",
+				"users",
+			),
+			(
+				"Support Mailbox",
+				"doctype",
+				"Email Account",
+				"amc@fortunaindia.com: add the password to turn e-mail tickets on.",
+				"mail",
+			),
+			(
+				"Alerts",
+				"doctype",
+				"Notification",
+				"AMC renewal, unit received and other automatic e-mails.",
+				"bell",
+			),
+		],
+	},
+	{
+		"title": "Quotations, Terms & Rates",
+		"intro": "What AMC and repair quotations print and charge.",
+		"links": [
+			(
+				"Terms and Conditions",
+				"doctype",
+				"Terms and Conditions",
+				"AMC contract terms and repair terms.",
+				"form",
+			),
+			(
+				"Payment Terms",
+				"doctype",
+				"Payment Terms Template",
+				"100% against Pro-Forma Invoice.",
+				"form",
+			),
+			(
+				"Standard Rates",
+				"doctype",
+				"Item Price",
+				"Repair service Rs 1800, freight Rs 200 per device.",
+				"tag",
+			),
+			("Letter Head", "doctype", "Letter Head", "Logo and address, taken from the Company.", "pass"),
+			(
+				"Print Formats",
+				"doctype",
+				"Print Format",
+				"AMC Quotation, Pro-Forma, Job Sheet and more.",
+				"report",
+			),
 		],
 	},
 	{
@@ -618,11 +724,12 @@ LANDING_SECTIONS = [
 # linked in Fortuna Support Settings, so re-running changes nothing.
 # SAC codes are placeholders until Fortuna's accountant confirms them.
 SERVICE_ITEMS = {
-	# settings field: (item code, SAC)
-	"service_charge_item": ("Repair Service Charge", "998713"),
+	# settings field: (item code, SAC). 998719 = maintenance and repair services, as on
+	# Fortuna's own AMC quotation (1QTN-1906/24-25); freight and SIM codes still to be confirmed.
+	"service_charge_item": ("Repair Service Charge", "998719"),
 	"freight_item": ("Freight Charges", "996511"),
 	"sim_recharge_item": ("SIM Recharge", "998422"),
-	None: ("AMC Service", "998713"),  # used on AMC quotations, not in settings
+	None: ("AMC Service", "998719"),  # used on AMC quotations, not in settings
 }
 # TICKET_TYPES and TEAM_ROUTES: see setup/ticketing.py
 
@@ -652,27 +759,7 @@ def create_masters():
 
 	# Non-stock service items
 	for field, (code, sac) in SERVICE_ITEMS.items():
-		if not frappe.db.exists("Item", code):
-			frappe.get_doc(
-				{
-					"doctype": "Item",
-					"item_code": code,
-					"item_name": code,
-					"item_group": "Services",
-					"stock_uom": "Nos",
-					"is_stock_item": 0,
-					"gst_hsn_code": sac,
-				}
-			).insert()
-			done.append(f"Item {code}")
-		# fortuna_erp keeps every Item disabled until its Status is "Approved"
-		# (customisations/item.py). Disabled items cannot go on a quotation,
-		# so approve ours. On production Fortuna's approver may do this instead.
-		item = frappe.get_doc("Item", code)
-		if item.meta.has_field("custom_status") and item.custom_status != "Approved":
-			item.custom_status = "Approved"
-			item.save()
-			done.append(f"Approved item {code}")
+		done += ensure_service_item(code, sac)
 		if field and not settings.get(field):
 			settings.set(field, code)
 
@@ -696,6 +783,50 @@ def create_masters():
 	done += create_print_formats()
 	frappe.db.commit()
 	return {"created": done or "nothing new"}
+
+
+def ensure_service_item(code, sac, **values):
+	"""Create one non-stock service item if missing; return what was done.
+
+	fortuna_erp keeps every Item disabled until its Status is "Approved"
+	(customisations/item.py), and a disabled item cannot go on a quotation,
+	so ours are approved. On production Fortuna's approver may do this instead.
+	"""
+	done = []
+	if not frappe.db.exists("Item", code):
+		_ensure_hsn(sac)
+		frappe.get_doc(
+			{
+				"doctype": "Item",
+				"item_code": code,
+				"item_name": code,
+				"item_group": _services_group(),
+				"stock_uom": "Nos",
+				"is_stock_item": 0,
+				"gst_hsn_code": sac,
+				**values,
+			}
+		).insert(ignore_permissions=True)
+		done.append(f"Item {code}")
+	item = frappe.get_doc("Item", code)
+	if item.meta.has_field("custom_status") and item.custom_status != "Approved":
+		item.custom_status = "Approved"
+		item.save(ignore_permissions=True)
+		done.append(f"Approved item {code}")
+	return done
+
+
+def _services_group():
+	"""ERPNext's 'Services' item group, or the root group on a site without it."""
+	return "Services" if frappe.db.exists("Item Group", "Services") else "All Item Groups"
+
+
+def _ensure_hsn(code):
+	"""india_compliance links Item.gst_hsn_code to a GST HSN Code master: create the code if missing."""
+	if code and frappe.db.exists("DocType", "GST HSN Code") and not frappe.db.exists("GST HSN Code", code):
+		frappe.get_doc({"doctype": "GST HSN Code", "hsn_code": code, "description": code}).insert(
+			ignore_permissions=True
+		)
 
 
 # Phase 3 (D6): Repair Order status flow. Only HUMAN actions are transitions;
@@ -723,7 +854,8 @@ WORKFLOW_TRANSITIONS = [
 		'doc.invoice_method == "Chargeable" and doc.quotation',
 	),
 	("Unit Received", "Start Repair", "In Repair", "Service Engineer", 'doc.invoice_method != "Chargeable"'),
-	("Awaiting Payment", "Start Repair", "In Repair", "Service Engineer", "doc.payment_cleared == 1"),
+	# Fortuna: work starts once the quotation is confirmed; payment in full before dispatch.
+	("Awaiting Payment", "Start Repair", "In Repair", "Service Engineer", START_REPAIR_CONDITION),
 	("In Repair", "End Repair", "Ready", "Service Engineer", ""),
 	("Dispatched", "Close", "Closed", "Agent", ""),
 	("Registered", "Cancel", "Cancelled", "Support Manager", ""),

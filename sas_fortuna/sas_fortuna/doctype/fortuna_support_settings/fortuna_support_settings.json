@@ -23,13 +23,20 @@
     "service_charge_item",
     "freight_item",
     "column_break_billing",
+    "payment_due_before",
     "advance_percent",
     "charge_amc_repairs",
     "replacement_keeps_old_warranty",
+    "section_terms",
+    "amc_terms",
+    "repair_terms",
+    "column_break_terms",
+    "payment_terms_template",
     "section_amc",
     "default_warranty_days",
     "amc_enquiry_lead_days",
     "amc_team_email",
+    "amc_alert_cc",
     "column_break_amc",
     "create_amc_opportunities",
     "amc_opportunity_owner",
@@ -37,7 +44,9 @@
     "sim_billing_mode",
     "sim_recharge_item",
     "column_break_sim",
-    "sim_order_lead_days"
+    "sim_order_lead_days",
+    "sim_reminder_days",
+    "sim_reminder_cc"
   ],
   "fields": [
     {
@@ -155,21 +164,22 @@
       "fieldtype": "Percent",
       "label": "Advance Required %",
       "default": "100",
-      "description": "Open point: 100 = full payment before repair starts; e.g. 50 = half advance."
+      "description": "Share of the repair order to be paid before work starts. Dispatch always needs 100%.",
+      "depends_on": "eval:doc.payment_due_before==\"Repair Start\""
     },
     {
       "fieldname": "charge_amc_repairs",
       "fieldtype": "Check",
       "label": "Charge AMC Repairs",
       "default": "0",
-      "description": "Open point: off = AMC repairs are free."
+      "description": "Off (Fortuna): AMC repairs are free, except Items ticked \"Not Covered by AMC\" (consumables such as biometric sensors and batteries), which are charged."
     },
     {
       "fieldname": "replacement_keeps_old_warranty",
       "fieldtype": "Check",
       "label": "Replacement Keeps Old Warranty",
       "default": "1",
-      "description": "Open point: on = replacement unit keeps the old unit's warranty end; off = fresh warranty."
+      "description": "Default for replacement units (Fortuna: normally keeps the original warranty). Each Repair Order can override it in Replacement Warranty."
     },
     {
       "fieldname": "section_amc",
@@ -243,11 +253,68 @@
       "fieldtype": "Int",
       "label": "SIM Order Lead Days",
       "default": "30"
+    },
+    {
+      "fieldname": "payment_due_before",
+      "fieldtype": "Select",
+      "label": "Payment Due Before",
+      "options": "Dispatch\nRepair Start",
+      "default": "Dispatch",
+      "description": "Fortuna: full payment before the repaired unit is shipped (Dispatch). Repair Start = the advance below must be paid before work begins."
+    },
+    {
+      "fieldname": "section_terms",
+      "fieldtype": "Section Break",
+      "label": "Quotation Terms"
+    },
+    {
+      "fieldname": "amc_terms",
+      "fieldtype": "Link",
+      "label": "AMC Terms",
+      "options": "Terms and Conditions",
+      "description": "Filled on AMC quotations and orders that have no terms yet."
+    },
+    {
+      "fieldname": "repair_terms",
+      "fieldtype": "Link",
+      "label": "Repair Terms",
+      "options": "Terms and Conditions",
+      "description": "Filled on repair quotations."
+    },
+    {
+      "fieldname": "column_break_terms",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "payment_terms_template",
+      "fieldtype": "Link",
+      "label": "Payment Terms Template",
+      "options": "Payment Terms Template",
+      "description": "Fortuna: 100% against Pro-Forma Invoice."
+    },
+    {
+      "fieldname": "amc_alert_cc",
+      "fieldtype": "Data",
+      "label": "AMC Alert CC",
+      "description": "Comma separated. Copied on warranty-ending and AMC renewal alerts."
+    },
+    {
+      "fieldname": "sim_reminder_days",
+      "fieldtype": "Data",
+      "label": "Customer Reminder Days",
+      "default": "30, 15",
+      "description": "Days before SIM validity ends to e-mail the customer, e.g. 30, 15 (two reminders). Blank = no reminders."
+    },
+    {
+      "fieldname": "sim_reminder_cc",
+      "fieldtype": "Data",
+      "label": "Customer Reminder CC",
+      "description": "Comma separated. Copied on every SIM renewal reminder."
     }
   ],
   "index_web_pages_for_search": 0,
   "links": [],
-  "modified": "2026-10-23 14:00:00.000000",
+  "modified": "2026-11-14 00:30:00.000000",
   "modified_by": "Administrator",
   "module": "SAS Fortuna",
   "name": "Fortuna Support Settings",

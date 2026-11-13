@@ -47,6 +47,12 @@ def amc_validate(doc, method=None):
 	"""Period and covered units must make sense before anything is sent."""
 	if not doc.get("custom_is_amc"):
 		return
+	# Fortuna's AMC terms and "100% against Pro-Forma" payment terms, where still blank.
+	if doc.docstatus == 0:
+		from sas_fortuna.support.repair import apply_quotation_terms
+		from sas_fortuna.support.utils import get_settings
+
+		apply_quotation_terms(doc, get_settings().get("amc_terms"))
 	start, end = doc.get("custom_amc_start_date"), doc.get("custom_amc_end_date")
 	if start and end and getdate(end) <= getdate(start):
 		frappe.throw(_("AMC End Date must be after AMC Start Date."))

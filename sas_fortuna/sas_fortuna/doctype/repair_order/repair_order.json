@@ -44,7 +44,8 @@
     "sales_invoice",
     "section_dispatch",
     "delivery_note",
-    "replacement_serial"
+    "replacement_serial",
+    "replacement_warranty"
   ],
   "fields": [
     {
@@ -312,11 +313,19 @@
       "options": "Serial No",
       "read_only": 1,
       "no_copy": 1
+    },
+    {
+      "fieldname": "replacement_warranty",
+      "fieldtype": "Select",
+      "label": "Replacement Warranty",
+      "options": "\nKeep Original Warranty\nNew Warranty",
+      "depends_on": "eval:doc.replacement_serial || doc.status == 'Ready'",
+      "description": "Fortuna decides case by case. Blank = Fortuna Support Settings (normally keeps the original warranty)."
     }
   ],
   "index_web_pages_for_search": 0,
   "links": [],
-  "modified": "2026-10-15 15:45:00.000000",
+  "modified": "2026-11-14 00:30:00.000000",
   "modified_by": "Administrator",
   "module": "SAS Fortuna",
   "name": "Repair Order",

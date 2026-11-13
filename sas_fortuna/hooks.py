@@ -354,6 +354,9 @@ import os as _os
 
 if _os.path.exists(_os.path.join(_os.path.dirname(__file__), "setup", "support_desk.py")):
 	after_migrate.append("sas_fortuna.setup.support_desk.execute")
+	# Fortuna Impex go-live answers (SLA, mailbox, team, terms, rates); Fortuna Impex sites
+	# only, adds what is missing. See sas_fortuna/setup/fortuna_impex.py.
+	after_migrate.append("sas_fortuna.setup.fortuna_impex.execute")
 	# Ticketing prerequisites report (read-only), right after the setup that creates them:
 	# printed in every migrate / install log (Frappe Cloud too); a FAIL also goes to Error Log.
 	# after_install runs this same after_migrate list. See sas_fortuna/setup/ticketing.py.

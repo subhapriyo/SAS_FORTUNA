@@ -4,6 +4,7 @@ The form, fields and workflow are CONFIG (built in the DocType editor and
 Workflow list). This file only does what config cannot:
   * copy details from the Helpdesk ticket / serial number,
   * default the invoice method from the support type,
+  * charge AMC-excluded parts (consumables) even on a free AMC repair,
   * total the chargeable parts,
   * mirror the repair status back onto the ticket.
 Buttons (receipt, spares, quotation, dispatch) live in support/repair.py.
@@ -50,6 +51,7 @@ class RepairOrder(Document):
 		self.check_one_open_repair_per_serial()
 		self.check_locked_after_receipt()
 		self.check_delivery_address()
+		self.mark_amc_excluded_parts()
 		self.check_parts()
 		self.total_parts()
 
@@ -139,16 +141,40 @@ class RepairOrder(Document):
 				_("Address {0} does not belong to {1}.").format(self.delivery_address, self.customer)
 			)
 
+	# -- AMC exclusions ---------------------------------------------------------
+	def _amc_excluded_items(self):
+		"""Item codes on this repair ticked 'Not Covered by AMC' on the Item."""
+		codes = list({p.item_code for p in self.parts if p.item_code})
+		if not codes or not frappe.get_meta("Item").has_field("custom_amc_excluded"):
+			return set()
+		return set(
+			frappe.get_all("Item", filters={"name": ["in", codes], "custom_amc_excluded": 1}, pluck="name")
+		)
+
+	def mark_amc_excluded_parts(self):
+		"""AMC covers the repair, not consumables (biometric sensor, battery): charge those.
+
+		Only Pending parts change; a part already requested, reserved or consumed is
+		tied to stock documents and stays as it is.
+		"""
+		if self.invoice_method != "AMC":
+			return
+		excluded = self._amc_excluded_items()
+		for part in self.parts:
+			if part.item_code in excluded and (part.status or "Pending") == "Pending":
+				part.is_chargeable = 1
+
 	def check_parts(self):
 		charge_allowed = self.invoice_method == "Chargeable" or (
 			self.invoice_method == "AMC" and get_settings().charge_amc_repairs
 		)
+		excluded = self._amc_excluded_items() if self.invoice_method == "AMC" else set()
 		for part in self.parts:
 			if flt(part.qty) <= 0:
 				frappe.throw(_("Row {0}: Qty must be more than 0.").format(part.idx))
 			if flt(part.rate) < 0:
 				frappe.throw(_("Row {0}: Rate cannot be negative.").format(part.idx))
-			if part.is_chargeable and not charge_allowed:
+			if part.is_chargeable and not (charge_allowed or part.item_code in excluded):
 				frappe.throw(
 					_(
 						"Row {0}: {1} is marked Chargeable, but this repair is {2}. "
@@ -196,3 +222,9 @@ class RepairOrder(Document):
 	@property
 	def is_chargeable(self):
 		return self.invoice_method == "Chargeable"
+
+	@property
+	def is_billable(self):
+		"""Customer pays something: a paid repair, or chargeable (excluded) parts on an AMC repair.
+		Payment in full is then needed before the unit is dispatched (repair.check_paid_before_dispatch)."""
+		return self.is_chargeable or any(p.is_chargeable for p in self.parts)
