@@ -22,6 +22,7 @@ MODULE = "SAS Fortuna"
 # Shared style: quiet, professional, prints well in black and white
 # ---------------------------------------------------------------------------
 CSS = """
+.ff-letter-head { margin-bottom: 8px; }
 .ff { font-size: 10.5pt; color: #1d2730; line-height: 1.4; }
 .ff .ff-head { display: table; width: 100%; border-bottom: 2px solid #1d3b5c; padding-bottom: 8px; margin-bottom: 14px; }
 .ff .ff-head > div { display: table-cell; vertical-align: top; }
@@ -68,6 +69,8 @@ HEADER = """
 {%- set company = doc.company or frappe.db.get_single_value("Fortuna Support Settings", "company") -%}
 {%- set co_addr = frappe.get_all("Dynamic Link", filters={"link_doctype": "Company", "link_name": company, "parenttype": "Address"}, pluck="parent", limit=1) -%}
 {%- set addr = frappe.get_doc("Address", co_addr[0]) if co_addr else None -%}
+{#- Frappe hands custom HTML formats the rendered letter head but does not print it. -#}
+{%- if letter_head %}<div class="ff-letter-head">{{ letter_head }}</div>{% endif %}
 <div class="ff-head">
   <div>
     {%- if not letter_head %}
@@ -248,19 +251,21 @@ _REPAIR_DETAILS = (
 	)
 	+ "{%- endif %}"
 )
-REPAIR_QUOTATION = _page(
-	"Service Quotation",
-	PARTY.replace("{{ DETAILS }}", _REPAIR_DETAILS)
-	+ MONEY
-	+ """
+# Payment line on the repair quotation, following Payment Due Before (Fortuna: Dispatch).
+REPAIR_PAYMENT_NOTE = """
+{%- set due = frappe.db.get_single_value("Fortuna Support Settings", "payment_due_before") or "Dispatch" -%}
 {%- set adv = frappe.db.get_single_value("Fortuna Support Settings", "advance_percent") or 100 -%}
 <div class="ff-note">
-  {%- if adv|int >= 100 %}{{ _("Repair work starts once this quotation is accepted and paid in full.") }}
+  {%- if due != "Repair Start" %}{{ _("Repair work starts once you accept this quotation. Payment in full is due before the repaired unit is dispatched.") }}
+  {%- elif adv|int >= 100 %}{{ _("Repair work starts once this quotation is accepted and paid in full.") }}
   {%- else %}{{ _("Repair work starts once this quotation is accepted and an advance of") }} {{ adv|int }}% {{ _("is paid.") }}{% endif %}
   {{ _("You can accept it in your customer portal under My Repairs, or reply to this e-mail.") }}
 </div>
 """
-	+ TERMS,
+
+REPAIR_QUOTATION = _page(
+	"Service Quotation",
+	PARTY.replace("{{ DETAILS }}", _REPAIR_DETAILS) + MONEY + REPAIR_PAYMENT_NOTE + TERMS,
 	tag="Paid repair",
 	signs=("Prepared by", "Authorised signatory", "Accepted by (customer)"),
 )
@@ -500,11 +505,12 @@ FORMATS = {
 DEFAULT_FOR = {"Repair Order": "Fortuna Job Sheet", "Returnable Gate Pass": "Fortuna Gate Pass"}
 
 
-def create_print_formats(only_missing=False):
+def create_print_formats(only_missing=False, commit=None):
 	"""Create or update every Fortuna print format. Safe to re-run.
 
 	only_missing=True (used on migrate by setup/fortuna_impex.py): create the ones a site
 	lacks and leave existing ones, and any Desk edits to them, as they are.
+	commit: run by hand it commits; from a patch or a test the caller's transaction decides.
 	"""
 	done = []
 	for name, (doctype, html) in FORMATS.items():
@@ -544,6 +550,6 @@ def create_print_formats(only_missing=False):
 			},
 			validate_fields_for_doctype=False,
 		)
-	if not only_missing:
+	if commit if commit is not None else not only_missing:
 		frappe.db.commit()  # run by hand (bench execute); on migrate the caller's transaction decides
 	return done

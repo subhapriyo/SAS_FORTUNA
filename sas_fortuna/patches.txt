@@ -2,3 +2,4 @@
 
 [post_model_sync]
 sas_fortuna.patches.v16_0.start_repair_after_order_confirmed
+sas_fortuna.patches.v16_0.refresh_fortuna_print_formats
