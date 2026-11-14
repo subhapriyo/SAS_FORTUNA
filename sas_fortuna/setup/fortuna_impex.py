@@ -300,6 +300,10 @@ def ensure_print_formats():
 # Helpdesk counts SLA time in WORKING hours, so 48 clock hours is read as two working days
 # of 8 hours. TO CONFIRM with Fortuna, together with working hours and holidays.
 SLA_RESPONSE_HOURS = 16
+# No resolution time was given, so resolution is not enforced (apply_sla_for_resolution = 0).
+# Helpdesk still computes a "resolve by" date on every ticket save and fails on a blank
+# value, so each priority carries this nominal target: 5 working days. TO CONFIRM.
+SLA_RESOLUTION_HOURS = 40
 SLA_TICKET_TYPES = ("Software", "Hardware", "Post-Installation")
 SLA_NAME = "Fortuna {ticket_type} SLA"
 WORKING_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
@@ -338,6 +342,7 @@ def ensure_sla():
 	for rank, ticket_type in enumerate(SLA_TICKET_TYPES, 1):
 		name = SLA_NAME.format(ticket_type=ticket_type)
 		if frappe.db.exists("HD Service Level Agreement", name):
+			done += _fill_blank_resolution_time(name)
 			continue
 		frappe.get_doc(
 			{
@@ -355,6 +360,7 @@ def ensure_sla():
 					{
 						"priority": p,
 						"response_time": SLA_RESPONSE_HOURS * 3600,
+						"resolution_time": SLA_RESOLUTION_HOURS * 3600,
 						"default_priority": int(p == "Medium"),
 					}
 					for p in priorities
@@ -367,6 +373,20 @@ def ensure_sla():
 		).insert(ignore_permissions=True)
 		done.append(f"SLA {name}")
 	return done
+
+
+def _fill_blank_resolution_time(sla):
+	"""Repair SLAs created before 14 Nov 2026 without a resolution time (ticket saves failed).
+	Only blank rows are filled; a time someone set in Helpdesk is kept."""
+	rows = frappe.get_all(
+		"HD Service Level Priority",
+		filters={"parent": sla, "parenttype": "HD Service Level Agreement"},
+		fields=["name", "resolution_time"],
+	)
+	blank = [r.name for r in rows if not r.resolution_time]
+	for row in blank:
+		frappe.db.set_value("HD Service Level Priority", row, "resolution_time", SLA_RESOLUTION_HOURS * 3600)
+	return [f"SLA {sla}: resolution time on {len(blank)} priorities"] if blank else []
 
 
 # ===========================================================================

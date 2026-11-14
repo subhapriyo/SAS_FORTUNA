@@ -196,6 +196,42 @@ class TestSla(IntegrationTestCase):
 		self.assertTrue(all(p.response_time == fi.SLA_RESPONSE_HOURS * 3600 for p in sla.priorities))
 		self.assertEqual({d.workday for d in sla.support_and_resolution}, set(fi.WORKING_DAYS))
 
+	def test_every_priority_has_a_resolution_time(self):
+		# Helpdesk computes a resolution deadline on every ticket save, even when resolution
+		# is not enforced: a blank resolution time crashes ticket creation.
+		fi.ensure_sla()
+		sla = frappe.get_doc("HD Service Level Agreement", "ZZ ZZ Impex Type SLA")
+		self.assertTrue(all(p.resolution_time == fi.SLA_RESOLUTION_HOURS * 3600 for p in sla.priorities))
+
+	def test_a_ticket_can_be_created_under_the_sla(self):
+		fi.ensure_sla()
+		if not frappe.db.exists("HD Ticket Type", "ZZ Impex Type"):
+			frappe.get_doc({"doctype": "HD Ticket Type", "name": "ZZ Impex Type"}).insert(
+				ignore_permissions=True
+			)
+		ticket = frappe.get_doc(
+			{
+				"doctype": "HD Ticket",
+				"subject": "ZZ SLA ticket",
+				"description": "ZZ",
+				"raised_by": "zz.sla.customer@example.com",
+				"ticket_type": "ZZ Impex Type",
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(ticket.sla, "ZZ ZZ Impex Type SLA")
+		self.assertTrue(ticket.response_by)
+
+	def test_existing_sla_without_resolution_time_is_repaired(self):
+		fi.ensure_sla()
+		frappe.db.set_value(
+			"HD Service Level Priority", {"parent": "ZZ ZZ Impex Type SLA"}, "resolution_time", None
+		)
+		fi.ensure_sla()
+		times = frappe.get_all(
+			"HD Service Level Priority", filters={"parent": "ZZ ZZ Impex Type SLA"}, pluck="resolution_time"
+		)
+		self.assertTrue(times and all(t == fi.SLA_RESOLUTION_HOURS * 3600 for t in times))
+
 	def test_holiday_list_has_sundays_off(self):
 		fi.ensure_sla()
 		holidays = frappe.get_all("HD Holiday", filters={"parent": "ZZ Impex Holidays"}, pluck="holiday_date")

@@ -46,6 +46,20 @@ def _start_allowed(values):
 	return bool(is_transition_condition_satisfied(frappe._dict(condition=repair.START_REPAIR_CONDITION), doc))
 
 
+def _hsn():
+	"""india_compliance (on Fortuna's sites) makes HSN/SAC mandatory on Item."""
+	if not frappe.get_meta("Item").has_field("gst_hsn_code"):
+		return {}
+	code = frappe.db.get_value("GST HSN Code", {}, "name")
+	if not code:
+		code = (
+			frappe.get_doc({"doctype": "GST HSN Code", "hsn_code": "998719", "description": "ZZ"})
+			.insert(ignore_permissions=True)
+			.name
+		)
+	return {"gst_hsn_code": code}
+
+
 def _item(code, **values):
 	if not frappe.db.exists("Item", code):
 		frappe.get_doc(
@@ -56,6 +70,7 @@ def _item(code, **values):
 				"item_group": "All Item Groups",
 				"stock_uom": "Nos",
 				"is_stock_item": 0,
+				**_hsn(),
 				**values,
 			}
 		).insert(ignore_permissions=True)
