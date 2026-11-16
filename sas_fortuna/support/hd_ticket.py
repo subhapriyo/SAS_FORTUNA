@@ -25,6 +25,27 @@ def before_insert(doc, method=None):
 	remember_legacy_status(doc)
 
 
+def after_insert(doc, method=None):
+	send_portal_acknowledgement(doc)
+
+
+# ---------------------------------------------------------------------------
+# "We've received your ticket" e-mail for portal tickets
+# ---------------------------------------------------------------------------
+def send_portal_acknowledgement(doc):
+	"""Helpdesk sends its acknowledgement e-mail (Helpdesk > Settings > Email Notifications >
+	Acknowledgement) only for tickets that came in by e-mail. Send the same, editable template
+	for customer-portal tickets too. A mail problem is logged and never stops the ticket."""
+	if not doc.via_customer_portal or not doc.get("raised_by"):
+		return
+	if not frappe.db.get_single_value("HD Settings", "send_acknowledgement_email"):
+		return
+	try:
+		doc.send_acknowledgement_email()
+	except Exception:
+		frappe.log_error(title=f"sas_fortuna: acknowledgement e-mail for ticket {doc.name} not sent")
+
+
 def validate(doc, method=None):
 	from sas_fortuna.support.legacy_import import validate_legacy
 

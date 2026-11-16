@@ -24,6 +24,8 @@ doc_events = {
 	# Phase 2: ticket classification and routing; stamp serials on sale
 	"HD Ticket": {
 		"before_insert": S + "hd_ticket.before_insert",
+		# Fortuna: "we've received your ticket" e-mail for portal tickets too
+		"after_insert": S + "hd_ticket.after_insert",
 		"validate": S + "hd_ticket.validate",
 		"on_update": S + "hd_ticket.on_update",
 	},

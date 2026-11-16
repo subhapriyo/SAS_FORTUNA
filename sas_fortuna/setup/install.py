@@ -23,6 +23,18 @@ def before_install():
 
 
 def after_install():
+	# Fortuna Impex sites: Helpdesk agents start clean (Users kept), before the steps below
+	# rebuild them from the staff sheet. Install only; a migrate never does this.
+	from sas_fortuna.setup.fortuna_impex import reset_helpdesk_agents
+
+	try:
+		for line in reset_helpdesk_agents():
+			print(f"sas_fortuna: {line}")
+		frappe.db.commit()
+	except Exception:
+		frappe.db.rollback()
+		frappe.log_error(title="sas_fortuna after_install: Helpdesk agent reset failed")
+
 	# Run this app's after_migrate steps (all idempotent), in hooks.py order.
 	# A failing step is logged, not raised: the next `bench migrate` runs them
 	# again, and raising here would leave the app half-installed.

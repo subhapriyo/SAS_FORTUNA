@@ -1,0 +1,63 @@
+{#- Company name, address, e-mail, phone and website come from the Company record (Fortuna
+    Support Settings > Company, else the default company), nothing is typed in here. -#}
+{%- set company = frappe.db.get_single_value("Fortuna Support Settings", "company") or frappe.db.get_single_value("Global Defaults", "default_company") -%}
+{%- set co = frappe.get_doc("Company", company) if company else None -%}
+{%- set links = frappe.get_all("Dynamic Link", filters={"link_doctype": "Company", "link_name": company, "parenttype": "Address"}, pluck="parent", limit=1) if company else [] -%}
+{%- set addr = frappe.get_doc("Address", links[0]) if links else None -%}
+{%- set company_name = (co and co.company_name) or "our" -%}
+{%- set email = (addr and addr.email_id) or (co and co.email) -%}
+{%- set phone = (addr and addr.phone) or (co and co.phone_no) -%}
+<p>Dear Customer,</p>
+<p>
+	Thank you for contacting {{ company_name }} support. We have received your request and opened ticket
+	<strong>#{{ doc.name }}</strong> for it.
+</p>
+<table cellpadding="6" style="border-collapse: collapse; border: 1px solid #dee2e6; font-size: 14px">
+	<tr>
+		<td style="background: #f8f9fa"><strong>Ticket No</strong></td>
+		<td>#{{ doc.name }}</td>
+	</tr>
+	{% if doc.ticket_type %}
+	<tr>
+		<td style="background: #f8f9fa"><strong>Ticket Type</strong></td>
+		<td>{{ doc.ticket_type }}</td>
+	</tr>
+	{% endif %}
+	<tr>
+		<td style="background: #f8f9fa"><strong>Subject</strong></td>
+		<td>{{ doc.subject }}</td>
+	</tr>
+	{% if doc.custom_serial_no %}
+	<tr>
+		<td style="background: #f8f9fa"><strong>Serial No</strong></td>
+		<td>{{ doc.custom_serial_no }}</td>
+	</tr>
+	{% endif %}
+	<tr>
+		<td style="background: #f8f9fa"><strong>Raised on</strong></td>
+		<td>{{ frappe.utils.format_datetime(doc.creation, "dd-MM-yyyy hh:mm a") }}</td>
+	</tr>
+</table>
+<p>Our {{ doc.agent_group or "support" }} team is looking into it and will get back to you as early as possible.</p>
+{% if doc.via_customer_portal %}
+<p>
+	You can follow the progress, add details or attach photos here:
+	<a href="{{ frappe.utils.get_url() }}/helpdesk/my-tickets/{{ doc.name }}">View ticket #{{ doc.name }}</a>
+</p>
+{% else %}
+<p>To add details, simply reply to this e-mail.</p>
+{% endif %}
+<p>Please mention the ticket number <strong>#{{ doc.name }}</strong> whenever you contact us about this issue.</p>
+<p>
+	Regards,<br />
+	Support Team{% if co %}, {{ co.company_name }}{% endif %}
+	{%- if addr %}<br />
+	{{ addr.address_line1 or "" }}{% if addr.address_line2 %}, {{ addr.address_line2 }}{% endif %}{% if addr.city %}, {{ addr.city }}{% endif %}{% if addr.pincode %} - {{ addr.pincode }}{% endif %}
+	{%- endif %}
+	{%- if email or phone %}<br />
+	{{ email or "" }}{% if email and phone %} | {% endif %}{{ phone or "" }}
+	{%- endif %}
+	{%- if co and co.website %}<br />
+	<a href="{{ co.website }}">{{ co.website }}</a>
+	{%- endif %}
+</p>

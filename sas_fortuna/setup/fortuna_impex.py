@@ -22,12 +22,15 @@ has "sas_fortuna_fortuna_impex": 1 (0 switches it off). Other companies' sites
   ensure_kb_articles      FAQ articles customers see while raising a ticket      add missing
   ensure_ticket_subject_form  Subject dropdown + form script on New Ticket       add missing; script follows its file
   ensure_ticket_subjects  starter subjects per ticket type (Ticket Subject list) types without any
+  ensure_acknowledgement_email  "we've received your ticket" e-mail text + on      text if blank; on once
 
 Open points still with Fortuna are marked "TO CONFIRM" next to the value.
 Data: setup/data/fortuna_support_team.json (staff sheet), fortuna_amc_terms.html,
 fortuna_repair_terms.html, fortuna_kb_articles.json (FAQ articles), fortuna_ticket_subjects.json
-(starter subjects), fortuna_new_ticket_form.js (New Ticket form script).
-Tests: sas_fortuna/tests/test_fortuna_impex_setup.py, test_ticket_subject.py
+(starter subjects), fortuna_new_ticket_form.js (New Ticket form script),
+fortuna_ticket_acknowledgement.html (new-ticket e-mail).
+Tests: sas_fortuna/tests/test_fortuna_impex_setup.py, test_ticket_subject.py,
+test_ticket_acknowledgement.py, test_install_agents.py
 """
 
 import json
@@ -572,6 +575,41 @@ def _grant(user, person):
 	return done
 
 
+AGENT_ROLES = ("Agent", "Agent Manager")
+
+
+def reset_helpdesk_agents():
+	"""Install only (setup/install.py): start Helpdesk's agents from a clean slate, so agents a
+	restored or copied database brings along do not carry over. Removes every HD Agent, every
+	team membership and the Agent / Agent Manager roles; the User logins stay. The staff sheet
+	then rebuilds them (sync_support_team runs again for everyone)."""
+	if not applies() or not frappe.db.exists("DocType", "HD Agent"):
+		return []
+	agents = frappe.get_all("HD Agent", pluck="name")
+	for team in frappe.get_all("HD Team", fields=["name", "assignment_rule"]):
+		# Helpdesk will not save a team without members, so clear the rows directly: the
+		# team's members and the users of its assignment rule (round robin). The staff sheet
+		# adds members back with a normal save.
+		frappe.db.delete("HD Team Member", {"parenttype": "HD Team", "parent": team.name})
+		if team.assignment_rule:
+			for field in ("users", "weighted_users"):
+				df = frappe.get_meta("Assignment Rule").get_field(field)
+				if df and df.options:
+					frappe.db.delete(
+						df.options, {"parenttype": "Assignment Rule", "parent": team.assignment_rule}
+					)
+	for agent in agents:
+		frappe.delete_doc("HD Agent", agent, ignore_permissions=True, force=True)
+	for user in agents:
+		if user in ("Administrator", "Guest") or not frappe.db.exists("User", user):
+			continue
+		roles = [r for r in AGENT_ROLES if r in frappe.get_roles(user)]
+		if roles:
+			frappe.get_doc("User", user).remove_roles(*roles)
+	frappe.db.set_default(STAFF_SYNCED_KEY, "[]")
+	return [f"Helpdesk agents reset: {len(agents)} removed, Users kept"]
+
+
 # ===========================================================================
 # 10. FAQ articles for the customer portal (add missing)
 # ===========================================================================
@@ -778,6 +816,35 @@ def ensure_ticket_subjects():
 
 
 # ===========================================================================
+# 12. "We've received your ticket" e-mail (Helpdesk's Acknowledgement setting)
+# ===========================================================================
+# The text is kept in Helpdesk (Settings > Email Notifications > Acknowledgement), where Fortuna
+# can edit it; support/hd_ticket.py sends it for portal tickets as well as e-mailed ones.
+ACK_FILE = "fortuna_ticket_acknowledgement.html"
+ACK_FLAG = "sas_fortuna_fortuna_impex_ack_email_v1"
+
+
+def acknowledgement_template():
+	return _read(ACK_FILE)
+
+
+def ensure_acknowledgement_email():
+	"""Fortuna's wording when the Helpdesk text is still blank, and the e-mail switched on once;
+	a later edit or switch-off in Helpdesk is kept."""
+	if not frappe.db.exists("DocType", "HD Settings"):
+		return []
+	done = []
+	if not (frappe.db.get_single_value("HD Settings", "acknowledgement_email_content") or "").strip():
+		frappe.db.set_single_value("HD Settings", "acknowledgement_email_content", acknowledgement_template())
+		done.append("Helpdesk: new-ticket acknowledgement e-mail text")
+	if not frappe.db.get_default(ACK_FLAG):
+		frappe.db.set_single_value("HD Settings", "send_acknowledgement_email", 1)
+		frappe.db.set_default(ACK_FLAG, "1")
+		done.append("Helpdesk: new-ticket acknowledgement e-mail switched on")
+	return done
+
+
+# ===========================================================================
 # execute(): after_migrate entry point
 # ===========================================================================
 STEPS = (
@@ -793,6 +860,7 @@ STEPS = (
 	ensure_kb_articles,
 	ensure_ticket_subject_form,
 	ensure_ticket_subjects,
+	ensure_acknowledgement_email,
 )
 
 
