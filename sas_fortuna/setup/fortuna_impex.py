@@ -25,7 +25,7 @@ has "sas_fortuna_fortuna_impex": 1 (0 switches it off). Other companies' sites
   ensure_acknowledgement_email  "we've received your ticket" e-mail text + on      text if blank; on once
 
 Open points still with Fortuna are marked "TO CONFIRM" next to the value.
-Data: setup/data/fortuna_support_team.json (staff sheet), fortuna_amc_terms.html,
+Data: setup/data/fortuna_amc_terms.html,
 fortuna_repair_terms.html, fortuna_kb_articles.json (FAQ articles), fortuna_ticket_subjects.json
 (starter subjects), fortuna_new_ticket_form.js (New Ticket form script),
 fortuna_ticket_acknowledgement.html (new-ticket e-mail).
@@ -475,8 +475,21 @@ JOB_ROLES = {
 }
 
 
+# The staff sheet holds personal data (names, mobiles, private e-mails), so it is not kept
+# in git. Put Fortuna's sheet on each site at  sites/<site>/private/sas_fortuna/
+# fortuna_support_team.json  (same format as before); without it the staff step does nothing.
+STAFF_FILE = "fortuna_support_team.json"
+
+
+def staff_file():
+	return frappe.get_site_path("private", "sas_fortuna", STAFF_FILE)
+
+
 def load_staff():
-	with open(os.path.join(DATA, "fortuna_support_team.json")) as f:
+	path = staff_file()
+	if not os.path.exists(path):
+		return []
+	with open(path) as f:
 		return merge_staff(json.load(f)["staff"])
 
 
@@ -530,6 +543,8 @@ def find_user(email):
 def sync_support_team():
 	"""Give each listed person what their job role needs, once. A person done once is not
 	touched again, so removing someone from a team in Helpdesk stays removed."""
+	if not os.path.exists(staff_file()):
+		return [f"Staff sheet not on this site (private/sas_fortuna/{STAFF_FILE}): staff not linked"]
 	synced = set(json.loads(frappe.db.get_default(STAFF_SYNCED_KEY) or "[]"))
 	done = []
 	for person in load_staff():

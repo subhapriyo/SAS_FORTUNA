@@ -6,6 +6,9 @@ so nothing real on the site is touched; IntegrationTestCase rolls the rest back.
     bash apps/sas_fortuna/tools/run_unit_tests.sh test_fortuna_impex_setup
 """
 
+import json
+import os
+import tempfile
 from unittest.mock import patch
 
 import frappe
@@ -56,19 +59,40 @@ class TestApplies(IntegrationTestCase):
 # Staff list (pure data)
 # ---------------------------------------------------------------------------
 class TestStaffList(IntegrationTestCase):
-	def test_every_job_role_in_the_file_is_mapped(self):
-		for person in fi.load_staff():
+	def test_the_sheet_lives_on_the_site_not_in_git(self):
+		# Personal data (names, mobiles, private e-mails) stays out of the repo.
+		self.assertFalse(os.path.exists(os.path.join(fi.DATA, fi.STAFF_FILE)))
+		self.assertIn(os.path.join("private", "sas_fortuna", fi.STAFF_FILE), fi.staff_file())
+
+	def test_without_the_sheet_nothing_is_linked(self):
+		with patch.object(fi, "staff_file", return_value="/nonexistent/zz_staff.json"):
+			self.assertEqual(fi.load_staff(), [])
+			done = fi.sync_support_team()
+		self.assertEqual(len(done), 1)
+		self.assertIn("Staff sheet not on this site", done[0])
+
+	def test_the_sheet_on_the_site_is_read_and_merged(self):
+		rows = [
+			{"name": "ZZ Soft", "email": "zz.soft@example.com", "job_role": "SW SUPPORT"},
+			{"name": "ZZ Hard", "email": "ZZ.Shared@example.com", "job_role": "HW SUPPORT"},
+			{"name": "ZZ Soft Two", "email": "zz.shared@example.com", "job_role": "SW SUPPORT"},
+			{"name": "ZZ No Mail", "email": None, "job_role": "HW SUPPORT"},
+		]
+		with tempfile.TemporaryDirectory() as folder:
+			path = os.path.join(folder, fi.STAFF_FILE)
+			with open(path, "w") as f:
+				json.dump({"staff": rows}, f)
+			with patch.object(fi, "staff_file", return_value=path):
+				staff = fi.load_staff()
+		self.assertEqual(len(staff), 2)  # the row without e-mail is dropped, the shared one merged
+		for person in staff:
 			self.assertIn(person.job_role, fi.JOB_ROLES, person.name)
-
-	def test_rows_without_email_are_dropped(self):
-		self.assertTrue(all(p.email for p in fi.load_staff()))
-
-	def test_shared_email_is_one_entry_with_all_teams(self):
-		# hyd.support@ is used by a software and two hardware engineers in the client sheet.
-		shared = [p for p in fi.load_staff() if p.email == "hyd.support@fortunaindia.com"]
-		self.assertEqual(len(shared), 1)
-		self.assertEqual(set(shared[0].teams), {"Software Support", "Hardware Support"})
-		self.assertTrue(shared[0].also_named)  # the other names are kept for the report
+		shared = next(p for p in staff if p.email == "zz.shared@example.com")
+		teams = set(fi.JOB_ROLES["SW SUPPORT"].get("teams", [])) | set(
+			fi.JOB_ROLES["HW SUPPORT"].get("teams", [])
+		)
+		self.assertEqual(set(shared.teams), teams)
+		self.assertTrue(shared.also_named)  # the other names are kept for the report
 
 	def test_merge_unions_roles(self):
 		rows = [
