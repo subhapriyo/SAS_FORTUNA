@@ -19,10 +19,15 @@ has "sas_fortuna_fortuna_impex": 1 (0 switches it off). Other companies' sites
   ensure_support_mailbox  amc@fortunaindia.com (off until the password is set)   add missing
   ensure_alert_cc         CC on the AMC renewal notification                     once
   sync_support_team       existing users -> agents, teams, roles (never creates)  once per person
+  ensure_kb_articles      FAQ articles customers see while raising a ticket      add missing
+  ensure_ticket_subject_form  Subject dropdown + form script on New Ticket       add missing; script follows its file
+  ensure_ticket_subjects  starter subjects per ticket type (Ticket Subject list) types without any
 
 Open points still with Fortuna are marked "TO CONFIRM" next to the value.
 Data: setup/data/fortuna_support_team.json (staff sheet), fortuna_amc_terms.html,
-fortuna_repair_terms.html.  Tests: sas_fortuna/tests/test_fortuna_impex_setup.py
+fortuna_repair_terms.html, fortuna_kb_articles.json (FAQ articles), fortuna_ticket_subjects.json
+(starter subjects), fortuna_new_ticket_form.js (New Ticket form script).
+Tests: sas_fortuna/tests/test_fortuna_impex_setup.py, test_ticket_subject.py
 """
 
 import json
@@ -568,6 +573,211 @@ def _grant(user, person):
 
 
 # ===========================================================================
+# 10. FAQ articles for the customer portal (add missing)
+# ===========================================================================
+# While a customer types a ticket subject, Helpdesk suggests published Knowledge Base
+# articles. Without any, the panel only ever says "No answers found".
+KB_FILE = "fortuna_kb_articles.json"
+
+
+def load_kb():
+	with open(os.path.join(DATA, KB_FILE)) as f:
+		return json.load(f)["categories"]
+
+
+def ensure_kb_articles(categories=None):
+	"""Publish each FAQ article whose title is not on the site yet. An existing article (any
+	status) is left alone, so wording changed or archived in Helpdesk stays that way."""
+	if not frappe.db.exists("DocType", "HD Article"):
+		return []
+	done = []
+	for cat in load_kb() if categories is None else categories:
+		category = None
+		for article in cat["articles"]:
+			if frappe.db.exists("HD Article", {"title": article["title"]}):
+				continue
+			category = category or _kb_category(cat)
+			frappe.get_doc(
+				{
+					"doctype": "HD Article",
+					"title": article["title"],
+					"category": category,
+					"content": article["content"],
+					"status": "Published",
+				}
+			).insert(ignore_permissions=True)
+			done.append(f"Knowledge Base: {article['title']}")
+	if done:
+		_rebuild_kb_index()
+	return done
+
+
+def _kb_category(cat):
+	name = frappe.db.get_value("HD Article Category", {"category_name": cat["name"]})
+	if name:
+		return name
+	doc = frappe.get_doc(
+		{
+			"doctype": "HD Article Category",
+			"category_name": cat["name"],
+			"description": cat.get("description"),
+		}
+	)
+	return doc.insert(ignore_permissions=True).name
+
+
+def _rebuild_kb_index():
+	"""Customers search a Redis index that Helpdesk refreshes only on its own schedule, so
+	rebuild it now. Not fatal: a site whose Redis lacks the search module still migrates."""
+	try:
+		from helpdesk.search import HelpdeskSearch
+
+		HelpdeskSearch().build_index()
+	except Exception:
+		frappe.log_error(title="sas_fortuna fortuna_impex: Knowledge Base search index not rebuilt")
+
+
+# ===========================================================================
+# 11. Subject dropdown on the New Ticket form (Ticket Subject list)
+# ===========================================================================
+# The customer picks a subject from a list kept per Ticket Type (Desk > Ticket Subject), or
+# "Others" and types their own. Helpdesk's Subject box is a plain text box, so a Select field
+# carries the choice and a Helpdesk Form Script (setup/data/fortuna_new_ticket_form.js) fills
+# its choices, fills/hides the text box and highlights the description.
+SUBJECT_FIELD = "custom_issue_subject"
+FORM_SCRIPT = "Fortuna New Ticket Form"
+FORM_SCRIPT_FILE = "fortuna_new_ticket_form.js"
+TICKET_SUBJECTS_FILE = "fortuna_ticket_subjects.json"
+SUBJECT_CUSTOM_FIELD = {
+	"fieldname": SUBJECT_FIELD,
+	"label": "Subject",
+	"fieldtype": "Select",
+	"insert_after": "custom_serial_no",
+	# No options here on purpose: they change with the ticket type (Ticket Subject list).
+	"description": "Picked on the New Ticket form; Others means the customer typed the subject.",
+}
+SUBJECT_TEMPLATE_ROW = {
+	"fieldname": SUBJECT_FIELD,
+	"required": 1,
+	"placeholder": "Choose the closest subject",
+}
+
+
+def form_script_source():
+	return _read(FORM_SCRIPT_FILE)
+
+
+def ensure_ticket_subject_form():
+	"""Field, its place on the Default ticket template, the form script, and the Subjects
+	section on each Ticket Type. The script is code: it follows the file on every migrate."""
+	if not frappe.db.exists("DocType", "HD Ticket"):
+		return []
+	from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
+	done = []
+	if not frappe.db.exists("Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}):
+		create_custom_fields({"HD Ticket": [SUBJECT_CUSTOM_FIELD]}, update=False)
+		done.append("HD Ticket: Subject dropdown field")
+	done += _subject_on_ticket_template()
+	done += _subject_form_script()
+	if not frappe.db.exists(
+		"DocType Link", {"parent": "HD Ticket Type", "link_doctype": "Ticket Subject", "custom": 1}
+	):
+		frappe.get_doc(
+			{
+				"doctype": "DocType Link",
+				"parent": "HD Ticket Type",
+				"parenttype": "DocType",
+				"parentfield": "links",
+				"link_doctype": "Ticket Subject",
+				"link_fieldname": "ticket_type",
+				"group": "Subjects",
+				"custom": 1,
+			}
+		).insert(ignore_permissions=True)
+		frappe.clear_cache(doctype="HD Ticket Type")
+		done.append("Ticket Type: Subjects section")
+	return done
+
+
+# Fortuna's order on the New Ticket form: Ticket Type, Serial No, Subject, then the description.
+SUBJECT_AFTER = ("custom_serial_no", "ticket_type")
+
+
+def _subject_on_ticket_template():
+	"""Add the dropdown after Serial No (or Ticket Type) on the Default template, once (the
+	admin may move or change it later)."""
+	if not frappe.db.exists("HD Ticket Template", "Default"):
+		return []
+	template = frappe.get_doc("HD Ticket Template", "Default")
+	if any(row.fieldname == SUBJECT_FIELD for row in template.fields):
+		return []
+	row = template.append("fields", SUBJECT_TEMPLATE_ROW)
+	have = [r.fieldname for r in template.fields]
+	anchor = next((f for f in SUBJECT_AFTER if f in have), None)
+	after = have.index(anchor) if anchor else None
+	if after is not None:
+		template.fields.remove(row)
+		template.fields.insert(after + 1, row)
+		for i, r in enumerate(template.fields, 1):
+			r.idx = i
+	template.save(ignore_permissions=True)
+	return ["New Ticket form: Subject dropdown"]
+
+
+def _subject_form_script():
+	source = form_script_source()
+	wanted = {
+		"dt": "HD Ticket",
+		"apply_to": "Form",
+		"enabled": 1,
+		"apply_on_new_page": 1,
+		# Helpdesk loads new-page scripts for agents and customers alike from this flag being 0.
+		"apply_to_customer_portal": 0,
+		"script": source,
+	}
+	if not frappe.db.exists("HD Form Script", FORM_SCRIPT):
+		frappe.get_doc({"doctype": "HD Form Script", "name": FORM_SCRIPT, **wanted}).insert(
+			ignore_permissions=True
+		)
+		return ["Helpdesk Form Script: " + FORM_SCRIPT]
+	doc = frappe.get_doc("HD Form Script", FORM_SCRIPT)
+	if all(doc.get(k) == v for k, v in wanted.items()):
+		return []
+	doc.update(wanted)
+	doc.save(ignore_permissions=True)
+	return ["Helpdesk Form Script: " + FORM_SCRIPT + " updated"]
+
+
+def load_ticket_subjects():
+	with open(os.path.join(DATA, TICKET_SUBJECTS_FILE)) as f:
+		return {k: v for k, v in json.load(f).items() if not k.startswith("_")}
+
+
+def ensure_ticket_subjects():
+	"""Starter subjects, only for a ticket type that has none yet: after that the Ticket Subject
+	list is the master, and a subject removed there stays removed."""
+	done = []
+	for ticket_type, subjects in load_ticket_subjects().items():
+		if not frappe.db.exists("HD Ticket Type", ticket_type):
+			continue
+		if frappe.db.exists("Ticket Subject", {"ticket_type": ticket_type}):
+			continue
+		for order, subject in enumerate(subjects, 1):
+			frappe.get_doc(
+				{
+					"doctype": "Ticket Subject",
+					"subject": subject,
+					"ticket_type": ticket_type,
+					"is_active": 1,
+					"sort_order": order * 10,
+				}
+			).insert(ignore_permissions=True)
+		done.append(f"Ticket Subjects: {len(subjects)} for {ticket_type}")
+	return done
+
+
+# ===========================================================================
 # execute(): after_migrate entry point
 # ===========================================================================
 STEPS = (
@@ -580,6 +790,9 @@ STEPS = (
 	ensure_support_mailbox,
 	ensure_alert_cc,
 	sync_support_team,
+	ensure_kb_articles,
+	ensure_ticket_subject_form,
+	ensure_ticket_subjects,
 )
 
 

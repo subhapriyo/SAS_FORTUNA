@@ -40,6 +40,23 @@ def customer_ticket_types():
 
 
 @frappe.whitelist()
+def ticket_subjects(ticket_type=None):
+	"""Subject dropdown on the New Ticket form: active subjects of this ticket type, Others last."""
+	from sas_fortuna.sas_fortuna.doctype.ticket_subject.ticket_subject import subjects_for
+
+	return subjects_for(ticket_type)
+
+
+@frappe.whitelist()
+def ticket_subjects_by_type():
+	"""All ticket types' Subject choices at once ({type: [..., "Others"]}); the New Ticket form
+	loads them when it opens, so picking a ticket type fills the dropdown without waiting."""
+	from sas_fortuna.sas_fortuna.doctype.ticket_subject.ticket_subject import subjects_by_type
+
+	return subjects_by_type()
+
+
+@frappe.whitelist()
 def customer_serials():
 	"""The logged-in customer's units, as "serial · model" choices. Never another customer's."""
 	customer = get_portal_customer()

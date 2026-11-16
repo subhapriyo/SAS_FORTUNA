@@ -1,0 +1,23 @@
+{
+  "_note": "Starter subjects for the New Ticket Subject dropdown, per Ticket Type. setup/fortuna_impex.ensure_ticket_subjects adds them only to a ticket type that has no subjects yet; after that the Ticket Subject list in Desk is the master (add, edit, untick Active). Others is always offered last and is not listed here. TO CONFIRM with Fortuna.",
+  "Software": [
+    "Attendance not showing in software",
+    "Device not syncing with software",
+    "Reports not coming or wrong",
+    "Software login problem",
+    "Software installation on a new computer"
+  ],
+  "Hardware": [
+    "Fingerprint or face not reading",
+    "Device not powering on",
+    "Display blank or damaged",
+    "Wrong date or time on device",
+    "Door lock or access control not working"
+  ],
+  "Post-Installation": [
+    "Device shifting or re-installation",
+    "Add or remove users on device",
+    "Staff training",
+    "Settings change after installation"
+  ]
+}

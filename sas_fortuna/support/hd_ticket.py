@@ -28,11 +28,34 @@ def before_insert(doc, method=None):
 def validate(doc, method=None):
 	from sas_fortuna.support.legacy_import import validate_legacy
 
+	apply_issue_subject(doc)
 	route_to_team(doc)
 	apply_serial_details(doc)
 	apply_customer_from_sender(doc)  # after the serial: the unit's owner wins
 	require_resolution_notes(doc)
 	validate_legacy(doc)  # imported old tickets only: number, dates
+
+
+# ---------------------------------------------------------------------------
+# Subject dropdown on the New Ticket form (Ticket Subject list)
+# ---------------------------------------------------------------------------
+def apply_issue_subject(doc):
+	"""A predefined subject becomes the ticket's subject; "Others" keeps what the customer typed,
+	which then must be filled in. Checked only when the choice changes, so switching a subject
+	off later never blocks saving the tickets already raised with it."""
+	choice = doc.get("custom_issue_subject")
+	if not choice or not doc.has_value_changed("custom_issue_subject"):
+		return
+	from sas_fortuna.sas_fortuna.doctype.ticket_subject.ticket_subject import OTHERS, is_offered
+
+	if choice == OTHERS:
+		typed = (doc.subject or "").strip()
+		if not typed or typed == OTHERS:
+			frappe.throw(_("Please describe your issue in a few words when the subject is Others."))
+		return
+	if not is_offered(choice, doc.ticket_type):
+		frappe.throw(_("{0} is not a subject for {1} tickets.").format(choice, doc.ticket_type or _("these")))
+	doc.subject = choice
 
 
 # ---------------------------------------------------------------------------

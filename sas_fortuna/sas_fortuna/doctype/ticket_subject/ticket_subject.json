@@ -1,0 +1,102 @@
+{
+  "actions": [],
+  "allow_rename": 0,
+  "autoname": "hash",
+  "creation": "2026-11-16 13:30:00.000000",
+  "custom": 0,
+  "description": "Subjects a customer picks on the Helpdesk New Ticket form, per Ticket Type. \"Others\" is always offered last and is not kept here.",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "subject",
+    "ticket_type",
+    "column_break_ts01",
+    "is_active",
+    "sort_order"
+  ],
+  "fields": [
+    {
+      "fieldname": "subject",
+      "fieldtype": "Data",
+      "label": "Subject",
+      "length": 140,
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "description": "As the customer sees it in the dropdown, e.g. Fingerprint not reading."
+    },
+    {
+      "fieldname": "ticket_type",
+      "fieldtype": "Link",
+      "label": "Ticket Type",
+      "options": "HD Ticket Type",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "column_break_ts01",
+      "fieldtype": "Column Break"
+    },
+    {
+      "default": "1",
+      "fieldname": "is_active",
+      "fieldtype": "Check",
+      "label": "Active",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "description": "Untick to stop offering it. Tickets already raised with it keep it."
+    },
+    {
+      "default": "0",
+      "fieldname": "sort_order",
+      "fieldtype": "Int",
+      "label": "Sort Order",
+      "in_list_view": 1,
+      "description": "Lower numbers come first in the dropdown; same number: alphabetical."
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-11-16 13:30:00.000000",
+  "modified_by": "Administrator",
+  "module": "SAS Fortuna",
+  "name": "Ticket Subject",
+  "naming_rule": "Random",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "export": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Agent Manager",
+      "write": 1
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "role": "Agent"
+    }
+  ],
+  "row_format": "Dynamic",
+  "show_title_field_in_link": 1,
+  "sort_field": "sort_order",
+  "sort_order": "ASC",
+  "states": [],
+  "title_field": "subject",
+  "track_changes": 1
+}

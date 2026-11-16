@@ -421,6 +421,8 @@ class TestLandingPage(IntegrationTestCase):
 			"Item Price",
 			"Letter Head",
 			"Print Format",
+			"/helpdesk/kb",
+			"Ticket Subject",
 		):
 			self.assertIn(target, links)
 
@@ -429,3 +431,149 @@ class TestLandingPage(IntegrationTestCase):
 
 		for label, _kind, _target, _desc, icon in self._links().values():
 			self.assertIn(icon, ICONS, label)
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Base: FAQ articles customers see while typing a ticket subject
+# ---------------------------------------------------------------------------
+def _kb(title, category="ZZ KB Category", content="<p>zz fingerprint body</p>"):
+	return [{"name": category, "description": "zz", "articles": [{"title": title, "content": content}]}]
+
+
+class TestKnowledgeBase(IntegrationTestCase):
+	def test_shipped_articles_can_be_found_by_search(self):
+		articles = [a for c in fi.load_kb() for a in c["articles"]]
+		titles = [a["title"] for a in articles]
+		self.assertGreaterEqual(len(titles), 8)
+		self.assertEqual(len(titles), len(set(titles)))
+		for article in articles:
+			# Helpdesk indexes only <p> text under each heading.
+			self.assertIn("<p>", article["content"], article["title"])
+
+	def test_missing_articles_are_published_and_indexed_once(self):
+		with patch.object(fi, "_rebuild_kb_index") as rebuild:
+			self.assertEqual(fi.ensure_kb_articles(_kb("ZZ KB new")), ["Knowledge Base: ZZ KB new"])
+			self.assertEqual(fi.ensure_kb_articles(_kb("ZZ KB new")), [])
+		rebuild.assert_called_once()
+		article = frappe.get_doc("HD Article", {"title": "ZZ KB new"})
+		self.assertEqual(article.status, "Published")
+		self.assertEqual(
+			frappe.db.get_value("HD Article Category", article.category, "category_name"), "ZZ KB Category"
+		)
+
+	def test_an_article_edited_in_helpdesk_is_left_alone(self):
+		with patch.object(fi, "_rebuild_kb_index"):
+			fi.ensure_kb_articles(_kb("ZZ KB edited"))
+			name = frappe.db.get_value("HD Article", {"title": "ZZ KB edited"})
+			frappe.db.set_value("HD Article", name, {"status": "Draft", "content": "<p>our wording</p>"})
+			self.assertEqual(fi.ensure_kb_articles(_kb("ZZ KB edited", content="<p>shipped</p>")), [])
+		self.assertEqual(frappe.db.count("HD Article", {"title": "ZZ KB edited"}), 1)
+		self.assertEqual(
+			frappe.db.get_value("HD Article", name, ["status", "content"]), ("Draft", "<p>our wording</p>")
+		)
+
+	def test_an_existing_category_is_reused(self):
+		with patch.object(fi, "_rebuild_kb_index"):
+			fi.ensure_kb_articles(_kb("ZZ KB one", category="ZZ KB Shared"))
+			fi.ensure_kb_articles(_kb("ZZ KB two", category="ZZ KB Shared"))
+		self.assertEqual(frappe.db.count("HD Article Category", {"category_name": "ZZ KB Shared"}), 1)
+
+	def test_runs_on_migrate(self):
+		self.assertIn(fi.ensure_kb_articles, fi.STEPS)
+
+
+# ---------------------------------------------------------------------------
+# Subject dropdown on the New Ticket form
+# ---------------------------------------------------------------------------
+class TestTicketSubjectForm(IntegrationTestCase):
+	def test_the_ticket_gets_a_subject_dropdown_after_ticket_type_and_serial(self):
+		fi.ensure_ticket_subject_form()
+		df = frappe.get_meta("HD Ticket").get_field(fi.SUBJECT_FIELD)
+		self.assertEqual(df.fieldtype, "Select")
+		self.assertFalse(df.options)  # choices come per ticket type, see the form script
+		if frappe.db.exists("HD Ticket Template", "Default"):
+			rows = frappe.get_all(
+				"HD Ticket Template Field", filters={"parent": "Default"}, pluck="fieldname", order_by="idx"
+			)
+			self.assertEqual(rows.count(fi.SUBJECT_FIELD), 1)
+			# Fortuna's order: Ticket Type, Serial No, Subject.
+			if "custom_serial_no" in rows:
+				self.assertEqual(rows.index(fi.SUBJECT_FIELD), rows.index("custom_serial_no") + 1)
+			if "ticket_type" in rows:
+				self.assertLess(rows.index("ticket_type"), rows.index(fi.SUBJECT_FIELD))
+			fi.ensure_ticket_subject_form()  # again: no second row
+			self.assertEqual(
+				frappe.db.count(
+					"HD Ticket Template Field", {"parent": "Default", "fieldname": fi.SUBJECT_FIELD}
+				),
+				1,
+			)
+
+	def test_the_form_script_is_kept_in_step_with_the_file(self):
+		fi.ensure_ticket_subject_form()
+		script = frappe.get_doc("HD Form Script", fi.FORM_SCRIPT)
+		self.assertEqual(
+			(
+				script.dt,
+				script.apply_to,
+				script.enabled,
+				script.apply_on_new_page,
+				script.apply_to_customer_portal,
+			),
+			("HD Ticket", "Form", 1, 1, 0),
+		)
+		self.assertEqual(script.script, fi.form_script_source())
+		frappe.db.set_value("HD Form Script", fi.FORM_SCRIPT, "script", "function setupForm() {}")
+		fi.ensure_ticket_subject_form()
+		self.assertEqual(
+			frappe.db.get_value("HD Form Script", fi.FORM_SCRIPT, "script"), fi.form_script_source()
+		)
+
+	def test_the_script_asks_the_portal_api_for_choices(self):
+		source = fi.form_script_source()
+		self.assertIn("function setupForm(", source)
+		self.assertIn("sas_fortuna.support.portal.ticket_subjects", source)
+		self.assertIn(fi.SUBJECT_FIELD, source)
+
+	def test_subjects_show_on_each_ticket_type(self):
+		fi.ensure_ticket_subject_form()
+		self.assertTrue(
+			frappe.db.exists(
+				"DocType Link",
+				{
+					"parent": "HD Ticket Type",
+					"link_doctype": "Ticket Subject",
+					"link_fieldname": "ticket_type",
+				},
+			)
+		)
+
+	def test_starter_subjects_only_for_types_without_any(self):
+		for name in ("ZZ Seed Empty", "ZZ Seed Has One"):
+			if not frappe.db.exists("HD Ticket Type", name):
+				frappe.get_doc({"doctype": "HD Ticket Type", "name": name}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{"doctype": "Ticket Subject", "subject": "ZZ Own", "ticket_type": "ZZ Seed Has One"}
+		).insert(ignore_permissions=True)
+		starter = {
+			"ZZ Seed Empty": ["ZZ S1", "ZZ S2"],
+			"ZZ Seed Has One": ["ZZ S3"],
+			"ZZ No Such Type": ["ZZ S4"],
+		}
+		with patch.object(fi, "load_ticket_subjects", return_value=starter):
+			done = fi.ensure_ticket_subjects()
+			self.assertEqual(fi.ensure_ticket_subjects(), [])
+		self.assertEqual(done, ["Ticket Subjects: 2 for ZZ Seed Empty"])
+		from sas_fortuna.sas_fortuna.doctype.ticket_subject.ticket_subject import subjects_for
+
+		self.assertEqual(subjects_for("ZZ Seed Empty"), ["ZZ S1", "ZZ S2", "Others"])  # file order
+		self.assertEqual(subjects_for("ZZ Seed Has One"), ["ZZ Own", "Others"])
+
+	def test_shipped_starter_subjects_are_clean(self):
+		for ticket_type, subjects in fi.load_ticket_subjects().items():
+			self.assertEqual(len(subjects), len(set(subjects)), ticket_type)
+			self.assertNotIn("Others", subjects)
+
+	def test_runs_on_migrate(self):
+		self.assertIn(fi.ensure_ticket_subject_form, fi.STEPS)
+		self.assertIn(fi.ensure_ticket_subjects, fi.STEPS)

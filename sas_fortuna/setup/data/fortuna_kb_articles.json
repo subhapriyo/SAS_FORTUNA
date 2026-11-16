@@ -1,0 +1,81 @@
+{
+  "_note": "Helpdesk Knowledge Base for Fortuna Impex customers. Created once by setup/fortuna_impex.ensure_kb_articles: an article whose title already exists is never touched, so edits made in Helpdesk win. Search only reads <p> text under each heading, so keep the words customers type inside <p>, not only in lists.",
+  "categories": [
+    {
+      "name": "General",
+      "description": "Raising a ticket and what happens next.",
+      "articles": [
+        {
+          "title": "How do I raise a support ticket?",
+          "content": "<p>Log in to the Fortuna customer portal and open My Tickets, then click New Ticket.</p><h3>Fill in the form</h3><p>Choose the Ticket Type: Software, Hardware or Post-Installation. If the problem is with one device, pick its serial number from the Serial No list, so our team can see its warranty or AMC straight away.</p><p>Write a short Subject, for example: Fingerprint device not reading thumbs at Kolkata office.</p><h3>Describe the problem (required)</h3><p>Type the details in the large box below the subject. The Submit button stays grey until this description is filled in. Tell us what is not working, since when, the error message if any, and the location of the device. You can attach photos or screenshots with the clip icon.</p><h3>Submit</h3><p>Click Submit. You get a ticket number, and every reply from our team comes to you by e-mail and on the ticket page.</p>"
+        },
+        {
+          "title": "Which ticket type should I choose?",
+          "content": "<p>The ticket type sends your ticket to the right Fortuna support team.</p><h3>Software</h3><p>Choose Software when the attendance or access software is not working: login problems, reports not coming, attendance not showing, data not syncing from the device, or installation of the software on a new computer.</p><h3>Hardware</h3><p>Choose Hardware when the device itself has a problem: not powering on, display blank, fingerprint or face not reading, keypad or door lock not working, or physical damage.</p><h3>Post-Installation</h3><p>Choose Post-Installation for help after a new installation: shifting or re-fixing a device, adding users, training your staff, or settings that need changing after go-live.</p><p>Not sure? Pick the closest one and explain in the description. Our team will move the ticket if needed.</p>"
+        },
+        {
+          "title": "What happens after I raise a ticket?",
+          "content": "<p>Your ticket is assigned to an engineer of the right team automatically, and the response time agreed for your service starts.</p><h3>Replies and updates</h3><p>The engineer replies on the ticket. You get each reply by e-mail and can answer from the e-mail or from My Tickets on the portal. Please keep the same ticket for the same problem, so the full history stays in one place.</p><h3>If the device must come to us</h3><p>If the problem cannot be fixed remotely, our team arranges a repair. You can follow the repair status from the portal, and the ticket closes when the repaired unit is sent back to you.</p><h3>Closing the ticket</h3><p>Once your problem is solved the ticket is marked resolved. If the same problem comes back, reply on the same ticket or raise a new one and mention the old ticket number.</p>"
+        }
+      ]
+    },
+    {
+      "name": "Attendance Devices",
+      "description": "Everyday checks on fingerprint and face attendance devices.",
+      "articles": [
+        {
+          "title": "Fingerprint not reading or thumb not recognised",
+          "content": "<p>Most fingerprint reading problems are fixed by a few simple checks.</p><h3>Clean the sensor</h3><p>Wipe the fingerprint sensor gently with a soft dry cloth. Dust, oil or water on the glass stops the device from reading the finger. Do not use sharp objects or strong cleaning liquids.</p><h3>Place the finger correctly</h3><p>Place the flat part of the finger in the centre of the sensor and press lightly. Very dry, wet, cut or dirty fingers often do not read; wash and dry the hands, or try another enrolled finger.</p><h3>Enrol the finger again</h3><p>If one person is not recognised while others are, ask your administrator to enrol that finger again, preferably two fingers for each person.</p><h3>Still not working?</h3><p>If no finger is read at all, or the sensor is scratched or does not light up, raise a Hardware ticket with the device serial number.</p>"
+        },
+        {
+          "title": "Device shows wrong date or time",
+          "content": "<p>A wrong date or time on the device records attendance on the wrong day or shift.</p><h3>Correct it from the software</h3><p>Most devices take the date and time from the attendance software. Use the option to sync or set the device time in the software while the device is connected.</p><h3>Correct it on the device</h3><p>An administrator can also set the date and time from the device menu, under the system or date and time settings.</p><h3>Time resets after a power cut</h3><p>If the time goes wrong again after every power cut, the device clock battery may need replacing. Raise a Hardware ticket with the serial number.</p>"
+        }
+      ]
+    },
+    {
+      "name": "Hardware",
+      "description": "Power, display and physical faults.",
+      "articles": [
+        {
+          "title": "Device not powering on or display blank",
+          "content": "<p>Check the power supply before raising a ticket.</p><h3>Check the power</h3><p>Check that the adaptor is firmly connected to the device and the socket is working; try another socket. If the device has a battery backup, the battery may be fully drained after a long power cut, so keep it on power for some time.</p><h3>Please do not open the device</h3><p>Opening the device or using a different adaptor can damage it and may affect its warranty or AMC cover.</p><h3>Still blank?</h3><p>Raise a Hardware ticket with the device serial number and a photo of the device and adaptor.</p>"
+        }
+      ]
+    },
+    {
+      "name": "Software",
+      "description": "Attendance software, sync and reports.",
+      "articles": [
+        {
+          "title": "Device not punching or attendance not showing in the software",
+          "content": "<p>When punches are made on the device but do not show in the software, the device and software are usually not talking to each other.</p><h3>Check the device</h3><p>Check that the device is powered on and shows the correct date and time. A wrong date or time puts punches on the wrong day.</p><h3>Check the network</h3><p>Check the LAN cable, Wi-Fi or SIM connection of the device. If your office network, router or IP address changed recently, the software may no longer reach the device.</p><h3>Check the software</h3><p>Open the attendance software and check that the device shows as connected or online, then download or sync the attendance data again.</p><h3>Still not working?</h3><p>Raise a Software ticket. Mention the device serial number, the date from which punches are missing, and a screenshot of any error message.</p>"
+        }
+      ]
+    },
+    {
+      "name": "SIM & Connectivity",
+      "description": "SIM based devices and their yearly subscription.",
+      "articles": [
+        {
+          "title": "SIM device not sending data or SIM recharge",
+          "content": "<p>Devices that send attendance over a mobile SIM need an active SIM subscription and mobile signal.</p><h3>Yearly SIM subscription</h3><p>The SIM in your device is on a yearly subscription. Fortuna sends you a renewal reminder by e-mail about 30 days before it expires, and again closer to the date. Renew it before the expiry date, otherwise the device stops sending data.</p><h3>Check the signal</h3><p>If the subscription is active, check the mobile signal where the device is installed. Thick walls, basements or metal cabins can block the signal.</p><h3>Need help?</h3><p>To renew the SIM or if data still does not come, raise a Software ticket with the device serial number.</p>"
+        }
+      ]
+    },
+    {
+      "name": "AMC & Repairs",
+      "description": "Sending a unit for repair, charges, warranty and AMC cover.",
+      "articles": [
+        {
+          "title": "Sending a device for repair: charges and payment",
+          "content": "<p>If a problem cannot be fixed remotely, our engineer asks for the device to be sent to Fortuna for repair, and a repair order is opened against your ticket.</p><h3>Under warranty or AMC</h3><p>Repairs under warranty or an active AMC are free of charge, except parts and items that are not covered by your AMC contract. You will be told before any such part is charged.</p><h3>Paid repairs</h3><p>If the device is out of warranty and not under AMC, we send you a quotation with the service charge, parts and freight. The repair starts after you confirm the quotation.</p><h3>Payment before dispatch</h3><p>For paid repairs, full payment is due before the repaired unit is shipped back to you. The unit is dispatched as soon as the payment is received, and your ticket closes when it leaves us.</p>"
+        },
+        {
+          "title": "Warranty, AMC and replacement units",
+          "content": "<p>Every Fortuna device is identified by its serial number, and its warranty and AMC are tracked on that serial number.</p><h3>Check your cover</h3><p>Select the serial number when you raise a ticket. Our team then sees at once whether the unit is under warranty, under AMC, or a paid service.</p><h3>AMC renewal</h3><p>Before your warranty or AMC ends, the Fortuna AMC team contacts you with a renewal quotation, so the cover continues without a break.</p><h3>Replacement units</h3><p>If a faulty unit is replaced, the replacement normally continues the warranty of the original unit. Any exception is decided case by case and told to you at the time.</p><h3>Extended warranty</h3><p>An extended warranty can be bought along with a new device. It is shown as a separate line on your invoice and adds to the standard warranty of that device.</p>"
+        }
+      ]
+    }
+  ]
+}

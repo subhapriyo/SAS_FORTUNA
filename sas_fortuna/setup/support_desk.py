@@ -647,6 +647,20 @@ LANDING_SECTIONS = [
 				"AMC renewal, unit received and other automatic e-mails.",
 				"bell",
 			),
+			(
+				"Ticket Subjects",
+				"doctype",
+				"Ticket Subject",
+				"Subject dropdown on the New Ticket form, per ticket type; untick Active to hide one.",
+				"tag",
+			),
+			(
+				"Knowledge Base",
+				"url",
+				"/helpdesk/kb",
+				"FAQ articles customers are shown while raising a ticket.",
+				"form",
+			),
 		],
 	},
 	{
