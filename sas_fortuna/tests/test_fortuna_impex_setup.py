@@ -145,9 +145,24 @@ class TestTeamSync(IntegrationTestCase):
 		members = frappe.get_all("HD Team Member", filters={"parent": ZZ_TEAM}, pluck="user")
 		self.assertIn(ZZ_USER, members)
 
-	def test_missing_user_is_reported_not_created(self):
+	def test_missing_user_is_created_without_welcome_email_when_switched_on(self):
+		email = "zz.new.impex@example.com"
+		with (
+			patch.object(fi, "load_staff", return_value=self._staff(email)),
+			patch.dict(frappe.conf, {fi.CREATE_USERS_KEY: 1}),
+		):
+			fi.sync_support_team()
+		self.assertEqual(frappe.db.get_value("User", email, "user_type"), "System User")
+		self.assertTrue(frappe.db.exists("HD Agent", email))
+		self.assertIn(email, frappe.get_all("HD Team Member", filters={"parent": ZZ_TEAM}, pluck="user"))
+
+	def test_missing_user_is_only_reported_by_default(self):
 		email = "zz.nobody.impex@example.com"
-		with patch.object(fi, "load_staff", return_value=self._staff(email)):
+		conf = {k: v for k, v in frappe.conf.items() if k != fi.CREATE_USERS_KEY}
+		with (
+			patch.object(fi, "load_staff", return_value=self._staff(email)),
+			patch.object(frappe, "conf", frappe._dict(conf)),
+		):
 			done = fi.sync_support_team()
 		self.assertFalse(frappe.db.exists("User", email))
 		self.assertTrue(any("not found" in line and email in line for line in done))
@@ -168,6 +183,23 @@ class TestTeamSync(IntegrationTestCase):
 			frappe.db.delete("HD Team Member", {"parent": ZZ_TEAM, "user": ZZ_USER})
 			fi.sync_support_team()
 		self.assertNotIn(ZZ_USER, frappe.get_all("HD Team Member", filters={"parent": ZZ_TEAM}, pluck="user"))
+
+
+# ---------------------------------------------------------------------------
+# Manager role
+# ---------------------------------------------------------------------------
+class TestAgentManager(IntegrationTestCase):
+	def setUp(self):
+		super().setUp()
+		frappe.db.set_default(fi.AGENT_MANAGER_FLAG, "")
+		self.addCleanup(frappe.db.set_default, fi.AGENT_MANAGER_FLAG, "")
+
+	def test_support_manager_gets_agent_manager(self):
+		_make_user(ZZ_USER)
+		staff = fi.merge_staff([{"name": "ZZ Lead", "email": ZZ_USER, "job_role": "SUPPORT MANAGER"}])
+		with patch.object(fi, "load_staff", return_value=staff):
+			fi.grant_agent_manager()
+		self.assertIn("Agent Manager", frappe.get_roles(ZZ_USER))
 
 
 # ---------------------------------------------------------------------------

@@ -18,7 +18,8 @@ has "sas_fortuna_fortuna_impex": 1 (0 switches it off). Other companies' sites
   ensure_sla              48-hour response per team, working days, Sunday off    add missing
   ensure_support_mailbox  amc@fortunaindia.com (off until the password is set)   add missing
   ensure_alert_cc         CC on the AMC renewal notification                     once
-  sync_support_team       existing users -> agents, teams, roles (never creates)  once per person
+  sync_support_team       staff sheet -> agents, teams, roles (Users: opt-in)   once per person
+  grant_agent_manager     Helpdesk Agent Manager role for SUPPORT MANAGER rows   once per site
   ensure_kb_articles      FAQ articles customers see while raising a ticket      add missing
   ensure_ticket_subject_form  Subject dropdown + form script on New Ticket       add missing; script follows its file
   ensure_ticket_subjects  starter subjects per ticket type (Ticket Subject list) types without any
@@ -48,6 +49,9 @@ DATA = os.path.join(os.path.dirname(__file__), "data")
 SETTINGS_FLAG = "sas_fortuna_fortuna_impex_settings_v1"
 ALERT_CC_FLAG = "sas_fortuna_fortuna_impex_alert_cc_v1"
 STAFF_SYNCED_KEY = "sas_fortuna_fortuna_impex_staff_synced"
+AGENT_MANAGER_FLAG = "sas_fortuna_fortuna_impex_agent_manager_v1"
+# site_config switch: 1 lets sync_support_team create missing staff Users (off by default).
+CREATE_USERS_KEY = "sas_fortuna_create_staff_users"
 
 
 # ===========================================================================
@@ -459,17 +463,26 @@ def ensure_alert_cc():
 
 
 # ===========================================================================
-# 9. Support team: existing users -> Helpdesk agents, teams and roles
+# 9. Support team: staff sheet -> Users, Helpdesk agents, teams and roles
 # ===========================================================================
-# Job Role (client sheet) -> what that person gets. Users are NEVER created: the staff
-# already exist on Fortuna's sites. Anyone not found is reported and tried again next migrate.
+# Fortuna (16 Nov 2026): SW SUPPORT -> Software Support, HW SUPPORT -> Hardware Support, the
+# teams setup/ticketing.py seeds and routes the Software / Hardware ticket types to.
+SOFTWARE_TEAM = "Software Support"
+HARDWARE_TEAM = "Hardware Support"
+
+# Job Role (client sheet) -> what that person gets. A staff member with no User yet is only
+# reported, unless site_config CREATE_USERS_KEY is 1: then they get a User (no welcome
+# e-mail, no password: they use Forgot Password).
 JOB_ROLES = {
-	"SW SUPPORT": {"agent": 1, "teams": ["Software Support"], "roles": []},
-	"HW SUPPORT": {"agent": 1, "teams": ["Hardware Support"], "roles": ["Service Engineer"]},
+	"SW SUPPORT": {"agent": 1, "teams": [SOFTWARE_TEAM], "roles": []},
+	"HW SUPPORT": {"agent": 1, "teams": [HARDWARE_TEAM], "roles": ["Service Engineer"]},
 	# TO CONFIRM: coordinator and AMC executive get the AMC Team role; no ticket team.
 	"SUPPORT COORDINATOR": {"agent": 1, "teams": [], "roles": ["AMC Team"]},
 	"AMC & CREDIT CONTROL EXECUTIVE": {"agent": 0, "teams": [], "roles": ["AMC Team"]},
-	"SUPPORT MANAGER": {"agent": 1, "teams": [], "roles": ["Support Manager"]},
+	# Agent Manager: Helpdesk's manager role (agent and team admin, settings, dashboards).
+	# Not a team member, so the round robin does not hand them tickets. Note: with Helpdesk
+	# Settings > "Restrict tickets by Team" on, the role does not lift the restriction.
+	"SUPPORT MANAGER": {"agent": 1, "teams": [], "roles": ["Support Manager", "Agent Manager"]},
 	# Supplier Onboarding Workflow: Approve / Reject is allowed to Purchase Manager.
 	"SUPPLIER APPROVER": {"agent": 0, "teams": [], "roles": ["Purchase Manager"]},
 }
@@ -540,17 +553,44 @@ def find_user(email):
 	return _employee_user(email)
 
 
+def create_users_enabled():
+	# Off unless the site asks for it: Fortuna's staff already have Users on prod and live.
+	return bool(int(frappe.conf.get(CREATE_USERS_KEY, 0)))
+
+
+def create_staff_user(person):
+	"""Desk (System) User for a staff member: no welcome e-mail and no password, so nothing
+	reaches the person until an admin sends a password reset (or they use Forgot Password)."""
+	first, _, last = (person.name or person.email).title().partition(" ")
+	frappe.get_doc(
+		{
+			"doctype": "User",
+			"email": person.email,
+			"first_name": first,
+			"last_name": last,
+			"user_type": "System User",
+			"send_welcome_email": 0,
+			"enabled": 1,
+		}
+	).insert(ignore_permissions=True)
+	return person.email
+
+
 def sync_support_team():
 	"""Give each listed person what their job role needs, once. A person done once is not
 	touched again, so removing someone from a team in Helpdesk stays removed."""
-	if not os.path.exists(staff_file()):
+	staff = load_staff()
+	if not staff:
 		return [f"Staff sheet not on this site (private/sas_fortuna/{STAFF_FILE}): staff not linked"]
 	synced = set(json.loads(frappe.db.get_default(STAFF_SYNCED_KEY) or "[]"))
 	done = []
-	for person in load_staff():
+	for person in staff:
 		if person.email in synced:
 			continue
 		user = find_user(person.email)
+		if not user and create_users_enabled():
+			user = create_staff_user(person)
+			done.append(f"{user}: User created ({person.name}, no welcome e-mail)")
 		if not user:
 			done.append(f"Staff not found (no User / Employee): {person.name} <{person.email}>")
 			continue
@@ -587,6 +627,23 @@ def _grant(user, person):
 			doc.append("users", {"user": user})
 			doc.save(ignore_permissions=True)
 			done.append(f"{user}: team {team}")
+	return done
+
+
+def grant_agent_manager():
+	"""Once per site: Agent Manager for SUPPORT MANAGER people already synced before that role
+	was in JOB_ROLES (sync_support_team does each person only once). Existing Users only."""
+	if frappe.db.get_default(AGENT_MANAGER_FLAG) or not frappe.db.exists("Role", "Agent Manager"):
+		return []
+	done = []
+	for person in load_staff():
+		if "Agent Manager" not in person.roles:
+			continue
+		user = find_user(person.email)
+		if user and "Agent Manager" not in frappe.get_roles(user):
+			frappe.get_doc("User", user).add_roles("Agent Manager")
+			done.append(f"{user}: role Agent Manager")
+	frappe.db.set_default(AGENT_MANAGER_FLAG, "1")
 	return done
 
 
@@ -872,6 +929,7 @@ STEPS = (
 	ensure_support_mailbox,
 	ensure_alert_cc,
 	sync_support_team,
+	grant_agent_manager,
 	ensure_kb_articles,
 	ensure_ticket_subject_form,
 	ensure_ticket_subjects,
