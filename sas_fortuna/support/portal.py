@@ -33,10 +33,11 @@ def get_portal_customer(user=None):
 @frappe.whitelist()
 def customer_ticket_types():
 	"""Ticket types a customer can pick: those routed to a team (Fortuna Support Settings > Team
-	Routing), so every portal ticket reaches the right team and gets an agent."""
+	Routing), so every portal ticket reaches the right team and gets an agent. Each type once,
+	though it may be routed per Job Location."""
 	from sas_fortuna.support.utils import get_settings
 
-	return [row.ticket_type for row in get_settings().team_routing if row.ticket_type]
+	return list(dict.fromkeys(row.ticket_type for row in get_settings().team_routing if row.ticket_type))
 
 
 @frappe.whitelist()

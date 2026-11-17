@@ -10,6 +10,9 @@ Workflow list). This file only does what config cannot:
 Buttons (receipt, spares, quotation, dispatch) live in support/repair.py.
 """
 
+import html
+import re
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -33,6 +36,41 @@ DEFAULT_INVOICE_METHOD = {
 	SUPPORT_WARRANTY: "Free (Warranty)",
 	SUPPORT_AMC: "AMC",
 }
+
+
+# End of a paragraph / line in the Helpdesk editor's HTML.
+_LINE_END = re.compile(r"<br\s*/?>|</(p|div|li|h[1-6])>", re.IGNORECASE)
+_TAG = re.compile(r"<[^>]+>")
+
+
+def plain_text(value):
+	"""Ticket description (HTML from the Helpdesk editor) -> plain text for Complaint.
+
+	Paragraphs and line breaks become new lines; tags go, entities (&amp;) are decoded.
+	"""
+	if not value:
+		return ""
+	text = html.unescape(_TAG.sub("", _LINE_END.sub("\n", value)))
+	return "\n".join(line.strip() for line in text.splitlines() if line.strip())
+
+
+# Fields a new Repair Order takes from its Helpdesk ticket (see pull_from_ticket).
+FROM_TICKET = ("customer", "product_model", "serial_no", "complaint")
+
+
+@frappe.whitelist()
+def ticket_details(ticket):
+	"""What a new Repair Order copies from `ticket`, for the form to show before saving.
+
+	Runs the same pull_from_ticket() as save, so the form and the server never disagree.
+	"""
+	if not ticket:
+		return {}
+	frappe.has_permission("HD Ticket", "read", ticket, throw=True)
+	doc = frappe.new_doc("Repair Order")
+	doc.helpdesk_ticket = ticket
+	doc.pull_from_ticket()
+	return {field: doc.get(field) for field in FROM_TICKET}
 
 
 def get_list_context(context=None):
@@ -84,7 +122,8 @@ class RepairOrder(Document):
 		self.customer = self.customer or t.custom_erpnext_customer or get_erpnext_customer(t.customer)
 		self.product_model = self.product_model or t.custom_product_model
 		self.serial_no = self.serial_no or t.custom_serial_no
-		self.complaint = self.complaint or t.description
+		# Complaint is plain text; the ticket description is HTML.
+		self.complaint = self.complaint or plain_text(t.description)
 
 	def apply_coverage(self):
 		"""Same Warranty / AMC / Paid rule as the ticket (C2)."""

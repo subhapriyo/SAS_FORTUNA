@@ -4,7 +4,7 @@
   "custom": 0,
   "doctype": "DocType",
   "engine": "InnoDB",
-  "field_order": ["ticket_type", "team"],
+  "field_order": ["ticket_type", "job_location", "team"],
   "fields": [
     {
       "fieldname": "ticket_type",
@@ -13,6 +13,14 @@
       "options": "HD Ticket Type",
       "reqd": 1,
       "in_list_view": 1
+    },
+    {
+      "fieldname": "job_location",
+      "fieldtype": "Link",
+      "label": "Job Location",
+      "options": "Job Location",
+      "in_list_view": 1,
+      "description": "Blank: every location (the fallback). Set: tickets of this type from this location; used only while the team has an active agent."
     },
     {
       "fieldname": "team",
@@ -25,7 +33,7 @@
   ],
   "index_web_pages_for_search": 0,
   "links": [],
-  "modified": "2026-10-15 12:00:00.000000",
+  "modified": "2026-11-17 13:00:00.000000",
   "modified_by": "Administrator",
   "module": "SAS Fortuna",
   "name": "Fortuna Team Route",

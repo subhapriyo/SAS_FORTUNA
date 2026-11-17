@@ -84,7 +84,9 @@ def sync_subject_options():
 	if not cf:
 		return []  # field not on this site (created by setup/fortuna_impex.py)
 	choices = subject_options()
-	options = "\n".join(choices)
+	# Blank first: Frappe defaults a Select to its first option, and a ticket from e-mail or an
+	# agent must not silently get the first subject.
+	options = "\n".join(["", *choices])
 	if (cf.options or "") == options:
 		return []  # already in step: no write, no cache clear
 	# Select options need no column change, so a direct write plus a cache clear is enough.

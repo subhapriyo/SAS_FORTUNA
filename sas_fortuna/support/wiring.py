@@ -69,6 +69,12 @@ doc_events = {
 	"Serial No": {"validate": S + "sales.serial_no_validate"},
 }
 
+# Ticket page Assignee list: only the ticket's Team at its Job Location (support/agent_filter.py).
+# Helpdesk's dropdown lists every active agent; this narrows that HD Agent list on ticket pages.
+permission_query_conditions = {
+	"HD Agent": S + "agent_filter.permission_query",
+}
+
 # Customer portal: /repairs is the Repair Order portal list (support/portal_repairs.py),
 # /repairs/<name> the detail page (www/repair.py). /tickets the same for Helpdesk tickets
 # (support/portal_tickets.py, www/ticket.py); it replaces the Support module's /issues.

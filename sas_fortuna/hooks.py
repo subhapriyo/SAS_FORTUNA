@@ -369,6 +369,8 @@ if _os.path.exists(_os.path.join(_os.path.dirname(__file__), "setup", "support_d
 	doc_events = {**doc_events, **_support.doc_events}
 	doctype_js = _support.doctype_js
 	scheduler_events = _support.scheduler_events
+	# Ticket page Assignee list: the ticket's Team at its Job Location only.
+	permission_query_conditions = _support.permission_query_conditions
 	# Customer portal: /repairs list and /repairs/<name> detail page.
 	website_route_rules = _support.website_route_rules
 	# Filter bar settings for /repairs; loaded before portal.js.

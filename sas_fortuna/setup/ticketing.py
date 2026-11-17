@@ -136,12 +136,13 @@ def _routes():
 	return frappe.get_all(
 		"Fortuna Team Route",
 		filters={"parent": SETTINGS, "parenttype": SETTINGS, "parentfield": "team_routing"},
-		fields=["ticket_type", "team"],
+		fields=["ticket_type", "team", "job_location"],
 		order_by="idx asc",
 	)
 
 
-def _insert_route(ticket_type, team, idx):
+def _insert_route(ticket_type, team, idx, job_location=None):
+	"""One Team Routing row, written directly (see module notes: Settings may not save yet)."""
 	frappe.get_doc(
 		{
 			"doctype": "Fortuna Team Route",
@@ -150,6 +151,7 @@ def _insert_route(ticket_type, team, idx):
 			"parentfield": "team_routing",
 			"idx": idx,
 			"ticket_type": ticket_type,
+			"job_location": job_location,
 			"team": team,
 		}
 	).db_insert()
@@ -366,7 +368,8 @@ def _check_ticket_form(add):
 	}
 	for field in TICKET_FORM_FIELDS:
 		name = field["fieldname"]
-		if have.get(name) == field["url_method"]:
+		# Rows without a url_method (agent-only Job Location) just need to be on the template.
+		if name in have and (have[name] or None) == (field.get("url_method") or None):
 			add(OK, f"New ticket form field {name}")
 		else:
 			add(FAIL, f"New ticket form field {name} missing or without its choices", "bench migrate")

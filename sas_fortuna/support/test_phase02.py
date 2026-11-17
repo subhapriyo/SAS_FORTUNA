@@ -207,12 +207,18 @@ def _resolution():
 	t = _ticket(ticket_type="Hardware", custom_serial_no="TSN-0002")
 	field = "resolution_details" if t.meta.has_field("resolution_details") else "custom_resolution_notes"
 
-	def resolve_without_notes():
-		doc = frappe.get_doc("HD Ticket", t.name)
-		doc.status = "Resolved"
+	# Without notes an agent's Resolved is held back: the ticket keeps its status and is flagged,
+	# which shows the Resolution Details box (support/hd_ticket.py require_resolution_notes).
+	before = frappe.db.get_value("HD Ticket", t.name, "status")
+	doc = frappe.get_doc("HD Ticket", t.name)
+	doc.status = "Resolved"
+	with patch("sas_fortuna.support.hd_ticket.is_helpdesk_agent", return_value=True):
 		doc.save(ignore_permissions=True)
-
-	expect_error("Resolve without notes is refused", resolve_without_notes, "resolution notes")
+	held = frappe.db.get_value("HD Ticket", t.name, ["status", "custom_resolution_requested"], as_dict=True)
+	check(
+		"Resolve without notes is held back (status kept, notes asked for)",
+		held.status == before and held.custom_resolution_requested == 1,
+	)
 	doc = frappe.get_doc("HD Ticket", t.name)
 	doc.status = "Resolved"
 	doc.set(field, "Replaced the power board.")

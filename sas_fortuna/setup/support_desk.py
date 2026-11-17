@@ -14,7 +14,9 @@ Permissions Manager:
   6. Landing page ........ LANDING_SECTIONS, shown on /desk/sas-fortuna by setup/landing_page.py
   7. Portal menu ......... Tickets + Repairs in the customer portal; Issues switched off once
   8. Helpdesk role ....... "HD Customer" for portal users (New ticket / Reply on /tickets)
-  9. New ticket form ..... Ticket Type + Serial No on Helpdesk's customer form (Default template)
+  9. Ticket form ......... Default template: Ticket Type + Serial No (customer's New ticket form),
+                           Job Location + Resolution Details (agents' ticket sidebar only);
+                           Resolution Details shows when asked for (_resolution_box)
  10. Ticketing ........... setup/ticketing.py ensure(): Ticket Types, Paused status, Teams,
                            Team Routing (once per site) and missing HD Customers. Runs last.
 
@@ -48,6 +50,7 @@ def execute():
 	_portal_menu()
 	_helpdesk_role_for_portal_users()
 	_helpdesk_ticket_form()
+	_resolution_box()
 	# Last: needs the custom fields and the New ticket form above.
 	ticketing.ensure()
 
@@ -106,6 +109,21 @@ TICKET_FORM_FIELDS = [
 		"url_method": "sas_fortuna.support.portal.customer_serials",
 		"placeholder": "Serial No (optional)",
 	},
+	{
+		# Agents only (ticket sidebar): set from the customer's address, changeable to move the ticket.
+		"fieldname": "custom_job_location",
+		"required": 0,
+		"hide_from_customer": 1,
+		"placeholder": "Job Location",
+	},
+	{
+		# Agents only: Helpdesk's ticket page has no other box for it. It shows when an agent picks
+		# Resolved without notes, and on resolved tickets (see _resolution_box).
+		"fieldname": "resolution_details",
+		"required": 0,
+		"hide_from_customer": 1,
+		"placeholder": "What was done (needed to resolve)",
+	},
 ]
 
 
@@ -122,6 +140,34 @@ def _helpdesk_ticket_form():
 	for field in missing:
 		template.append("fields", field)
 	template.save(ignore_permissions=True)
+
+
+# Resolution Details shows (ticket sidebar and Desk form) when the agent asked to resolve without
+# notes (flag set by support/hd_ticket.py), while Resolved is picked on the Desk form, and on
+# resolved tickets. Set once; a later Customize Form change is kept.
+RESOLUTION_DEPENDS_ON = (
+	"eval:doc.custom_resolution_requested || doc.status == 'Resolved' || doc.status_category == 'Resolved'"
+)
+
+
+def _resolution_box():
+	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+	if not frappe.get_meta("HD Ticket").has_field("resolution_details"):
+		return  # older Helpdesk: notes go in custom_resolution_notes, always shown
+	if frappe.db.exists(
+		"Property Setter",
+		{"doc_type": "HD Ticket", "field_name": "resolution_details", "property": "depends_on"},
+	):
+		return
+	make_property_setter(
+		"HD Ticket",
+		"resolution_details",
+		"depends_on",
+		RESOLUTION_DEPENDS_ON,
+		"Code",
+		validate_fields_for_doctype=False,
+	)
 
 
 def _helpdesk_role_for_portal_users():
@@ -249,6 +295,14 @@ HD_TICKET_FIELDS = _chain(
 			label="ERPNext Customer",
 			options="Customer",
 		),
+		{
+			# From the customer's address (support/hd_ticket.py); with the Ticket Type it picks the team.
+			"fieldname": "custom_job_location",
+			"fieldtype": "Link",
+			"label": "Job Location",
+			"options": "Job Location",
+			"in_standard_filter": 1,
+		},
 		_ro(fieldname="custom_invoice_no", fieldtype="Data", label="Invoice No"),
 		_ro(fieldname="custom_invoice_date", fieldtype="Date", label="Invoice Date"),
 		_ro(fieldname="custom_warranty_end", fieldtype="Date", label="Warranty End"),
@@ -257,6 +311,15 @@ HD_TICKET_FIELDS = _chain(
 		_ro(fieldname="custom_sales_order", fieldtype="Link", label="Sales Order", options="Sales Order"),
 		_ro(fieldname="custom_repair_order", fieldtype="Link", label="Repair Order", options="Repair Order"),
 		_ro(fieldname="custom_repair_status", fieldtype="Data", label="Repair Status"),
+		# Set when an agent picks Resolved without notes: shows the Resolution Details box
+		# (support/hd_ticket.py require_resolution_notes). Cleared once resolved.
+		{
+			"fieldname": "custom_resolution_requested",
+			"fieldtype": "Check",
+			"label": "Resolution Notes Requested",
+			"hidden": 1,
+			"no_copy": 1,
+		},
 		# Tickets imported from Fortuna's old system (support/legacy_import.py). Shown only on them.
 		{
 			"fieldname": "custom_legacy_section",
@@ -386,6 +449,20 @@ CUSTOM_FIELDS = {
 	"Serial No": SERIAL_NO_FIELDS,
 	"Item": ITEM_FIELDS,
 	"HD Ticket": HD_TICKET_FIELDS,
+	# Where the engineer works; location teams (Hardware Support - Kolkata) are built from it.
+	"HD Agent": _chain(
+		[
+			{
+				"fieldname": "custom_job_location",
+				"fieldtype": "Link",
+				"label": "Job Location",
+				"options": "Job Location",
+				"in_list_view": 1,
+				"in_standard_filter": 1,
+			}
+		],
+		after="agent_name",
+	),
 	"HD Customer": _chain(
 		[
 			{
@@ -490,9 +567,22 @@ PERMISSIONS = {
 		"AMC Team": ["read", "report"],
 	},
 	# AMC team and managers look units up (warranty, AMC dates) without needing Stock User.
+	# Agents and engineers make and work Repair Orders, which link to the unit, its model and
+	# the customer: without read on these the form stops with "Insufficient Permission for
+	# Serial No". Fortuna's SW/HW staff have no other ERPNext role. Read only.
 	"Serial No": {
 		"AMC Team": ["read", "report", "print"],
 		"Support Manager": ["read", "report", "print", "export"],
+		"Agent": ["read", "select", "report"],
+		"Service Engineer": ["read", "select", "report"],
+	},
+	"Item": {
+		"Agent": ["read", "select"],
+		"Service Engineer": ["read", "select"],
+	},
+	"Customer": {
+		"Agent": ["read", "select"],
+		"Service Engineer": ["read", "select"],
 	},
 	"Returnable Gate Pass": {
 		"Agent": ["read", "write", "create", "print"],
@@ -632,6 +722,13 @@ LANDING_SECTIONS = [
 				"HD Team",
 				"Software, Hardware and Post-Installation agents.",
 				"users",
+			),
+			(
+				"Job Locations",
+				"doctype",
+				"Job Location",
+				"Branches, the cities/states they serve and their invoice prefix key.",
+				"pass",
 			),
 			(
 				"Support Mailbox",

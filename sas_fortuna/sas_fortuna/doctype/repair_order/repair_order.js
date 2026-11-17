@@ -14,21 +14,16 @@ function ro_make(frm, method, doctype, args = {}) {
 }
 
 frappe.ui.form.on("Repair Order", {
-	// Picking the ticket copies its details at once (the server re-checks on save).
+	// Picking the ticket copies its customer, model, serial and complaint at once. The server
+	// works them out (ticket_details = the same code save runs), so the form never differs:
+	// customer from the Helpdesk customer if the ERPNext link is blank, complaint as plain text.
 	async helpdesk_ticket(frm) {
 		if (!frm.doc.helpdesk_ticket) return;
-		const { message: t } = await frappe.db.get_value("HD Ticket", frm.doc.helpdesk_ticket, [
-			"custom_erpnext_customer",
-			"custom_product_model",
-			"custom_serial_no",
-			"description",
-		]);
-		frm.set_value({
-			customer: t.custom_erpnext_customer,
-			product_model: t.custom_product_model,
-			serial_no: t.custom_serial_no,
-			complaint: t.description,
+		const { message } = await frappe.call({
+			method: "sas_fortuna.sas_fortuna.doctype.repair_order.repair_order.ticket_details",
+			args: { ticket: frm.doc.helpdesk_ticket },
 		});
+		if (message) frm.set_value(message);
 	},
 
 	setup(frm) {
@@ -44,7 +39,12 @@ frappe.ui.form.on("Repair Order", {
 	},
 
 	refresh(frm) {
-		if (frm.is_new()) return;
+		if (frm.is_new()) {
+			// Opened with the ticket already set (Helpdesk's "Create Repair Order", the ticket's
+			// Create button): copy its details now, as picking the ticket would.
+			if (frm.doc.helpdesk_ticket && !frm.doc.customer) frm.trigger("helpdesk_ticket");
+			return;
+		}
 		const s = frm.doc.status;
 		const grp = __("Create");
 

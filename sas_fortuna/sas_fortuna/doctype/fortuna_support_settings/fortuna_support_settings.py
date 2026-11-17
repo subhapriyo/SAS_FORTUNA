@@ -70,8 +70,11 @@ class FortunaSupportSettings(Document):
 				frappe.throw(_("Customer Reminder Days: use whole days separated by commas, e.g. 30, 15."))
 
 	def _check_unique_routes(self):
+		"""One row per Ticket Type + Job Location (blank location = the type's fallback team)."""
 		seen = set()
 		for row in self.team_routing:
-			if row.ticket_type in seen:
-				frappe.throw(_("Ticket Type {0} is routed twice.").format(row.ticket_type))
-			seen.add(row.ticket_type)
+			key = (row.ticket_type, row.get("job_location") or None)
+			if key in seen:
+				where = row.get("job_location") or _("all locations")
+				frappe.throw(_("Ticket Type {0} is routed twice for {1}.").format(row.ticket_type, where))
+			seen.add(key)

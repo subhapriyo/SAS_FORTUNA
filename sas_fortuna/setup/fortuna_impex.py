@@ -20,18 +20,23 @@ has "sas_fortuna_fortuna_impex": 1 (0 switches it off). Other companies' sites
   ensure_alert_cc         CC on the AMC renewal notification                     once
   sync_support_team       staff sheet -> agents, teams, roles (Users: opt-in)   once per person
   grant_agent_manager     Helpdesk Agent Manager role for SUPPORT MANAGER rows   once per site
+  ensure_job_locations    Kolkata, Mumbai, Bhubaneswar ... and what they serve   add missing
+  sync_job_location_teams staff location -> agent's Job Location, location team  once per person
+  enable_assign_within_team  Helpdesk's "assign within team" setting on           once per site
   ensure_kb_articles      FAQ articles customers see while raising a ticket      add missing
   ensure_ticket_subject_form  Subject dropdown + form script on New Ticket       add missing; script follows its file
   ensure_ticket_subjects  starter subjects per ticket type (Ticket Subject list) types without any
+  sync_subject_options    Subject dropdown's choices = the Ticket Subject list   every migrate
+  ensure_ticket_actions_script  Repair Order + Coverage buttons on the ticket page  script follows its file
   ensure_acknowledgement_email  "we've received your ticket" e-mail text + on      text if blank; on once
 
 Open points still with Fortuna are marked "TO CONFIRM" next to the value.
 Data: setup/data/fortuna_amc_terms.html,
 fortuna_repair_terms.html, fortuna_kb_articles.json (FAQ articles), fortuna_ticket_subjects.json
-(starter subjects), fortuna_new_ticket_form.js (New Ticket form script),
-fortuna_ticket_acknowledgement.html (new-ticket e-mail).
+(starter subjects), fortuna_new_ticket_form.js (New Ticket form script), fortuna_ticket_actions.js
+(ticket page buttons), fortuna_ticket_acknowledgement.html (new-ticket e-mail), fortuna_job_locations.json (branches).
 Tests: sas_fortuna/tests/test_fortuna_impex_setup.py, test_ticket_subject.py,
-test_ticket_acknowledgement.py, test_install_agents.py
+test_ticket_acknowledgement.py, test_install_agents.py, test_job_location.py
 """
 
 import json
@@ -50,6 +55,8 @@ SETTINGS_FLAG = "sas_fortuna_fortuna_impex_settings_v1"
 ALERT_CC_FLAG = "sas_fortuna_fortuna_impex_alert_cc_v1"
 STAFF_SYNCED_KEY = "sas_fortuna_fortuna_impex_staff_synced"
 AGENT_MANAGER_FLAG = "sas_fortuna_fortuna_impex_agent_manager_v1"
+STAFF_LOCATION_KEY = "sas_fortuna_fortuna_impex_staff_location_synced"
+ASSIGN_WITHIN_TEAM_FLAG = "sas_fortuna_fortuna_impex_assign_within_team_v1"
 # site_config switch: 1 lets sync_support_team create missing staff Users (off by default).
 CREATE_USERS_KEY = "sas_fortuna_create_staff_users"
 
@@ -522,6 +529,7 @@ def merge_staff(rows):
 				name=row.get("name"),
 				email=email,
 				job_role=row.get("job_role"),
+				location=row.get("location"),  # sheet's "Job Location" text, e.g. Fortuna Kolkata
 				agent=0,
 				teams=[],
 				roles=[],
@@ -645,6 +653,117 @@ def grant_agent_manager():
 			done.append(f"{user}: role Agent Manager")
 	frappe.db.set_default(AGENT_MANAGER_FLAG, "1")
 	return done
+
+
+# ===========================================================================
+# 9b. Job Locations and location teams (Ticket Type + Job Location -> team -> assignee)
+# ===========================================================================
+JOB_LOCATIONS_FILE = "fortuna_job_locations.json"
+
+
+def load_job_locations():
+	with open(os.path.join(DATA, JOB_LOCATIONS_FILE)) as f:
+		return json.load(f)["locations"]
+
+
+def ensure_job_locations(rows=None):
+	"""Add each shipped Job Location that is missing; one that exists (edited or not) is left alone.
+	A location whose Invoice Prefix Key belongs to a Company on this site is linked to it."""
+	if not frappe.db.exists("DocType", "Job Location"):
+		return []
+	from sas_fortuna.sas_fortuna.doctype.job_location.job_location import PREFIX_FIELD, prefix_keys
+
+	has_key = frappe.get_meta("Company").has_field(PREFIX_FIELD)
+	done = []
+	for row in load_job_locations() if rows is None else rows:
+		if frappe.db.exists("Job Location", row["location_name"]):
+			continue
+		keys = prefix_keys(row.get("invoice_prefix_key"))
+		key = ", ".join(keys) or None
+		# Only a Company that really carries one of these keys on this site ("on if exists").
+		company = frappe.db.get_value("Company", {PREFIX_FIELD: ["in", keys]}) if has_key and keys else None
+		doc = frappe.get_doc({"doctype": "Job Location", **row, "company": company})
+		doc.insert(ignore_permissions=True)
+		if doc.company != company:
+			# Frappe filled the blank link with the user's default company (and validate took its
+			# key): a branch is not that company, so put back what the data says.
+			doc.db_set({"company": company, "invoice_prefix_key": key})
+		done.append(f"Job Location {row['location_name']}")
+	return done
+
+
+def location_team(base_team, job_location):
+	return f"{base_team} - {job_location}"
+
+
+def sync_job_location_teams():
+	"""Once per person: their Job Location (from the sheet's location) on the HD Agent, and
+	membership of the location team of each of their teams, e.g. Hardware Support - Mumbai.
+	The team and its Team Routing rows (same ticket types as the base team) are created when
+	missing. Someone without a User / agent yet is tried again next migrate."""
+	if not frappe.db.exists("DocType", "Job Location"):
+		return []
+	from sas_fortuna.sas_fortuna.doctype.job_location.job_location import location_from_text
+
+	synced = set(json.loads(frappe.db.get_default(STAFF_LOCATION_KEY) or "[]"))
+	done = []
+	for person in load_staff():
+		if person.email in synced or not person.agent:
+			continue
+		location = location_from_text(person.location)
+		user = find_user(person.email)
+		if not location or not user or not frappe.db.exists("HD Agent", user):
+			continue  # nothing to place, or not an agent yet: next migrate
+		if not frappe.db.get_value("HD Agent", user, "custom_job_location"):
+			frappe.db.set_value("HD Agent", user, "custom_job_location", location)
+			done.append(f"{user}: Job Location {location}")
+		for base in person.teams:
+			done += _join_location_team(user, base, location)
+		synced.add(person.email)
+	frappe.db.set_default(STAFF_LOCATION_KEY, json.dumps(sorted(synced)))
+	return done
+
+
+def _join_location_team(user, base, location):
+	"""User into '<base> - <location>' (created when missing), plus its routing rows."""
+	from sas_fortuna.setup import ticketing
+
+	done = []
+	name = location_team(base, location)
+	if frappe.db.exists("HD Team", name):
+		team = frappe.get_doc("HD Team", name)
+		if user not in {m.user for m in team.users}:
+			team.append("users", {"user": user})
+			team.save(ignore_permissions=True)
+			done.append(f"{user}: team {name}")
+	else:
+		# Helpdesk adds the team's round-robin Assignment Rule on insert.
+		frappe.get_doc({"doctype": "HD Team", "team_name": name, "users": [{"user": user}]}).insert(
+			ignore_permissions=True
+		)
+		done.append(f"Team {name} ({user})")
+	routes = ticketing._routes()
+	for ticket_type in [r.ticket_type for r in routes if r.team == base and not r.job_location]:
+		if not any(r.ticket_type == ticket_type and r.job_location == location for r in routes):
+			ticketing._insert_route(ticket_type, name, len(routes) + 1, job_location=location)
+			routes = ticketing._routes()
+			done.append(f"Route {ticket_type} at {location} -> {name}")
+	frappe.clear_document_cache(SETTINGS, SETTINGS)
+	return done
+
+
+def enable_assign_within_team():
+	"""Once per site: Helpdesk > Settings > "Restrict agent assignment to selected team" on.
+	Note: the Helpdesk version in use (Nov 2026) shows this setting but its Assignee dropdown does
+	not read it; the list is narrowed by support/agent_filter.py. Kept on for when Helpdesk does.
+	An admin may switch it off again; it is not switched back on."""
+	if frappe.db.get_default(ASSIGN_WITHIN_TEAM_FLAG) or not frappe.get_meta("HD Settings").has_field(
+		"assign_within_team"
+	):
+		return []
+	frappe.db.set_single_value("HD Settings", "assign_within_team", 1)
+	frappe.db.set_default(ASSIGN_WITHIN_TEAM_FLAG, "1")
+	return ["Helpdesk: agent assignment limited to the ticket's team"]
 
 
 AGENT_ROLES = ("Agent", "Agent Manager")
@@ -836,27 +955,48 @@ def _subject_on_ticket_template():
 
 
 def _subject_form_script():
-	source = form_script_source()
+	# New Ticket page; Helpdesk loads new-page scripts for agents and customers alike from
+	# apply_to_customer_portal being 0.
+	return _sync_form_script(FORM_SCRIPT, form_script_source(), apply_on_new_page=1)
+
+
+def _sync_form_script(name, source, apply_on_new_page):
+	"""Create or update an HD Ticket Helpdesk Form Script so it matches its file in the app.
+	The script is code, kept in git: it follows the file on every migrate."""
 	wanted = {
 		"dt": "HD Ticket",
 		"apply_to": "Form",
 		"enabled": 1,
-		"apply_on_new_page": 1,
-		# Helpdesk loads new-page scripts for agents and customers alike from this flag being 0.
+		"apply_on_new_page": apply_on_new_page,
 		"apply_to_customer_portal": 0,
 		"script": source,
 	}
-	if not frappe.db.exists("HD Form Script", FORM_SCRIPT):
-		frappe.get_doc({"doctype": "HD Form Script", "name": FORM_SCRIPT, **wanted}).insert(
-			ignore_permissions=True
-		)
-		return ["Helpdesk Form Script: " + FORM_SCRIPT]
-	doc = frappe.get_doc("HD Form Script", FORM_SCRIPT)
+	if not frappe.db.exists("HD Form Script", name):
+		frappe.get_doc({"doctype": "HD Form Script", "name": name, **wanted}).insert(ignore_permissions=True)
+		return ["Helpdesk Form Script: " + name]
+	doc = frappe.get_doc("HD Form Script", name)
 	if all(doc.get(k) == v for k, v in wanted.items()):
 		return []
 	doc.update(wanted)
 	doc.save(ignore_permissions=True)
-	return ["Helpdesk Form Script: " + FORM_SCRIPT + " updated"]
+	return ["Helpdesk Form Script: " + name + " updated"]
+
+
+# Agent's ticket page (/helpdesk/tickets/<id>): "Create Repair Order" / "Repair Order ..." and a
+# read-only Coverage dropdown (Support Type, Warranty End, AMC Expiry, Repair Status). Kept off
+# the sidebar because Helpdesk's sidebar ignores read-only and would let agents edit them.
+TICKET_ACTIONS_SCRIPT = "Fortuna Ticket Actions"
+TICKET_ACTIONS_FILE = "fortuna_ticket_actions.js"
+
+
+def ticket_actions_source():
+	return _read(TICKET_ACTIONS_FILE)
+
+
+def ensure_ticket_actions_script():
+	if not frappe.db.exists("DocType", "HD Form Script"):
+		return []
+	return _sync_form_script(TICKET_ACTIONS_SCRIPT, ticket_actions_source(), apply_on_new_page=0)
 
 
 def load_ticket_subjects():
@@ -938,10 +1078,14 @@ STEPS = (
 	ensure_alert_cc,
 	sync_support_team,
 	grant_agent_manager,
+	ensure_job_locations,
+	sync_job_location_teams,  # after the agents exist
+	enable_assign_within_team,
 	ensure_kb_articles,
 	ensure_ticket_subject_form,
 	ensure_ticket_subjects,
 	sync_subject_options,
+	ensure_ticket_actions_script,
 	ensure_acknowledgement_email,
 )
 

@@ -8,6 +8,7 @@ SLA and assignment stay in Helpdesk configuration.
 import frappe
 from frappe import _
 
+from sas_fortuna.sas_fortuna.doctype.job_location.job_location import location_for_customer
 from sas_fortuna.support.utils import (
 	get_erpnext_customer,
 	get_hd_customer,
@@ -51,9 +52,10 @@ def validate(doc, method=None):
 	from sas_fortuna.support.legacy_import import validate_legacy
 
 	apply_issue_subject(doc)
-	route_to_team(doc)
 	apply_serial_details(doc)
 	apply_customer_from_sender(doc)  # after the serial: the unit's owner wins
+	apply_job_location(doc)  # needs the customer
+	route_to_team(doc)  # needs the ticket type and the job location
 	require_resolution_notes(doc)
 	validate_legacy(doc)  # imported old tickets only: number, dates
 
@@ -147,19 +149,65 @@ def on_update(doc, method=None):
 
 
 # ---------------------------------------------------------------------------
-# C1  Ticket Type -> Team
+# Job Location: where the customer is, so which branch's engineers take the ticket
+# ---------------------------------------------------------------------------
+def apply_job_location(doc):
+	"""Fill the ticket's Job Location from its customer's address (city, else state) when blank.
+	An agent may change it in the ticket sidebar; route_to_team then moves the ticket."""
+	if doc.get("custom_job_location") or not doc.get("custom_erpnext_customer"):
+		return
+	doc.custom_job_location = location_for_customer(doc.custom_erpnext_customer)
+
+
+# ---------------------------------------------------------------------------
+# C1  Ticket Type + Job Location -> Team
 # ---------------------------------------------------------------------------
 def route_to_team(doc):
-	"""Pick the team from the routing table, only when none is chosen yet.
+	"""Set the team from Fortuna Support Settings > Team Routing.
 
-	The Team's own assignment rule (round robin) then picks the agent.
+	The team's own assignment rule (round robin) then picks the agent, and the ticket page's
+	Assignee list shows that team at the ticket's Job Location (support/agent_filter.py).
+	  - no team yet -> the routed team
+	  - ticket type or job location changed -> the newly routed team, unless an agent had picked
+	    a team that routing never gives (a hand-picked team is kept)
 	"""
-	if doc.get("agent_group") or not doc.get("ticket_type"):
+	if not doc.get("ticket_type"):
 		return
-	for row in get_settings().team_routing:
-		if row.ticket_type == doc.ticket_type:
-			doc.agent_group = row.team
-			return
+	routes = get_settings().team_routing
+	team = team_for(doc.ticket_type, doc.get("custom_job_location"), routes)
+	if not team or doc.get("agent_group") == team:
+		return
+	if not doc.get("agent_group"):
+		doc.agent_group = team
+	elif _routing_changed(doc) and doc.agent_group in {row.team for row in routes}:
+		doc.agent_group = team
+
+
+def _routing_changed(doc):
+	return doc.has_value_changed("ticket_type") or doc.has_value_changed("custom_job_location")
+
+
+def team_for(ticket_type, job_location, routes):
+	"""The team for this ticket type at this location: the location's row while its team has an
+	active agent (so no ticket waits in an empty team), else the type's row without a location."""
+	fallback = None
+	for row in routes:
+		if row.ticket_type != ticket_type:
+			continue
+		location = row.get("job_location")
+		if job_location and location == job_location and has_active_agent(row.team):
+			return row.team
+		if not location and not fallback:
+			fallback = row.team
+	return fallback
+
+
+def has_active_agent(team):
+	"""True when at least one member of the Helpdesk team is an active agent."""
+	members = frappe.get_all(
+		"HD Team Member", filters={"parenttype": "HD Team", "parent": team}, pluck="user"
+	)
+	return bool(members) and bool(frappe.db.exists("HD Agent", {"name": ["in", members], "is_active": 1}))
 
 
 # ---------------------------------------------------------------------------
@@ -208,18 +256,53 @@ def apply_serial_details(doc):
 # ---------------------------------------------------------------------------
 # C3  No resolve without notes (agents only; customers may close freely)
 # ---------------------------------------------------------------------------
+# Helpdesk's ticket page has no box for the notes and its Status dropdown saves at once, so a
+# refusal (throw) would leave the agent stuck. Instead the ticket keeps its status and is
+# flagged; the flag shows the Resolution Details box in the sidebar (setup/support_desk.py
+# _resolution_box). With notes typed, picking Resolved again goes through.
+RESOLUTION_FLAG = "custom_resolution_requested"
+# What a Resolved pick changes before this check runs (Helpdesk's before_validate). The
+# resolution date and SLA are worked out later (before_save), from the status put back here.
+RESOLVE_CHANGES = ("status", "status_category", "first_responded_on")
+
+
 def _resolution_field(doc):
 	"""Helpdesk releases differ: use their field if present, else ours."""
 	return "resolution_details" if doc.meta.has_field("resolution_details") else "custom_resolution_notes"
 
 
+def _has_notes(doc):
+	"""The notes field is HTML (editor): "<p> </p>" is empty."""
+	text = frappe.utils.strip_html(doc.get(_resolution_field(doc)) or "")
+	return bool(text.replace("&nbsp;", " ").strip())
+
+
+def _set_flag(doc, value):
+	if doc.meta.has_field(RESOLUTION_FLAG):
+		doc.set(RESOLUTION_FLAG, value)
+
+
 def require_resolution_notes(doc):
-	if doc.status != "Resolved" or not doc.has_value_changed("status"):
+	if not doc.has_value_changed("status"):
+		return  # e.g. the notes being typed: the box stays until the ticket is resolved
+	if doc.status != "Resolved" or not is_helpdesk_agent() or _has_notes(doc):
+		_set_flag(doc, 0)  # resolved, moved to another status, or not an agent: no box needed
 		return
-	if not is_helpdesk_agent():
-		return
-	if not (doc.get(_resolution_field(doc)) or "").strip():
+	before = doc.get_doc_before_save()
+	if not before:  # a new ticket has no status to keep
 		frappe.throw(_("Please add resolution notes before marking the ticket Resolved."))
+	for field in RESOLVE_CHANGES:
+		doc.set(field, before.get(field))
+	_set_flag(doc, 1)
+	# Shown as a toast by Helpdesk (checked in the browser) and on the Desk form.
+	frappe.msgprint(
+		_(
+			"Add Resolution Details (ticket sidebar, More Details), then set the ticket to Resolved "
+			"again. It stays {0} until then."
+		).format(_(before.status)),
+		alert=True,
+		indicator="orange",
+	)
 
 
 def resolve_ticket(ticket, note):

@@ -117,6 +117,15 @@ class TestSubjectFieldOptions(IntegrationTestCase):
 		self.assertEqual(options[-1], OTHERS)
 		self.assertEqual(options.count(OTHERS), 1)
 
+	def test_a_new_ticket_gets_no_subject_by_default(self):
+		# Frappe defaults a Select to its first option; that must be blank, or every e-mail /
+		# agent ticket would silently get the first subject (and fail the subject check).
+		if not frappe.db.exists("Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}):
+			self.skipTest("Subject dropdown field not on this site")
+		_subject("ZZ Opt first", "ZZ Type N")
+		self.assertEqual(self._field_options()[0], "")
+		self.assertFalse(frappe.new_doc("HD Ticket").get(SUBJECT_FIELD))
+
 	def test_saving_a_subject_updates_the_field(self):
 		if not frappe.db.exists("Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}):
 			self.skipTest("Subject dropdown field not on this site")

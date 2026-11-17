@@ -590,6 +590,30 @@ class TestTicketSubjectForm(IntegrationTestCase):
 			frappe.db.get_value("HD Form Script", fi.FORM_SCRIPT, "script"), fi.form_script_source()
 		)
 
+	def test_ticket_page_actions_script_follows_its_file(self):
+		# Buttons on /helpdesk/tickets/<id>: an agent-page script (not new page, not portal).
+		fi.ensure_ticket_actions_script()
+		script = frappe.get_doc("HD Form Script", fi.TICKET_ACTIONS_SCRIPT)
+		self.assertEqual(
+			(
+				script.dt,
+				script.apply_to,
+				script.enabled,
+				script.apply_on_new_page,
+				script.apply_to_customer_portal,
+			),
+			("HD Ticket", "Form", 1, 0, 0),
+		)
+		self.assertEqual(script.script, fi.ticket_actions_source())
+		self.assertEqual(fi.ensure_ticket_actions_script(), [])  # in step: nothing to do
+		frappe.db.set_value("HD Form Script", fi.TICKET_ACTIONS_SCRIPT, "script", "// edited")
+		fi.ensure_ticket_actions_script()  # code follows the file
+		self.assertEqual(
+			frappe.db.get_value("HD Form Script", fi.TICKET_ACTIONS_SCRIPT, "script"),
+			fi.ticket_actions_source(),
+		)
+		self.assertIn(fi.ensure_ticket_actions_script, fi.STEPS)
+
 	def test_the_script_asks_the_portal_api_for_choices(self):
 		source = fi.form_script_source()
 		self.assertIn("function setupForm(", source)
