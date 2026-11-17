@@ -3,6 +3,8 @@
 	ensure()  after_migrate (and so after_install), via setup/support_desk.py execute():
 	            1. Ticket Types, the Paused status, the Teams and Team Routing - ONCE per site
 	            2. an HD Customer for every ERPNext Customer that has none - every migrate
+	            3. linked Contacts made HD Customer members, and tickets without a Customer
+	               given one - every migrate
 	check()   read-only list of findings (OK / WARN / FAIL, each with its fix)
 	run()     prints check(); also an after_migrate hook in hooks.py, so the report is in
 	          every migrate / install log. FAILs go to the Error Log too.
@@ -71,7 +73,7 @@ def ensure():
 	"""Create what the ticketing needs; return what was created (empty when nothing)."""
 	if not helpdesk_installed():
 		return []
-	return _seed_masters_once() + backfill_hd_customers()
+	return _seed_masters_once() + backfill_hd_customers() + backfill_ticket_customer_links()
 
 
 def _seed_masters_once():
@@ -183,6 +185,19 @@ def backfill_hd_customers(only=None):
 		frappe.log_error(title="sas_fortuna: HD Customer backfill failed")
 		return []
 	return done
+
+
+def backfill_ticket_customer_links():
+	"""Contacts -> HD Customer members, then tickets -> Customer (customer_sync.py)."""
+	from sas_fortuna.support.customer_sync import backfill_ticket_customers, sync_customer_members
+
+	frappe.db.savepoint("sf_ticket_customer_backfill")
+	try:
+		return sync_customer_members() + backfill_ticket_customers()
+	except Exception:
+		frappe.db.rollback(save_point="sf_ticket_customer_backfill")
+		frappe.log_error(title="sas_fortuna: ticket customer backfill failed")
+		return []
 
 
 def seed():

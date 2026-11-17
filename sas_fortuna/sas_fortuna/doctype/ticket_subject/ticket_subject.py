@@ -9,9 +9,17 @@ from frappe import _
 from frappe.model.document import Document
 
 OTHERS = "Others"
+SUBJECT_FIELD = "custom_issue_subject"
 
 
 class TicketSubject(Document):
+	# Any add, edit or delete changes the dropdown's choices on HD Ticket.
+	def on_update(self):
+		sync_subject_options()
+
+	def after_delete(self):
+		sync_subject_options()
+
 	def validate(self):
 		self.subject = (self.subject or "").strip()
 		if self.subject.lower() == OTHERS.lower():
@@ -48,6 +56,41 @@ def subjects_by_type():
 	):
 		choices.setdefault(row.ticket_type, []).append(row.subject)
 	return {ticket_type: [*subjects, OTHERS] for ticket_type, subjects in choices.items()}
+
+
+def subject_options():
+	"""Every value the Subject dropdown may hold: all Ticket Subjects (active or not), any value
+	already on a ticket (so a removed subject never breaks saving those tickets), Others last."""
+	values = set(frappe.get_all("Ticket Subject", pluck="subject"))
+	if frappe.get_meta("HD Ticket").has_field(SUBJECT_FIELD):
+		values |= set(
+			frappe.get_all(
+				"HD Ticket", filters={SUBJECT_FIELD: ["is", "set"]}, pluck=SUBJECT_FIELD, distinct=True
+			)
+		)
+	values.discard(OTHERS)
+	return [*sorted(v for v in values if v), OTHERS]
+
+
+def sync_subject_options():
+	"""Copy subject_options() onto the HD Ticket Select field.
+
+	The New Ticket form narrows the choices per ticket type in the browser (form script), but
+	the agent's ticket sidebar shows a Select only through the field's own options: with none,
+	a saved subject reads as the empty "Choose the closest subject"."""
+	cf = frappe.db.get_value(
+		"Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}, ["name", "options"], as_dict=True
+	)
+	if not cf:
+		return []  # field not on this site (created by setup/fortuna_impex.py)
+	choices = subject_options()
+	options = "\n".join(choices)
+	if (cf.options or "") == options:
+		return []  # already in step: no write, no cache clear
+	# Select options need no column change, so a direct write plus a cache clear is enough.
+	frappe.db.set_value("Custom Field", cf.name, "options", options, update_modified=False)
+	frappe.clear_cache(doctype="HD Ticket")
+	return [f"HD Ticket Subject dropdown: {len(choices)} choices"]
 
 
 def is_offered(subject, ticket_type):

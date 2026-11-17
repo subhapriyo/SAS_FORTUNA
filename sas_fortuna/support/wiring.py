@@ -20,7 +20,11 @@ doctype_js = {
 doc_events = {
 	# Phase 1: one customer identity in ERPNext and Helpdesk
 	"Customer": {"after_insert": S + "customer_sync.customer_after_insert"},
-	"Contact": {"validate": S + "customer_sync.contact_validate"},
+	"Contact": {
+		"validate": S + "customer_sync.contact_validate",
+		# Helpdesk reads the HD Customer's Contacts table to fill a ticket's Customer
+		"on_update": S + "customer_sync.contact_on_update",
+	},
 	# Phase 2: ticket classification and routing; stamp serials on sale
 	"HD Ticket": {
 		"before_insert": S + "hd_ticket.before_insert",

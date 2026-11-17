@@ -546,7 +546,12 @@ class TestTicketSubjectForm(IntegrationTestCase):
 		fi.ensure_ticket_subject_form()
 		df = frappe.get_meta("HD Ticket").get_field(fi.SUBJECT_FIELD)
 		self.assertEqual(df.fieldtype, "Select")
-		self.assertFalse(df.options)  # choices come per ticket type, see the form script
+		# The field lists every subject (so the agent sidebar can show the saved one); the New
+		# Ticket form script still narrows it per ticket type.
+		fi.sync_subject_options()
+		df = frappe.get_meta("HD Ticket").get_field(fi.SUBJECT_FIELD)
+		self.assertEqual(df.options.split("\n")[-1], "Others")
+		self.assertIn(fi.sync_subject_options, fi.STEPS)
 		if frappe.db.exists("HD Ticket Template", "Default"):
 			rows = frappe.get_all(
 				"HD Ticket Template Field", filters={"parent": "Default"}, pluck="fieldname", order_by="idx"

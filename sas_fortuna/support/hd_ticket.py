@@ -10,6 +10,7 @@ from frappe import _
 
 from sas_fortuna.support.utils import (
 	get_erpnext_customer,
+	get_hd_customer,
 	get_serial_coverage,
 	get_settings,
 	is_helpdesk_agent,
@@ -90,12 +91,13 @@ def apply_customer_from_sender(doc):
 	appear on the customer's /tickets page. Order of lookups:
 	  1. the sender is a portal user -> that user's Customer
 	  2. the sender's e-mail is on a Contact -> that Contact's Customer
+	Helpdesk's own Customer field (doc.customer, an HD Customer) then follows it when blank,
+	so agents see the customer on the ticket.
 	"""
-	if doc.get("custom_erpnext_customer"):
-		return
-	customer = sender_customer(doc)
-	if customer:
-		doc.custom_erpnext_customer = customer
+	if not doc.get("custom_erpnext_customer"):
+		doc.custom_erpnext_customer = sender_customer(doc)
+	if not doc.get("customer") and doc.get("custom_erpnext_customer"):
+		doc.customer = get_hd_customer(doc.custom_erpnext_customer)
 
 
 def sender_customer(doc):

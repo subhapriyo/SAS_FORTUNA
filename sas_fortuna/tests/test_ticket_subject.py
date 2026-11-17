@@ -9,7 +9,13 @@ Written test-first. ZZ-named records only; IntegrationTestCase rolls them back.
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from sas_fortuna.sas_fortuna.doctype.ticket_subject.ticket_subject import OTHERS, is_offered, subjects_for
+from sas_fortuna.sas_fortuna.doctype.ticket_subject.ticket_subject import (
+	OTHERS,
+	SUBJECT_FIELD,
+	is_offered,
+	subject_options,
+	subjects_for,
+)
 from sas_fortuna.support.hd_ticket import apply_issue_subject
 
 
@@ -91,6 +97,33 @@ class TestTicketSubjectList(IntegrationTestCase):
 		self.assertEqual(choices["ZZ Type M"], ["ZZ All M", OTHERS])
 		for ticket_type, subjects in choices.items():
 			self.assertEqual(subjects, subjects_for(ticket_type), ticket_type)
+
+
+class TestSubjectFieldOptions(IntegrationTestCase):
+	"""The agent sidebar shows the saved subject only if it is one of the field's options."""
+
+	def _field_options(self):
+		return (
+			frappe.db.get_value("Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}, "options")
+			or ""
+		).split("\n")
+
+	def test_options_hold_every_subject_with_others_last(self):
+		_subject("ZZ Opt on", "ZZ Type N")
+		_subject("ZZ Opt off", "ZZ Type N", active=0)  # old tickets may still carry it
+		options = subject_options()
+		self.assertIn("ZZ Opt on", options)
+		self.assertIn("ZZ Opt off", options)
+		self.assertEqual(options[-1], OTHERS)
+		self.assertEqual(options.count(OTHERS), 1)
+
+	def test_saving_a_subject_updates_the_field(self):
+		if not frappe.db.exists("Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}):
+			self.skipTest("Subject dropdown field not on this site")
+		doc = _subject("ZZ Opt synced", "ZZ Type N")
+		self.assertIn("ZZ Opt synced", self._field_options())
+		doc.delete(ignore_permissions=True)
+		self.assertNotIn("ZZ Opt synced", self._field_options())
 
 
 class TestTicketValidation(IntegrationTestCase):

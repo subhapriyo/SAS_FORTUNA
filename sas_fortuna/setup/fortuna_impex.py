@@ -887,6 +887,14 @@ def ensure_ticket_subjects():
 	return done
 
 
+def sync_subject_options():
+	"""Subject dropdown's choices = the Ticket Subject list (kept in step on every Ticket Subject
+	save too), so the agent's ticket sidebar can show the chosen subject."""
+	from sas_fortuna.sas_fortuna.doctype.ticket_subject.ticket_subject import sync_subject_options as sync
+
+	return sync()
+
+
 # ===========================================================================
 # 12. "We've received your ticket" e-mail (Helpdesk's Acknowledgement setting)
 # ===========================================================================
@@ -933,6 +941,7 @@ STEPS = (
 	ensure_kb_articles,
 	ensure_ticket_subject_form,
 	ensure_ticket_subjects,
+	sync_subject_options,
 	ensure_acknowledgement_email,
 )
 
