@@ -11,9 +11,18 @@
 // 2. Coverage: a read-only dropdown with Support Type, Warranty End, AMC Expiry and Repair
 //    Status. They are shown here, not in the sidebar, because Helpdesk's sidebar would let
 //    agents edit them (it ignores read-only); they come from the serial number on save.
-// Resolution notes need nothing here: picking Resolved without notes keeps the old status and
-// flags the ticket (support/hd_ticket.py); the flag shows the Resolution Details box in the
-// sidebar, and Helpdesk shows the server's message saying so.
+// 3. Resolution pop-up: Helpdesk has no resolution prompt and no hook on its Status dropdown,
+//    so picking Resolved or Closed without a resolution keeps the old status and flags the
+//    ticket with the status picked (support/hd_ticket.py). Helpdesk then re-runs this script.
+//    The page may show a cached copy of the ticket, so on the flag the script asks the server
+//    (resolution_asked), which answers with the status picked and clears the flag (or nothing):
+//    the pop-up opens once, on that answer, never again on a reload. It is Helpdesk's own
+//    $dialog with a required Resolution box:
+//      Save & Resolve / Save & Close -> stores the text (save_resolution_notes), then sets the
+//                        picked status through Helpdesk's normal status change; an empty box
+//                        shows the error.
+//      Cancel         -> "Please add a resolution message."; the status stays.
+//    Each resolution is kept in the ticket's Resolution History (server side).
 //
 // No `icon` on the buttons: Helpdesk passes it to frappe-ui's Button, which then becomes an
 // icon-only button (label hidden), and the header adds the same icon again as a prefix.
@@ -28,8 +37,80 @@ function isResolved(doc) {
 	return RESOLVED_STATUSES.includes(doc.status);
 }
 
-function setupForm({ doc, toast }) {
+// --- 3. Resolution pop-up ------------------------------------------------------
+const NEED_RESOLUTION = "Please add a resolution message."; // same text as the server's
+const SAVE_RESOLUTION = "sas_fortuna.support.hd_ticket.save_resolution_notes";
+const RESOLUTION_ASKED = "sas_fortuna.support.hd_ticket.resolution_asked";
+const RESOLUTION_BOX = "fortuna-resolution-text";
+const hasText = (html) => Boolean((html || "").replace(/<[^>]*>|&nbsp;/g, "").trim());
+
+async function askResolution({ doc, toast, $dialog, call, updateField }) {
+	if (!doc.custom_resolution_requested || hasText(doc.resolution_details) || !$dialog || !call) {
+		return;
+	}
+	// Helpdesk re-runs this script on every change: ask once per Resolved pick (the ticket's
+	// save time changes with each pick), not on every re-run.
+	const attempt = `${doc.name}@${doc.modified}`;
+	if (window.__fortunaResolutionAsked === attempt) return;
+	window.__fortunaResolutionAsked = attempt;
+
+	// The server decides (the page's copy may be cached) and clears the one-time flag.
+	let target;
+	try {
+		target = await call(RESOLUTION_ASKED, { ticket: doc.name }); // "Resolved" / "Closed" / null
+	} catch (e) {
+		return;
+	}
+	if (!target) return;
+	const verb = target === "Closed" ? "Close" : "Resolve";
+	const error = (message) => toast && toast.error && toast.error(message);
+	const closer = (arg) => (typeof arg === "function" ? arg : (arg && arg.close) || (() => {}));
+	// Helpdesk says "Ticket updated successfully." after every save, this one too, although the
+	// status did not change. Clear it (now and once more after Helpdesk's own toast) so the
+	// pop-up is the only answer the agent sees.
+	const clearToasts = () => toast && toast.dismiss && toast.dismiss();
+	clearToasts();
+	window.setTimeout(clearToasts, 300);
+	$dialog({
+		title: `${verb} ticket`,
+		html:
+			`<label for="${RESOLUTION_BOX}" class="mb-1.5 block text-sm text-ink-gray-7">` +
+			`Resolution <span class="text-ink-red-4">*</span></label>` +
+			// Minimum height: the box can be dragged taller, never shorter than about 5 lines.
+			`<textarea id="${RESOLUTION_BOX}" rows="5" class="form-textarea w-full rounded text-base" ` +
+			`style="min-height: 8rem; resize: vertical" ` +
+			`placeholder="What was done for this ticket"></textarea>`,
+		actions: [
+			{
+				label: `Save & ${verb}`,
+				variant: "solid",
+				onClick: async (arg) => {
+					const box = window.document.getElementById(RESOLUTION_BOX);
+					const notes = ((box && box.value) || "").trim();
+					if (!notes) return error(NEED_RESOLUTION); // pop-up stays open
+					try {
+						await call(SAVE_RESOLUTION, { ticket: doc.name, notes });
+					} catch (e) {
+						return error((e && e.message) || NEED_RESOLUTION);
+					}
+					closer(arg)();
+					updateField("status", target); // Helpdesk's own status change
+				},
+			},
+			{
+				label: "Cancel",
+				onClick: (arg) => {
+					error(NEED_RESOLUTION);
+					closer(arg)();
+				},
+			},
+		],
+	});
+}
+
+function setupForm({ doc, toast, $dialog, call, updateField }) {
 	if (!doc || !doc.name) return { actions: [] };
+	askResolution({ doc, toast, $dialog, call, updateField });
 
 	const openDesk = (path) => window.open(`/desk/${path}`, "_blank");
 	const actions = [];

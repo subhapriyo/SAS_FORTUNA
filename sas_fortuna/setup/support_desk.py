@@ -15,8 +15,9 @@ Permissions Manager:
   7. Portal menu ......... Tickets + Repairs in the customer portal; Issues switched off once
   8. Helpdesk role ....... "HD Customer" for portal users (New ticket / Reply on /tickets)
   9. Ticket form ......... Default template: Ticket Type + Serial No (customer's New ticket form),
-                           Job Location + Resolution Details (agents' ticket sidebar only);
-                           Resolution Details shows when asked for (_resolution_box)
+                           Job Location (agents' ticket sidebar only); Resolution Details is not
+                           in the sidebar (entered through the Resolution pop-up); Resolution
+                           History table on HD Ticket (Desk form, read only)
  10. Ticketing ........... setup/ticketing.py ensure(): Ticket Types, Paused status, Teams,
                            Team Routing (once per site) and missing HD Customers. Runs last.
 
@@ -116,35 +117,36 @@ TICKET_FORM_FIELDS = [
 		"hide_from_customer": 1,
 		"placeholder": "Job Location",
 	},
-	{
-		# Agents only: Helpdesk's ticket page has no other box for it. It shows when an agent picks
-		# Resolved without notes, and on resolved tickets (see _resolution_box).
-		"fieldname": "resolution_details",
-		"required": 0,
-		"hide_from_customer": 1,
-		"placeholder": "What was done (needed to resolve)",
-	},
 ]
+
+# Rows this app once added and has since taken back out. resolution_details: entered only through
+# the Resolution pop-up (so every resolution reaches the Resolution History) and shown read-only
+# as a ticket comment; an editable sidebar box would bypass both.
+REMOVED_TICKET_FORM_FIELDS = ["resolution_details"]
 
 
 def _helpdesk_ticket_form():
-	"""Add TICKET_FORM_FIELDS to the Default ticket template, once. Rows are matched by fieldname;
-	an admin's later edits to them (required, placeholder, order) are kept."""
+	"""Add TICKET_FORM_FIELDS to the Default ticket template, once, and take out the rows in
+	REMOVED_TICKET_FORM_FIELDS. Rows are matched by fieldname; an admin's later edits to the
+	others (required, placeholder, order) are kept."""
 	if not frappe.db.exists("HD Ticket Template", "Default"):
 		return
 	template = frappe.get_doc("HD Ticket Template", "Default")
+	removed = [row for row in template.fields if row.fieldname in REMOVED_TICKET_FORM_FIELDS]
+	for row in removed:
+		template.remove(row)
 	have = {row.fieldname for row in template.fields}
 	missing = [f for f in TICKET_FORM_FIELDS if f["fieldname"] not in have]
-	if not missing:
+	if not missing and not removed:
 		return
 	for field in missing:
 		template.append("fields", field)
 	template.save(ignore_permissions=True)
 
 
-# Resolution Details shows (ticket sidebar and Desk form) when the agent asked to resolve without
-# notes (flag set by support/hd_ticket.py), while Resolved is picked on the Desk form, and on
-# resolved tickets. Set once; a later Customize Form change is kept.
+# Desk form: Resolution Details shows when the agent asked to resolve without one (flag set by
+# support/hd_ticket.py), while Resolved is picked, and on resolved tickets. Set once; a later
+# Customize Form change is kept. (It is not in the Helpdesk sidebar: see TICKET_FORM_FIELDS.)
 RESOLUTION_DEPENDS_ON = (
 	"eval:doc.custom_resolution_requested || doc.status == 'Resolved' || doc.status_category == 'Resolved'"
 )
@@ -320,6 +322,14 @@ HD_TICKET_FIELDS = _chain(
 			"hidden": 1,
 			"no_copy": 1,
 		},
+		{
+			# Which finished status the agent picked (Resolved / Closed): the pop-up saves with it.
+			"fieldname": "custom_resolution_requested_status",
+			"fieldtype": "Data",
+			"label": "Resolution Requested For",
+			"hidden": 1,
+			"no_copy": 1,
+		},
 		# Tickets imported from Fortuna's old system (support/legacy_import.py). Shown only on them.
 		{
 			"fieldname": "custom_legacy_section",
@@ -445,10 +455,25 @@ ITEM_FIELDS = _chain(
 	after="warranty_period",
 )
 
+# Every resolution given on the ticket (child: Ticket Resolution), kept when it is reopened.
+# Filled by support/hd_ticket.py; shown on the Desk form right under Resolution Details.
+RESOLUTION_HISTORY_FIELDS = [
+	{
+		"fieldname": "custom_resolution_history",
+		"fieldtype": "Table",
+		"label": "Resolution History",
+		"options": "Ticket Resolution",
+		"insert_after": "resolution_details",
+		"read_only": 1,
+		"no_copy": 1,
+		"module": MODULE,
+	},
+]
+
 CUSTOM_FIELDS = {
 	"Serial No": SERIAL_NO_FIELDS,
 	"Item": ITEM_FIELDS,
-	"HD Ticket": HD_TICKET_FIELDS,
+	"HD Ticket": HD_TICKET_FIELDS + RESOLUTION_HISTORY_FIELDS,
 	# Where the engineer works; location teams (Hardware Support - Kolkata) are built from it.
 	"HD Agent": _chain(
 		[

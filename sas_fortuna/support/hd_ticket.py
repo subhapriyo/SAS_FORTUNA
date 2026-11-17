@@ -133,6 +133,7 @@ def on_update(doc, method=None):
 
 	guard_legacy_reopen(doc)  # before the rest: it may put doc.status back to a finished state
 	keep_legacy_resolution_date(doc)
+	post_resolution_comment(doc)  # C3: a resolve just recorded in Resolution History
 	if not doc.get("custom_serial_no") or doc.status not in RESOLVED_STATES:
 		return
 	# A normal ticket only stamps the unit the moment it becomes Resolved/Closed, not on every later
@@ -254,13 +255,25 @@ def apply_serial_details(doc):
 
 
 # ---------------------------------------------------------------------------
-# C3  No resolve without notes (agents only; customers may close freely)
+# C3  No resolve without a resolution (agents only; customers may close freely)
 # ---------------------------------------------------------------------------
-# Helpdesk's ticket page has no box for the notes and its Status dropdown saves at once, so a
+# Applies to the finished statuses (category "Resolved": Resolved, Closed) when an agent moves
+# a ticket into one from an open status. Helpdesk's auto-close saves with ignore_validate, so
+# it is never held back; Resolved -> Closed asks nothing more.
+# Helpdesk has no resolution prompt of its own, and its Status dropdown saves at once, so a
 # refusal (throw) would leave the agent stuck. Instead the ticket keeps its status and is
-# flagged; the flag shows the Resolution Details box in the sidebar (setup/support_desk.py
-# _resolution_box). With notes typed, picking Resolved again goes through.
+# flagged, with the status asked for. On the Helpdesk ticket page the flag opens the
+# Resolution pop-up (setup/data/fortuna_ticket_actions.js), which saves the text with
+# save_resolution_notes and then sets that status the normal way; the Desk form asks before
+# saving (public/js/hd_ticket.js). Tickets imported from the old system keep their status.
+# Every resolve with a resolution is kept in Resolution History (Desk form, read only) and
+# posted as a ticket comment, which is where agents read it on the Helpdesk page (it is not an
+# editable sidebar field). Reopening clears the current resolution, so the next resolve asks
+# again.
 RESOLUTION_FLAG = "custom_resolution_requested"
+ASKED_FOR = "custom_resolution_requested_status"  # the finished status the agent picked
+RESOLUTION_HISTORY = "custom_resolution_history"
+NEED_RESOLUTION = "Please add a resolution message."  # Fortuna's wording, Resolved and Closed
 # What a Resolved pick changes before this check runs (Helpdesk's before_validate). The
 # resolution date and SLA are worked out later (before_save), from the status put back here.
 RESOLVE_CHANGES = ("status", "status_category", "first_responded_on")
@@ -271,38 +284,122 @@ def _resolution_field(doc):
 	return "resolution_details" if doc.meta.has_field("resolution_details") else "custom_resolution_notes"
 
 
+def _plain(html):
+	"""Editor HTML -> plain text ("<p> </p>" -> "")."""
+	return frappe.utils.strip_html(html or "").replace("&nbsp;", " ").strip()
+
+
 def _has_notes(doc):
-	"""The notes field is HTML (editor): "<p> </p>" is empty."""
-	text = frappe.utils.strip_html(doc.get(_resolution_field(doc)) or "")
-	return bool(text.replace("&nbsp;", " ").strip())
+	return bool(_plain(doc.get(_resolution_field(doc))))
 
 
-def _set_flag(doc, value):
+def _from_helpdesk_page():
+	"""True when the request comes from a Helpdesk ticket page, where the pop-up asks."""
+	from sas_fortuna.support.agent_filter import ticket_from_request
+
+	return bool(ticket_from_request())
+
+
+def _is_resolved(status):
+	return frappe.get_cached_value("HD Ticket Status", status, "category") == "Resolved" if status else False
+
+
+def _set_flag(doc, asked_for=None):
+	"""Flag the ticket as waiting for a resolution for `asked_for` (None clears it)."""
 	if doc.meta.has_field(RESOLUTION_FLAG):
-		doc.set(RESOLUTION_FLAG, value)
+		doc.set(RESOLUTION_FLAG, 1 if asked_for else 0)
+	if doc.meta.has_field(ASKED_FOR):
+		doc.set(ASKED_FOR, asked_for)
+
+
+def need_resolution():
+	"""The error shown when Resolved or Closed is picked without a resolution."""
+	return _(NEED_RESOLUTION)
 
 
 def require_resolution_notes(doc):
 	if not doc.has_value_changed("status"):
-		return  # e.g. the notes being typed: the box stays until the ticket is resolved
-	if doc.status != "Resolved" or not is_helpdesk_agent() or _has_notes(doc):
-		_set_flag(doc, 0)  # resolved, moved to another status, or not an agent: no box needed
-		return
+		return  # e.g. the resolution being typed: nothing to decide until the status moves
+	if doc.get("custom_is_legacy"):
+		return  # imported old tickets: legacy_import checks their resolution and status
 	before = doc.get_doc_before_save()
+	was_finished = bool(before) and _is_resolved(before.status)
+	if was_finished and not _is_resolved(doc.status):
+		# Reopened: the old resolution is in the history; the next resolve needs a new one.
+		doc.set(_resolution_field(doc), None)
+	finishing = _is_resolved(doc.status) and not was_finished  # Resolved -> Closed is not
+	if not finishing or not is_helpdesk_agent() or _has_notes(doc):
+		_set_flag(doc)  # moved on, not an agent, or a resolution is given
+		if finishing and _has_notes(doc):
+			_record_resolution(doc)
+		return
+	asked_for = doc.status
 	if not before:  # a new ticket has no status to keep
-		frappe.throw(_("Please add resolution notes before marking the ticket Resolved."))
+		frappe.throw(need_resolution())
 	for field in RESOLVE_CHANGES:
 		doc.set(field, before.get(field))
-	_set_flag(doc, 1)
-	# Shown as a toast by Helpdesk (checked in the browser) and on the Desk form.
-	frappe.msgprint(
-		_(
-			"Add Resolution Details (ticket sidebar, More Details), then set the ticket to Resolved "
-			"again. It stays {0} until then."
-		).format(_(before.status)),
-		alert=True,
-		indicator="orange",
+	_set_flag(doc, asked_for)
+	if not _from_helpdesk_page():  # there the pop-up asks; elsewhere say it
+		frappe.msgprint(need_resolution(), alert=True, indicator="red")
+
+
+def _record_resolution(doc):
+	"""Keep this resolution in Resolution History; on_update posts it as a ticket comment."""
+	if not doc.meta.has_field(RESOLUTION_HISTORY):
+		return
+	from sas_fortuna.sas_fortuna.doctype.repair_order.repair_order import plain_text
+
+	text = plain_text(doc.get(_resolution_field(doc)))  # keeps the lines, drops the tags
+	doc.append(
+		RESOLUTION_HISTORY,
+		{"resolution": text, "resolved_by": frappe.session.user, "resolved_on": frappe.utils.now_datetime()},
 	)
+	doc.flags.new_resolution = text
+
+
+def post_resolution_comment(doc):
+	"""Show the resolution in the ticket's Comments on the Helpdesk page (agents only)."""
+	text = doc.flags.pop("new_resolution", None)
+	if not text or not frappe.db.exists("DocType", "HD Ticket Comment"):
+		return
+	body = frappe.utils.escape_html(text).replace("\n", "<br>")
+	frappe.get_doc(
+		{
+			"doctype": "HD Ticket Comment",
+			"reference_ticket": doc.name,
+			"commented_by": frappe.session.user,
+			"content": f"<p><b>{_('Resolution')}</b></p><p>{body}</p>",
+		}
+	).insert(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def resolution_asked(ticket):
+	"""The Helpdesk page saw the flag: is this ticket really waiting for a resolution?
+
+	Returns the status the agent picked (Resolved / Closed) and clears the flag, so the pop-up
+	opens once and a reload never reopens it; None when there is nothing to ask. The server
+	decides because the page may be showing a cached copy of the ticket. Nothing else on the
+	ticket changes (not even its modified time)."""
+	frappe.has_permission("HD Ticket", "write", ticket, throw=True)
+	row = frappe.db.get_value("HD Ticket", ticket, [RESOLUTION_FLAG, ASKED_FOR], as_dict=True)
+	if not row or not row.get(RESOLUTION_FLAG):
+		return None
+	frappe.db.set_value("HD Ticket", ticket, {RESOLUTION_FLAG: 0, ASKED_FOR: None}, update_modified=False)
+	return row.get(ASKED_FOR) or "Resolved"
+
+
+@frappe.whitelist()
+def save_resolution_notes(ticket, notes):
+	"""The Helpdesk pop-up's Save: store the resolution. The page then sets Resolved itself."""
+	if not (notes or "").strip():
+		frappe.throw(need_resolution())
+	frappe.has_permission("HD Ticket", "write", ticket, throw=True)
+	doc = frappe.get_doc("HD Ticket", ticket)
+	lines = frappe.utils.escape_html(notes.strip()).splitlines()
+	doc.set(_resolution_field(doc), "".join(f"<p>{line}</p>" for line in lines))
+	doc.save()
+	return doc.name
 
 
 def resolve_ticket(ticket, note):

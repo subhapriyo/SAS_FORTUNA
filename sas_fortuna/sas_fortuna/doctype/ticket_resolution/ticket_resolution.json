@@ -1,0 +1,45 @@
+{
+  "actions": [],
+  "creation": "2026-11-17 21:30:00.000000",
+  "description": "One resolution given on a Helpdesk ticket: kept when the ticket is reopened (HD Ticket > Resolution History).",
+  "doctype": "DocType",
+  "editable_grid": 0,
+  "engine": "InnoDB",
+  "field_order": ["resolution", "resolved_by", "resolved_on"],
+  "fields": [
+    {
+      "fieldname": "resolution",
+      "fieldtype": "Small Text",
+      "in_list_view": 1,
+      "label": "Resolution",
+      "read_only": 1
+    },
+    {
+      "fieldname": "resolved_by",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Resolved By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "resolved_on",
+      "fieldtype": "Datetime",
+      "in_list_view": 1,
+      "label": "Resolved On",
+      "read_only": 1
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "istable": 1,
+  "links": [],
+  "modified": "2026-11-17 21:30:00.000000",
+  "modified_by": "Administrator",
+  "module": "SAS Fortuna",
+  "name": "Ticket Resolution",
+  "owner": "Administrator",
+  "permissions": [],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": []
+}

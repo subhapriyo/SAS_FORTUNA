@@ -129,11 +129,151 @@ test("buttons carry no `icon`: Helpdesk would draw it twice and hide the label",
 	}
 });
 
-// Resolved picked without notes: the server keeps the status, flags the ticket and says so
-// itself (Helpdesk shows the server's message as a toast; seen in the browser). A second toast
-// from this script would only repeat it.
-test("flagged ticket: no toast of our own (the server's message is shown)", () => {
-	const flagged = { name: "0011", status: "Open", custom_resolution_requested: 1 };
+// --- Resolution pop-up -------------------------------------------------------------------
+// Resolved / Closed picked without a resolution: the server keeps the status and flags the
+// ticket. The page may show a cached copy of the ticket, so the flag only makes the script ask
+// the server (resolution_asked), which answers with the status picked (and clears the flag), or
+// nothing. The pop-up opens on that answer. Save stores the text, then sets the status.
+const NEED = /^Please add a resolution message\.$/; // the exact error text
+const METHOD = "sas_fortuna.support.hd_ticket.save_resolution_notes";
+const ASKED = "sas_fortuna.support.hd_ticket.resolution_asked";
+const flagged = {
+	name: "0011",
+	status: "Open",
+	modified: "2026-11-17 21:00:00",
+	custom_resolution_requested: 1,
+};
+const settle = () => new Promise((resolve) => setImmediate(resolve)); // let the server answer
+
+// The page around the script: Helpdesk's $dialog, call, updateField and toast, and the textarea.
+// `asked`: the server's answer to resolution_asked (default: what the page's copy says).
+async function page(doc, { typed = "", window = {}, asked } = {}) {
+	const seen = { dialogs: [], calls: [], updates: [], errors: [], closed: 0, dismissed: 0 };
+	const answer =
+		asked !== undefined
+			? asked
+			: doc.custom_resolution_requested
+			? doc.custom_resolution_requested_status || "Resolved"
+			: null;
+	window.document = { getElementById: () => ({ value: typed }) };
+	window.open = () => {};
+	window.setTimeout = (fn) => fn(); // run "later" at once
+	const setupForm = new Function("window", SOURCE + "\nreturn setupForm")(window);
+	setupForm({
+		doc,
+		toast: {
+			warning: () => {},
+			error: (m) => seen.errors.push(m),
+			dismiss: () => (seen.dismissed += 1),
+		},
+		$dialog: (options) => seen.dialogs.push(options),
+		call: async (method, args) => {
+			seen.calls.push([method, args]);
+			return method === ASKED ? answer : undefined;
+		},
+		updateField: (field, value) => seen.updates.push([field, value]),
+	});
+	await settle();
+	const action = (label) => seen.dialogs[0].actions.find((a) => a.label.startsWith(label));
+	const click = async (label) => action(label).onClick({ close: () => (seen.closed += 1) });
+	seen.saves = () => seen.calls.filter(([method]) => method === METHOD);
+	return { seen, click };
+}
+
+test("flagged ticket: the Resolution pop-up opens with a required text box", async () => {
+	const { seen } = await page(flagged);
+	assert.equal(seen.dialogs.length, 1);
+	assert.match(seen.dialogs[0].title, /Resol/);
+	assert.match(seen.dialogs[0].html, /<textarea/);
+	assert.match(seen.dialogs[0].html, /\*/); // marked mandatory
+});
+
+test("the server decides: a cached 'flagged' copy opens nothing once it was asked", async () => {
+	const { seen } = await page(flagged, { asked: null });
+	assert.deepEqual(seen.calls, [[ASKED, { ticket: "0011" }]]);
+	assert.equal(seen.dialogs.length, 0);
+	assert.equal(seen.dismissed, 0);
+});
+
+test("the status to set comes from the server's answer", async () => {
+	const { seen, click } = await page(flagged, { asked: "Closed", typed: "Done." });
+	assert.match(seen.dialogs[0].title, /Close/);
+	await click("Save");
+	assert.deepEqual(seen.updates, [["status", "Closed"]]);
+});
+
+test("no flag on the page: the server is not asked", async () => {
+	const { seen } = await page({ ...flagged, custom_resolution_requested: 0 });
+	assert.deepEqual([seen.calls, seen.dialogs], [[], []]);
+});
+
+test("opening the pop-up clears Helpdesk's 'Ticket updated successfully.' (the status did not change)", async () => {
+	assert.ok((await page(flagged)).seen.dismissed >= 1);
+});
+
+test("the Resolution box keeps a minimum height (can grow, not shrink below it)", async () => {
+	const { seen } = await page(flagged);
+	assert.match(seen.dialogs[0].html, /min-height:\s*8rem/);
+	assert.match(seen.dialogs[0].html, /resize:\s*vertical/);
+});
+
+test("the server is asked once per Resolved pick, not on every re-run of the script", async () => {
+	const window = {};
+	await page(flagged, { window });
+	assert.equal((await page(flagged, { window })).seen.calls.length, 0);
+	const again = { ...flagged, modified: "2026-11-17 21:05:00" }; // picked Resolved again
+	assert.equal((await page(again, { window })).seen.dialogs.length, 1);
+});
+
+test("no pop-up once a resolution is there", async () => {
+	assert.equal(
+		(await page({ ...flagged, resolution_details: "<p>Reset</p>" })).seen.dialogs.length,
+		0,
+	);
+	assert.equal(
+		(await page({ ...flagged, resolution_details: "<p> </p>" })).seen.dialogs.length,
+		1,
+	);
+});
+
+test("Save with an empty box: error, nothing saved, status stays", async () => {
+	const { seen, click } = await page(flagged, { typed: "   " });
+	await click("Save");
+	assert.match(seen.errors[0], NEED);
+	assert.deepEqual([seen.saves(), seen.updates, seen.closed], [[], [], 0]);
+});
+
+test("Save with a resolution: stores it, then sets Resolved the normal way", async () => {
+	const { seen, click } = await page(flagged, { typed: "  Replaced the sensor.  " });
+	await click("Save");
+	assert.deepEqual(seen.saves(), [[METHOD, { ticket: "0011", notes: "Replaced the sensor." }]]);
+	assert.deepEqual(seen.updates, [["status", "Resolved"]]);
+	assert.equal(seen.closed, 1);
+});
+
+test("Closed picked: the same pop-up, and Save closes the ticket", async () => {
+	const closing = { ...flagged, custom_resolution_requested_status: "Closed" };
+	const { seen, click } = await page(closing, { typed: "Customer confirmed." });
+	assert.match(seen.dialogs[0].title, /Close/);
+	await click("Save");
+	assert.deepEqual(seen.updates, [["status", "Closed"]]);
+});
+
+test("Closed shows the same error text", async () => {
+	const closing = { ...flagged, custom_resolution_requested_status: "Closed" };
+	const { seen, click } = await page(closing);
+	await click("Cancel");
+	assert.match(seen.errors[0], NEED);
+});
+
+test("Cancel: error message, status stays", async () => {
+	const { seen, click } = await page(flagged, { typed: "half typed" });
+	await click("Cancel");
+	assert.match(seen.errors[0], NEED);
+	assert.deepEqual([seen.saves(), seen.updates, seen.closed], [[], [], 1]);
+});
+
+test("flagged ticket: no extra warning toast of our own", () => {
 	assert.equal(run(flagged, {}).warnings.length, 0);
 });
 
