@@ -270,6 +270,63 @@ class TestDefaultLocation(IntegrationTestCase):
 		jl.fill_default_location(agent)
 		self.assertEqual(agent.custom_job_location, "ZZ Elsewhere")
 
+	def test_backfill_gives_blank_engineers_and_tickets_a_location_once(self):
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		_location("ZZ JL Home", cities="Zzhome")
+		frappe.db.set_value("Job Location", "ZZ JL Home", "is_active", 1)
+		agents = [
+			frappe._dict(name="zz.a@example.com", custom_job_location=None),
+			frappe._dict(name="zz.b@example.com", custom_job_location="ZZ Kept"),
+		]
+		tickets = [
+			frappe._dict(name="ZZT1", custom_job_location=None, custom_erpnext_customer="ZZ Far"),
+			frappe._dict(name="ZZT2", custom_job_location=None, custom_erpnext_customer=None),
+		]
+		saved = []
+		frappe.db.set_default(fi.JOB_LOCATION_BACKFILL_FLAG, "")
+		with (
+			patch.object(
+				fi, "_blank_location_rows", side_effect=lambda dt: agents if dt == "HD Agent" else tickets
+			),
+			patch.object(
+				fi,
+				"_location_for_ticket",
+				side_effect=lambda t: "ZZ JL Far" if t.custom_erpnext_customer else jl.default_location(),
+			),
+			patch.object(fi, "_save_location", side_effect=lambda *a: saved.append(a)),
+		):
+			done = fi.fill_blank_job_locations()
+			self.assertEqual(
+				saved,
+				[
+					("HD Agent", "zz.a@example.com", "ZZ JL Home"),
+					("HD Ticket", "ZZT1", "ZZ JL Far"),
+					("HD Ticket", "ZZT2", "ZZ JL Home"),
+				],
+			)
+			self.assertEqual(len(done), 3)
+			# once per site: a second run finds the flag and writes nothing
+			self.assertEqual(fi.fill_blank_job_locations(), [])
+			self.assertEqual(len(saved), 3)
+
+	def test_backfill_waits_while_there_is_no_default(self):
+		# Sites without Kolkata (other companies) get nothing and are not marked done.
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		frappe.db.set_default(fi.JOB_LOCATION_BACKFILL_FLAG, "")
+		with patch.object(fi, "_blank_location_rows") as rows:
+			if frappe.db.exists("Job Location", "ZZ JL Home"):
+				frappe.db.set_value("Job Location", "ZZ JL Home", "is_active", 0)
+			self.assertEqual(fi.fill_blank_job_locations(), [])
+			rows.assert_not_called()
+
+	def test_backfill_runs_after_the_staff_sheet_locations(self):
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		steps = list(fi.STEPS)
+		self.assertGreater(steps.index(fi.fill_blank_job_locations), steps.index(fi.sync_job_location_teams))
+
 	def test_hd_agent_insert_is_wired(self):
 		from sas_fortuna.support import wiring
 
@@ -277,6 +334,70 @@ class TestDefaultLocation(IntegrationTestCase):
 			wiring.doc_events["HD Agent"]["before_insert"],
 			"sas_fortuna.sas_fortuna.doctype.job_location.job_location.fill_default_location",
 		)
+
+
+class TestStaffAndLocationPatch(IntegrationTestCase):
+	"""patches/v16_0/fortuna_staff_and_job_locations: once per site on migrate."""
+
+	def setUp(self):
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		super().setUp()
+		self.fi = fi
+		frappe.db.set_default(fi.CREATE_USERS_FLAG, "")
+		self.addCleanup(frappe.db.set_default, fi.CREATE_USERS_FLAG, "")
+
+	def _conf(self, value):
+		conf = frappe._dict(frappe.conf)
+		conf.pop(self.fi.CREATE_USERS_KEY, None)
+		if value is not None:
+			conf[self.fi.CREATE_USERS_KEY] = value
+		return patch.object(frappe.local, "conf", conf)
+
+	def test_user_creation_off_by_default(self):
+		with self._conf(None):
+			self.assertFalse(self.fi.create_users_enabled())
+
+	def test_patch_flag_turns_user_creation_on(self):
+		frappe.db.set_default(self.fi.CREATE_USERS_FLAG, "1")
+		with self._conf(None):
+			self.assertTrue(self.fi.create_users_enabled())
+
+	def test_site_config_zero_still_switches_it_off(self):
+		frappe.db.set_default(self.fi.CREATE_USERS_FLAG, "1")
+		with self._conf(0):
+			self.assertFalse(self.fi.create_users_enabled())
+		with self._conf(1):
+			self.assertTrue(self.fi.create_users_enabled())
+
+	def test_patch_on_a_fortuna_site_switches_on_and_runs_the_setup(self):
+		from sas_fortuna.patches.v16_0 import fortuna_staff_and_job_locations as p
+
+		with (
+			patch.object(self.fi, "applies", return_value=True),
+			patch.object(self.fi, "execute", return_value=["ran"]) as run,
+		):
+			p.execute()
+		run.assert_called_once()
+		self.assertTrue(self.fi._flag_set(self.fi.CREATE_USERS_FLAG))
+
+	def test_patch_on_other_sites_does_nothing(self):
+		from sas_fortuna.patches.v16_0 import fortuna_staff_and_job_locations as p
+
+		with (
+			patch.object(self.fi, "applies", return_value=False),
+			patch.object(self.fi, "execute") as run,
+		):
+			p.execute()
+		run.assert_not_called()
+		self.assertFalse(self.fi._flag_set(self.fi.CREATE_USERS_FLAG))
+
+	def test_patch_is_listed(self):
+		import os
+
+		path = os.path.join(os.path.dirname(frappe.get_app_path("sas_fortuna")), "sas_fortuna", "patches.txt")
+		with open(path) as f:
+			self.assertIn("sas_fortuna.patches.v16_0.fortuna_staff_and_job_locations", f.read())
 
 
 class TestHasActiveAgent(IntegrationTestCase):

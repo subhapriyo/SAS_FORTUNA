@@ -23,6 +23,8 @@ has "sas_fortuna_fortuna_impex": 1 (0 switches it off). Other companies' sites
   seed_job_locations_once Kolkata, Mumbai, Bhubaneswar ... and what they serve;  once per site
                           each linked to the Company carrying its invoice key
   sync_job_location_teams staff location -> agent's Job Location, location team  once per person
+  fill_blank_job_locations  engineers / tickets with no Job Location -> Kolkata    once per site
+                          (a ticket: its customer's address first)
   enable_assign_within_team  Helpdesk's "assign within team" setting on           once per site
   ensure_kb_articles      FAQ articles customers see while raising a ticket      add missing
   ensure_ticket_subject_form  Subject dropdown + form script on New Ticket       add missing; script follows its file
@@ -59,8 +61,12 @@ AGENT_MANAGER_FLAG = "sas_fortuna_fortuna_impex_agent_manager_v1"
 STAFF_LOCATION_KEY = "sas_fortuna_fortuna_impex_staff_location_synced"
 ASSIGN_WITHIN_TEAM_FLAG = "sas_fortuna_fortuna_impex_assign_within_team_v1"
 JOB_LOCATIONS_FLAG = "sas_fortuna_fortuna_impex_job_locations_v1"
+JOB_LOCATION_BACKFILL_FLAG = "sas_fortuna_fortuna_impex_job_location_backfill_v1"
 # site_config switch: 1 lets sync_support_team create missing staff Users (off by default).
 CREATE_USERS_KEY = "sas_fortuna_create_staff_users"
+# Set once per Fortuna site by patches/v16_0/fortuna_staff_and_job_locations: user creation on.
+# An explicit site_config value (0 or 1) still wins.
+CREATE_USERS_FLAG = "sas_fortuna_fortuna_impex_create_staff_users_v1"
 
 
 # ===========================================================================
@@ -564,8 +570,12 @@ def find_user(email):
 
 
 def create_users_enabled():
-	# Off unless the site asks for it: Fortuna's staff already have Users on prod and live.
-	return bool(int(frappe.conf.get(CREATE_USERS_KEY, 0)))
+	"""site_config CREATE_USERS_KEY when set (0 or 1), else on once the staff patch has run.
+	A staff member who already has a User (same e-mail, or via Employee) is never duplicated."""
+	switch = frappe.conf.get(CREATE_USERS_KEY)
+	if switch is not None:
+		return bool(int(switch))
+	return bool(_flag_set(CREATE_USERS_FLAG))
 
 
 def create_staff_user(person):
@@ -718,15 +728,64 @@ def seed_job_locations_once():
 	"""Once per site: add the shipped Job Locations that are missing, then link each shipped one to
 	its Company by invoice key. Later migrates leave them alone (edit or delete them in Desk)."""
 	# The flag is read from the table, not the defaults cache, so a second call sees the first.
-	seeded = frappe.db.get_value(
-		"DefaultValue", {"parent": "__default", "defkey": JOB_LOCATIONS_FLAG}, "defvalue"
-	)
-	if not frappe.db.exists("DocType", "Job Location") or seeded:
+	if not frappe.db.exists("DocType", "Job Location") or _flag_set(JOB_LOCATIONS_FLAG):
 		return []
 	rows = load_job_locations()
 	done = ensure_job_locations(rows)
 	done += link_job_locations_by_key([row["location_name"] for row in rows])
 	frappe.db.set_default(JOB_LOCATIONS_FLAG, "1")
+	return done
+
+
+def _flag_set(key):
+	"""A once-per-site flag, read from the table rather than the defaults cache."""
+	return frappe.db.get_value("DefaultValue", {"parent": "__default", "defkey": key}, "defvalue")
+
+
+def _blank_location_rows(doctype):
+	fields = ["name", "custom_job_location"]
+	if doctype == "HD Ticket":
+		fields.append("custom_erpnext_customer")
+	return frappe.get_all(doctype, filters={"custom_job_location": ["is", "not set"]}, fields=fields)
+
+
+def _location_for_ticket(ticket):
+	from sas_fortuna.sas_fortuna.doctype.job_location.job_location import (
+		default_location,
+		location_for_customer,
+	)
+
+	customer = ticket.get("custom_erpnext_customer")
+	return (customer and location_for_customer(customer)) or default_location()
+
+
+def _save_location(doctype, name, location):
+	# Field only: no save hooks, so a ticket's team and assignee stay as they are.
+	frappe.db.set_value(doctype, name, "custom_job_location", location, update_modified=False)
+
+
+def fill_blank_job_locations():
+	"""Once per site: engineers and tickets made before Job Locations (or before the Kolkata
+	default) get one: an engineer the default, a ticket its customer's address, else the default.
+	Runs after the staff sheet has placed its people. Waits while the default location is absent."""
+	from sas_fortuna.sas_fortuna.doctype.job_location.job_location import default_location
+
+	if not frappe.db.exists("DocType", "Job Location") or _flag_set(JOB_LOCATION_BACKFILL_FLAG):
+		return []
+	default = default_location()
+	if not default:
+		return []
+	done = []
+	for agent in _blank_location_rows("HD Agent"):
+		if not agent.custom_job_location:
+			_save_location("HD Agent", agent.name, default)
+			done.append(f"{agent.name}: Job Location {default}")
+	for ticket in _blank_location_rows("HD Ticket"):
+		location = None if ticket.custom_job_location else _location_for_ticket(ticket)
+		if location:
+			_save_location("HD Ticket", ticket.name, location)
+			done.append(f"Ticket {ticket.name}: Job Location {location}")
+	frappe.db.set_default(JOB_LOCATION_BACKFILL_FLAG, "1")
 	return done
 
 
@@ -1123,6 +1182,7 @@ STEPS = (
 	grant_agent_manager,
 	seed_job_locations_once,
 	sync_job_location_teams,  # after the agents exist
+	fill_blank_job_locations,  # after the staff sheet has placed its people
 	enable_assign_within_team,
 	ensure_kb_articles,
 	ensure_ticket_subject_form,
