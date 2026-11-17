@@ -719,6 +719,20 @@ LANDING_SECTIONS = [
 				"settings",
 			),
 			("Helpdesk", "url", "/helpdesk", "Where agents pick up and answer tickets.", "headset"),
+			(
+				"Tickets",
+				"doctype",
+				"HD Ticket",
+				"Every ticket with its branch, team and status; filter by Job Location.",
+				"tag",
+			),
+			(
+				"Support Engineers",
+				"doctype",
+				"HD Agent",
+				"Each engineer with their branch (Job Location).",
+				"users",
+			),
 		],
 	},
 	# Go-live configuration from Fortuna's answers (setup/fortuna_impex.py creates the records;
