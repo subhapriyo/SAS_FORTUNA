@@ -210,6 +210,74 @@ class TestRouting(IntegrationTestCase):
 		hd_ticket.apply_job_location(chosen)
 		self.assertEqual(chosen.custom_job_location, "ZZ Chosen")
 
+	def test_unknown_address_gets_the_default_location(self):
+		doc = FakeTicket(custom_erpnext_customer="ZZ Any")
+		with (
+			patch.object(hd_ticket, "location_for_customer", return_value=None),
+			patch.object(hd_ticket, "default_location", return_value="ZZ JL Default"),
+		):
+			hd_ticket.apply_job_location(doc)
+		self.assertEqual(doc.custom_job_location, "ZZ JL Default")
+
+	def test_ticket_without_customer_gets_the_default_location(self):
+		doc = FakeTicket()
+		with patch.object(hd_ticket, "default_location", return_value="ZZ JL Default"):
+			hd_ticket.apply_job_location(doc)
+		self.assertEqual(doc.custom_job_location, "ZZ JL Default")
+
+	def test_a_matched_address_wins_over_the_default(self):
+		doc = FakeTicket(custom_erpnext_customer="ZZ Any")
+		with (
+			patch.object(hd_ticket, "location_for_customer", return_value="ZZ JL Bigcity"),
+			patch.object(hd_ticket, "default_location", return_value="ZZ JL Default"),
+		):
+			hd_ticket.apply_job_location(doc)
+		self.assertEqual(doc.custom_job_location, "ZZ JL Bigcity")
+
+
+class TestDefaultLocation(IntegrationTestCase):
+	"""Kolkata is the default Job Location for tickets and engineers, when it exists and is active."""
+
+	def setUp(self):
+		super().setUp()
+		self.shipped_default = jl.DEFAULT_LOCATION
+		p = patch.object(jl, "DEFAULT_LOCATION", "ZZ JL Home")
+		p.start()
+		self.addCleanup(p.stop)
+
+	def test_default_is_kolkata(self):
+		self.assertEqual(self.shipped_default, "Kolkata")
+
+	def test_default_when_it_exists_and_is_active(self):
+		if not frappe.db.exists("Job Location", "ZZ JL Home"):
+			self.assertIsNone(jl.default_location())
+		_location("ZZ JL Home", cities="Zzhome")
+		frappe.db.set_value("Job Location", "ZZ JL Home", "is_active", 1)
+		self.assertEqual(jl.default_location(), "ZZ JL Home")
+		frappe.db.set_value("Job Location", "ZZ JL Home", "is_active", 0)
+		self.assertIsNone(jl.default_location())
+
+	def test_new_engineer_gets_the_default(self):
+		_location("ZZ JL Home", cities="Zzhome")
+		frappe.db.set_value("Job Location", "ZZ JL Home", "is_active", 1)
+		agent = frappe._dict(custom_job_location=None)
+		jl.fill_default_location(agent)
+		self.assertEqual(agent.custom_job_location, "ZZ JL Home")
+
+	def test_engineer_with_a_location_keeps_it(self):
+		_location("ZZ JL Home", cities="Zzhome")
+		agent = frappe._dict(custom_job_location="ZZ Elsewhere")
+		jl.fill_default_location(agent)
+		self.assertEqual(agent.custom_job_location, "ZZ Elsewhere")
+
+	def test_hd_agent_insert_is_wired(self):
+		from sas_fortuna.support import wiring
+
+		self.assertEqual(
+			wiring.doc_events["HD Agent"]["before_insert"],
+			"sas_fortuna.sas_fortuna.doctype.job_location.job_location.fill_default_location",
+		)
+
 
 class TestHasActiveAgent(IntegrationTestCase):
 	def test_team_without_members_has_no_active_agent(self):
@@ -304,6 +372,75 @@ class TestSeedLocations(IntegrationTestCase):
 			(company, "ZZNONE, ZZCO"),
 		)
 
+	def test_link_by_key_sets_the_company_carrying_the_key(self):
+		# An existing location (company blank) gets the Company whose Invoice Prefix Key it lists.
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		if not frappe.get_meta("Company").has_field(jl.PREFIX_FIELD):
+			self.skipTest("fortuna_erp's Invoice Prefix Key is not on this site")
+		company = frappe.get_all("Company", pluck="name", limit=1)[0]
+		frappe.db.set_value("Company", company, jl.PREFIX_FIELD, "ZZCO")
+		_location("ZZ JL Link", cities="Zzlink")
+		frappe.db.set_value("Job Location", "ZZ JL Link", {"company": None, "invoice_prefix_key": "ZZCO"})
+
+		self.assertEqual(
+			fi.link_job_locations_by_key(["ZZ JL Link"]), ["Job Location ZZ JL Link: " + company]
+		)
+		self.assertEqual(frappe.db.get_value("Job Location", "ZZ JL Link", "company"), company)
+
+	def test_link_by_key_clears_a_company_whose_key_is_not_listed(self):
+		# Bhubaneswar (BBSR) was linked to Fortuna Impex (key FI): no company carries BBSR,
+		# so the link goes; the location's own key stays.
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		if not frappe.get_meta("Company").has_field(jl.PREFIX_FIELD):
+			self.skipTest("fortuna_erp's Invoice Prefix Key is not on this site")
+		company = frappe.get_all("Company", pluck="name", limit=1)[0]
+		frappe.db.set_value("Company", company, jl.PREFIX_FIELD, "ZZCO")
+		_location("ZZ JL Unlink", cities="Zzunlink")
+		frappe.db.set_value(
+			"Job Location", "ZZ JL Unlink", {"company": company, "invoice_prefix_key": "ZZOTHER"}
+		)
+
+		self.assertEqual(
+			fi.link_job_locations_by_key(["ZZ JL Unlink"]), ["Job Location ZZ JL Unlink: no company"]
+		)
+		self.assertEqual(
+			frappe.db.get_value("Job Location", "ZZ JL Unlink", ["company", "invoice_prefix_key"]),
+			(None, "ZZOTHER"),
+		)
+
+	def test_link_by_key_leaves_a_correct_link_alone(self):
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		if not frappe.get_meta("Company").has_field(jl.PREFIX_FIELD):
+			self.skipTest("fortuna_erp's Invoice Prefix Key is not on this site")
+		company = frappe.get_all("Company", pluck="name", limit=1)[0]
+		frappe.db.set_value("Company", company, jl.PREFIX_FIELD, "ZZCO")
+		_location("ZZ JL Fine", cities="Zzfine")
+		frappe.db.set_value("Job Location", "ZZ JL Fine", {"company": company, "invoice_prefix_key": "ZZCO"})
+
+		self.assertEqual(fi.link_job_locations_by_key(["ZZ JL Fine"]), [])
+
+	def test_seeding_runs_once_per_site(self):
+		# After the one run, a deleted location is not added back by later migrates.
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		rows = [{"location_name": "ZZ JL Once", "cities": "Zzonce", "states": ""}]
+		frappe.db.set_default(fi.JOB_LOCATIONS_FLAG, "")
+		with patch.object(fi, "load_job_locations", return_value=rows):
+			first = fi.seed_job_locations_once()
+			self.assertIn("Job Location ZZ JL Once", first)
+			frappe.delete_doc("Job Location", "ZZ JL Once", ignore_permissions=True)
+			self.assertEqual(fi.seed_job_locations_once(), [])
+		self.assertFalse(frappe.db.exists("Job Location", "ZZ JL Once"))
+
+	def test_seed_step_replaces_the_every_migrate_step(self):
+		from sas_fortuna.setup import fortuna_impex as fi
+
+		self.assertIn(fi.seed_job_locations_once, fi.STEPS)
+		self.assertNotIn(fi.ensure_job_locations, fi.STEPS)
+
 	def test_kolkata_ships_with_fi_and_kolk(self):
 		from sas_fortuna.setup import fortuna_impex as fi
 
@@ -363,6 +500,19 @@ class TestLocationTeams(IntegrationTestCase):
 			p.start()
 			self.addCleanup(p.stop)
 
+	def _agent_staff(self):
+		"""The staff row merged while JOB_ROLES is patched, so it counts as an engineer."""
+		return self.fi.merge_staff(
+			[
+				{
+					"name": "ZZ JL",
+					"email": self.USER,
+					"job_role": "ZZ JL ROLE",
+					"location": "Fortuna ZZ JL Place",
+				}
+			]
+		)
+
 	def _routes(self):
 		return frappe.get_all(
 			"Fortuna Team Route",
@@ -388,6 +538,28 @@ class TestLocationTeams(IntegrationTestCase):
 			self.USER, frappe.get_all("HD Team Member", filters={"parent": self.TEAM}, pluck="user")
 		)
 		self.assertIn(frappe._dict(team=self.TEAM, job_location="ZZ JL Place"), self._routes())
+
+	def test_sheet_location_replaces_the_default_given_at_insert(self):
+		# A new HD Agent starts on the default location (Kolkata); the staff sheet's own place wins.
+		frappe.db.set_value("HD Agent", self.USER, "custom_job_location", "ZZ JL Home")
+		staff = self._agent_staff()
+		with (
+			patch.object(jl, "DEFAULT_LOCATION", "ZZ JL Home"),
+			patch.object(self.fi, "load_staff", return_value=staff),
+		):
+			_location("ZZ JL Home", cities="Zzhome")
+			frappe.db.set_value("Job Location", "ZZ JL Home", "is_active", 1)
+			self.fi.sync_job_location_teams()
+		self.assertEqual(frappe.db.get_value("HD Agent", self.USER, "custom_job_location"), "ZZ JL Place")
+
+	def test_a_location_set_by_hand_is_kept(self):
+		# The class shares one transaction: put the agent back for the other tests.
+		self.addCleanup(frappe.db.set_value, "HD Agent", self.USER, "custom_job_location", None)
+		_location("ZZ JL Other", cities="Zzother")
+		frappe.db.set_value("HD Agent", self.USER, "custom_job_location", "ZZ JL Other")
+		with patch.object(self.fi, "load_staff", return_value=self._agent_staff()):
+			self.fi.sync_job_location_teams()
+		self.assertEqual(frappe.db.get_value("HD Agent", self.USER, "custom_job_location"), "ZZ JL Other")
 
 	def test_done_once_per_person(self):
 		with patch.object(self.fi, "load_staff", return_value=self.staff):

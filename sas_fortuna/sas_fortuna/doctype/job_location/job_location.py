@@ -3,6 +3,8 @@
 	match_location()        a city / state -> Job Location (city first, then state; active only)
 	location_for_customer() an ERPNext Customer's address -> Job Location
 	location_from_text()    staff-sheet text such as "Fortuna Kolkata" -> Job Location
+	default_location()      Kolkata, when it exists and is active: for tickets whose address
+	                        matches nothing, and new engineers (HD Agent before_insert)
 
 A ticket's Job Location (HD Ticket.custom_job_location) comes from location_for_customer; with the
 Ticket Type it picks the team, and so the assignee (support/hd_ticket.py route_to_team).
@@ -19,6 +21,8 @@ from frappe.model.document import Document
 
 # fortuna_erp's custom field on Company (absent on sites without fortuna_erp)
 PREFIX_FIELD = "custom_invoice_prefix_key"
+# Fortuna: a ticket or engineer with no location of its own is Kolkata's (head office).
+DEFAULT_LOCATION = "Kolkata"
 
 
 class JobLocation(Document):
@@ -132,6 +136,19 @@ def location_for_customer(customer):
 	"""Job Location for a customer's tickets, from the customer's address; None when unknown."""
 	address = customer_address(customer)
 	return match_location(address.city, address.state) if address else None
+
+
+def default_location():
+	"""DEFAULT_LOCATION when that Job Location exists and is active, else None (other sites)."""
+	if frappe.db.get_value("Job Location", DEFAULT_LOCATION, "is_active"):
+		return DEFAULT_LOCATION
+	return None
+
+
+def fill_default_location(doc, method=None):
+	"""HD Agent before_insert: a new engineer without a Job Location gets the default one."""
+	if not doc.get("custom_job_location"):
+		doc.custom_job_location = default_location()
 
 
 def location_from_text(text):

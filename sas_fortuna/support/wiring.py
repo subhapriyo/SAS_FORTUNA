@@ -33,6 +33,10 @@ doc_events = {
 		"validate": S + "hd_ticket.validate",
 		"on_update": S + "hd_ticket.on_update",
 	},
+	# Fortuna: a new engineer without a Job Location is Kolkata's (job_location.DEFAULT_LOCATION)
+	"HD Agent": {
+		"before_insert": "sas_fortuna.sas_fortuna.doctype.job_location.job_location.fill_default_location"
+	},
 	"Sales Invoice": {
 		"on_submit": [S + "sales.sales_invoice_on_submit", S + "repair.sales_invoice_on_submit"]
 	},

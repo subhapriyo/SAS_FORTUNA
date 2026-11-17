@@ -20,7 +20,8 @@ has "sas_fortuna_fortuna_impex": 1 (0 switches it off). Other companies' sites
   ensure_alert_cc         CC on the AMC renewal notification                     once
   sync_support_team       staff sheet -> agents, teams, roles (Users: opt-in)   once per person
   grant_agent_manager     Helpdesk Agent Manager role for SUPPORT MANAGER rows   once per site
-  ensure_job_locations    Kolkata, Mumbai, Bhubaneswar ... and what they serve   add missing
+  seed_job_locations_once Kolkata, Mumbai, Bhubaneswar ... and what they serve;  once per site
+                          each linked to the Company carrying its invoice key
   sync_job_location_teams staff location -> agent's Job Location, location team  once per person
   enable_assign_within_team  Helpdesk's "assign within team" setting on           once per site
   ensure_kb_articles      FAQ articles customers see while raising a ticket      add missing
@@ -57,6 +58,7 @@ STAFF_SYNCED_KEY = "sas_fortuna_fortuna_impex_staff_synced"
 AGENT_MANAGER_FLAG = "sas_fortuna_fortuna_impex_agent_manager_v1"
 STAFF_LOCATION_KEY = "sas_fortuna_fortuna_impex_staff_location_synced"
 ASSIGN_WITHIN_TEAM_FLAG = "sas_fortuna_fortuna_impex_assign_within_team_v1"
+JOB_LOCATIONS_FLAG = "sas_fortuna_fortuna_impex_job_locations_v1"
 # site_config switch: 1 lets sync_support_team create missing staff Users (off by default).
 CREATE_USERS_KEY = "sas_fortuna_create_staff_users"
 
@@ -692,6 +694,42 @@ def ensure_job_locations(rows=None):
 	return done
 
 
+def link_job_locations_by_key(names):
+	"""Each named Job Location -> the Company carrying one of its Invoice Prefix Keys, or no
+	Company when none does (Bhubaneswar's BBSR is not Fortuna Impex's FI). Keys are kept."""
+	from sas_fortuna.sas_fortuna.doctype.job_location.job_location import PREFIX_FIELD, prefix_keys
+
+	if not frappe.get_meta("Company").has_field(PREFIX_FIELD):
+		return []
+	done = []
+	for name in names:
+		row = frappe.db.get_value("Job Location", name, ["company", "invoice_prefix_key"], as_dict=True)
+		if not row:
+			continue
+		keys = prefix_keys(row.invoice_prefix_key)
+		company = frappe.db.get_value("Company", {PREFIX_FIELD: ["in", keys]}) if keys else None
+		if (row.company or None) != company:
+			frappe.db.set_value("Job Location", name, "company", company)
+			done.append(f"Job Location {name}: {company or 'no company'}")
+	return done
+
+
+def seed_job_locations_once():
+	"""Once per site: add the shipped Job Locations that are missing, then link each shipped one to
+	its Company by invoice key. Later migrates leave them alone (edit or delete them in Desk)."""
+	# The flag is read from the table, not the defaults cache, so a second call sees the first.
+	seeded = frappe.db.get_value(
+		"DefaultValue", {"parent": "__default", "defkey": JOB_LOCATIONS_FLAG}, "defvalue"
+	)
+	if not frappe.db.exists("DocType", "Job Location") or seeded:
+		return []
+	rows = load_job_locations()
+	done = ensure_job_locations(rows)
+	done += link_job_locations_by_key([row["location_name"] for row in rows])
+	frappe.db.set_default(JOB_LOCATIONS_FLAG, "1")
+	return done
+
+
 def location_team(base_team, job_location):
 	return f"{base_team} - {job_location}"
 
@@ -703,7 +741,10 @@ def sync_job_location_teams():
 	missing. Someone without a User / agent yet is tried again next migrate."""
 	if not frappe.db.exists("DocType", "Job Location"):
 		return []
-	from sas_fortuna.sas_fortuna.doctype.job_location.job_location import location_from_text
+	from sas_fortuna.sas_fortuna.doctype.job_location.job_location import (
+		default_location,
+		location_from_text,
+	)
 
 	synced = set(json.loads(frappe.db.get_default(STAFF_LOCATION_KEY) or "[]"))
 	done = []
@@ -714,7 +755,9 @@ def sync_job_location_teams():
 		user = find_user(person.email)
 		if not location or not user or not frappe.db.exists("HD Agent", user):
 			continue  # nothing to place, or not an agent yet: next migrate
-		if not frappe.db.get_value("HD Agent", user, "custom_job_location"):
+		# Blank, or the default a new HD Agent gets on insert: the sheet's place wins (once).
+		current = frappe.db.get_value("HD Agent", user, "custom_job_location")
+		if current != location and (not current or current == default_location()):
 			frappe.db.set_value("HD Agent", user, "custom_job_location", location)
 			done.append(f"{user}: Job Location {location}")
 		for base in person.teams:
@@ -1078,7 +1121,7 @@ STEPS = (
 	ensure_alert_cc,
 	sync_support_team,
 	grant_agent_manager,
-	ensure_job_locations,
+	seed_job_locations_once,
 	sync_job_location_teams,  # after the agents exist
 	enable_assign_within_team,
 	ensure_kb_articles,

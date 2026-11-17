@@ -8,7 +8,10 @@ SLA and assignment stay in Helpdesk configuration.
 import frappe
 from frappe import _
 
-from sas_fortuna.sas_fortuna.doctype.job_location.job_location import location_for_customer
+from sas_fortuna.sas_fortuna.doctype.job_location.job_location import (
+	default_location,
+	location_for_customer,
+)
 from sas_fortuna.support.utils import (
 	get_erpnext_customer,
 	get_hd_customer,
@@ -153,11 +156,13 @@ def on_update(doc, method=None):
 # Job Location: where the customer is, so which branch's engineers take the ticket
 # ---------------------------------------------------------------------------
 def apply_job_location(doc):
-	"""Fill the ticket's Job Location from its customer's address (city, else state) when blank.
+	"""Fill the ticket's Job Location from its customer's address (city, else state) when blank;
+	no customer, or an address no location serves -> the default location (Kolkata).
 	An agent may change it in the ticket sidebar; route_to_team then moves the ticket."""
-	if doc.get("custom_job_location") or not doc.get("custom_erpnext_customer"):
+	if doc.get("custom_job_location"):
 		return
-	doc.custom_job_location = location_for_customer(doc.custom_erpnext_customer)
+	customer = doc.get("custom_erpnext_customer")
+	doc.custom_job_location = (customer and location_for_customer(customer)) or default_location()
 
 
 # ---------------------------------------------------------------------------
