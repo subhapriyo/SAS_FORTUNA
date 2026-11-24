@@ -9,6 +9,8 @@ Written test-first.
     bash apps/sas_fortuna/tools/run_unit_tests.sh test_ticket_list
 """
 
+from unittest.mock import patch
+
 import frappe
 from frappe.model.base_document import get_controller
 from frappe.tests import IntegrationTestCase
@@ -47,6 +49,27 @@ class TestCustomerColumn(IntegrationTestCase):
 		self.assertEqual(
 			get_controller("HD Ticket").default_list_data()["rows"], HDTicket.default_list_data()["rows"]
 		)
+
+	def test_the_list_api_the_page_calls_returns_customer_second(self):
+		# End to end: /helpdesk/tickets asks helpdesk.api.doc.get_list_data for its default view.
+		# Guards against a Helpdesk update that builds the columns some other way.
+		from helpdesk.api.doc import get_list_data
+
+		with patch("helpdesk.api.doc.default_view_exists", return_value=False):  # no saved view
+			result = get_list_data(doctype="HD Ticket", is_default=True, view={"view_type": "list"}, page_length=1)
+		self.assertEqual(_keys(result["columns"])[:3], ["name", "customer", "subject"])
+
+	def test_a_saved_view_keeps_its_own_columns(self):
+		# Someone who arranged their own default view keeps it; only the default changes.
+		from helpdesk.api import doc
+
+		mine = [{"label": "Subject", "key": "subject"}, {"label": "ID", "key": "name"}]
+		with (
+			patch.object(doc, "default_view_exists", return_value=True),
+			patch.object(doc.frappe, "get_value", return_value=[frappe.as_json(mine), "[]"]),
+		):
+			columns, _rows = doc.handle_default_view("HD Ticket", get_controller("HD Ticket"), False)
+		self.assertEqual(_keys(columns), ["subject", "name"])
 
 	def test_moving_tolerates_a_missing_column(self):
 		cols = [{"key": "name"}, {"key": "subject"}]
