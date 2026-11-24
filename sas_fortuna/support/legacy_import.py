@@ -41,6 +41,7 @@ SUBJECT_MAX = 140
 # which is what Data Import expects.
 COLUMNS = {
 	"Subject": "text",
+	"Issue Subject": "text",
 	"Status": "master:HD Ticket Status",
 	"Priority": "master:HD Ticket Priority",
 	"Ticket Type": "master:HD Ticket Type",
@@ -58,6 +59,7 @@ COLUMNS = {
 	"ERPNext Customer": "master:Customer",
 	"Contact Mobile": "phone",
 	"Remarks": "text",
+	"Job Location": "master:Job Location",
 	"Legacy Ticket No": "text",
 	"Legacy Source": "text",
 	"Legacy Opened On": "datetime",

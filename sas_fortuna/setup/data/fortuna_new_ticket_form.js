@@ -20,6 +20,8 @@ function setupForm({ doc, call, applyFilters }) {
 	const ACCENT = "#e8590c";
 
 	const subjectInput = () => document.querySelector('input[maxlength="140"]');
+	// The dropdown's label: "Issue Subject" (sites before the rename: "Subject").
+	const isDropdownLabel = (label) => /^(Issue )?Subject\b/.test(label.textContent.trim());
 
 	// The Subject block: the wrapper that holds the "Subject *" label and the input.
 	function subjectBlock(input) {
@@ -63,7 +65,7 @@ function setupForm({ doc, call, applyFilters }) {
 			const wrap = label.parentElement;
 			const grid = wrap && wrap.parentElement;
 			if (!grid || !grid.classList.contains("grid")) continue;
-			if (label.textContent.trim().startsWith("Subject")) {
+			if (isDropdownLabel(label)) {
 				wrap.style.gridColumn = "1 / -1";
 				return;
 			}
@@ -151,7 +153,7 @@ function setupForm({ doc, call, applyFilters }) {
 			if (
 				grid &&
 				grid.classList.contains("grid") &&
-				label.textContent.trim().startsWith("Subject")
+				isDropdownLabel(label)
 			) {
 				return label;
 			}

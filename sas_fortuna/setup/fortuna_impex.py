@@ -976,12 +976,15 @@ def _rebuild_kb_index():
 # carries the choice and a Helpdesk Form Script (setup/data/fortuna_new_ticket_form.js) fills
 # its choices, fills/hides the text box and highlights the description.
 SUBJECT_FIELD = "custom_issue_subject"
+SUBJECT_LABEL = "Issue Subject"
 FORM_SCRIPT = "Fortuna New Ticket Form"
 FORM_SCRIPT_FILE = "fortuna_new_ticket_form.js"
 TICKET_SUBJECTS_FILE = "fortuna_ticket_subjects.json"
 SUBJECT_CUSTOM_FIELD = {
 	"fieldname": SUBJECT_FIELD,
-	"label": "Subject",
+	# Not "Subject": HD Ticket's own subject field has that label, and Data Import maps file
+	# columns by label, so two "Subject" fields sent legacy ticket titles into this dropdown.
+	"label": SUBJECT_LABEL,
 	"fieldtype": "Select",
 	"insert_after": "custom_serial_no",
 	# No options here on purpose: they change with the ticket type (Ticket Subject list).
@@ -1009,6 +1012,16 @@ def ensure_ticket_subject_form():
 	if not frappe.db.exists("Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}):
 		create_custom_fields({"HD Ticket": [SUBJECT_CUSTOM_FIELD]}, update=False)
 		done.append("HD Ticket: Subject dropdown field")
+	elif (
+		frappe.db.get_value("Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}, "label")
+		== "Subject"
+	):
+		# Sites made before the rename: only the old default label is changed, never an admin's own.
+		frappe.db.set_value(
+			"Custom Field", {"dt": "HD Ticket", "fieldname": SUBJECT_FIELD}, "label", SUBJECT_LABEL
+		)
+		frappe.clear_cache(doctype="HD Ticket")
+		done.append(f"HD Ticket: Subject dropdown relabelled {SUBJECT_LABEL}")
 	done += _subject_on_ticket_template()
 	done += _subject_form_script()
 	if not frappe.db.exists(
