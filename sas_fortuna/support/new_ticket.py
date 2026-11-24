@@ -3,6 +3,7 @@
 	get_template()          Helpdesk's own template call, adjusted (hooks.py routes
 	                        helpdesk...hd_ticket_template.api.get_one here)
 	new_ticket_defaults()   what picking a Customer narrows: the units sold to them
+	serial_product()        the product name shown once an agent picks a unit
 	job_location_for()      a customer's branch: Bill To city/state, else Kolkata
 
 Job Location is nobody's choice on this form: on save it comes from the customer's Bill To
@@ -24,6 +25,7 @@ from sas_fortuna.support.utils import is_helpdesk_agent
 
 CUSTOMER_FIELD = "custom_erpnext_customer"
 SERIAL_FIELD = "custom_serial_no"
+PRODUCT_FIELD = "custom_product_name"
 # On the template for the ticket sidebar (agents), but not asked for when creating a ticket.
 NOT_ON_NEW_FORM = {"custom_job_location"}
 
@@ -39,7 +41,8 @@ def get_template(name):
 	- agents: the Customer row reads "Customer" (its field is labelled "ERPNext Customer")
 	- agents: Serial No becomes a searchable link. The portal's list of choices (url_method)
 	  knows only the logged-in customer, so for an agent it would always be empty; the page
-	  narrows the link to the customer the agent picks."""
+	  narrows the link to the customer the agent picks.
+	- agents: Product Name is shown, not typed in (the page fills it from the unit)."""
 	from helpdesk.helpdesk.doctype.hd_ticket_template.api import get_one
 
 	template = get_one(name)
@@ -51,6 +54,8 @@ def get_template(name):
 			field.label = _("Customer")
 		elif field.fieldname == SERIAL_FIELD:
 			field.url_method = ""
+		elif field.fieldname == PRODUCT_FIELD:
+			field.disabled = 1
 	return template
 
 
@@ -74,6 +79,16 @@ def new_ticket_defaults(customer):
 			limit=500,
 		),
 	}
+
+
+@frappe.whitelist()
+def serial_product(serial):
+	"""The product name of a unit (its Item's name), None when there is no such unit. Agents
+	only, like the searchable Serial No it goes with."""
+	if not is_helpdesk_agent():
+		frappe.throw(_("Only support agents can look up a unit."), frappe.PermissionError)
+	row = frappe.db.get_value("Serial No", serial, ["item_name", "item_code"], as_dict=True)
+	return (row.item_name or row.item_code) if row else None
 
 
 def job_location_for(customer):

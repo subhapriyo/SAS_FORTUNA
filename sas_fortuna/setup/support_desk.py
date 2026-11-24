@@ -125,6 +125,14 @@ TICKET_FORM_FIELDS = [
 		"placeholder": "Serial No (optional)",
 	},
 	{
+		# Agents only, read only: the picked unit's product. Customers see it in their Serial No
+		# choices already ("SN-1 · Biometric Reader (FPM-3171)").
+		"fieldname": "custom_product_name",
+		"required": 0,
+		"visible_to": "Agents",
+		"placeholder": "Shown once a Serial No is picked",
+	},
+	{
 		# The agent's ticket sidebar only: it is set on save from the customer's Bill To address
 		# (Kolkata when none matches), never asked for on the New Ticket form (support/new_ticket.py
 		# drops it there). An agent may correct it in the sidebar, which re-routes the ticket.
@@ -144,7 +152,8 @@ REMOVED_TICKET_FORM_FIELDS = ["resolution_details"]
 def _helpdesk_ticket_form():
 	"""Keep the Default ticket template in step with TICKET_FORM_FIELDS.
 
-	  - a missing row is added (the Customer row goes first, the rest at the end)
+	  - a missing row is added right after the row it follows in TICKET_FORM_FIELDS (the
+	    Customer row first), so a field added later still sits where it belongs
 	  - a row's visible_to is put back to ours: who may see a field is not a layout choice
 	  - rows in REMOVED_TICKET_FORM_FIELDS are taken out
 	An admin's other edits (required, placeholder, the order of the other rows) are kept."""
@@ -160,10 +169,15 @@ def _helpdesk_ticket_form():
 
 	# Missing rows, and who may see the ones that exist.
 	rows = {r.fieldname: r for r in template.fields}
-	for field in TICKET_FORM_FIELDS:
+	for i, field in enumerate(TICKET_FORM_FIELDS):
 		row = rows.get(field["fieldname"])
 		if not row:
-			template.append("fields", field)
+			row = template.append("fields", field)
+			before = rows.get(TICKET_FORM_FIELDS[i - 1]["fieldname"]) if i else None
+			if before:  # move it up, next to the row it follows
+				template.fields.remove(row)
+				template.fields.insert(template.fields.index(before) + 1, row)
+			rows[field["fieldname"]] = row
 			changed = True
 		elif field.get("visible_to") and row.visible_to != field["visible_to"]:
 			row.visible_to = field["visible_to"]
@@ -341,6 +355,14 @@ HD_TICKET_FIELDS = _chain(
 			"link_filters": '[["Item","has_serial_no","=",1]]',
 		},
 		{"fieldname": "custom_serial_no", "fieldtype": "Link", "label": "Serial No", "options": "Serial No"},
+		# The unit's product as people know it, kept with the ticket; shown next to Serial No on the
+		# agent's New Ticket form, whose searchable Serial No dropdown shows only the serial.
+		_ro(
+			fieldname="custom_product_name",
+			fieldtype="Data",
+			label="Product Name",
+			fetch_from="custom_serial_no.item_name",
+		),
 		{
 			"fieldname": "custom_contact_mobile",
 			"fieldtype": "Data",

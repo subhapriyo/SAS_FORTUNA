@@ -13,6 +13,8 @@ const SOURCE = fs.readFileSync(
 );
 
 const DEFAULTS_API = "sas_fortuna.support.new_ticket.new_ticket_defaults";
+const PRODUCT_API = "sas_fortuna.support.new_ticket.serial_product";
+const PRODUCT = "custom_product_name";
 const CUSTOMER = "custom_erpnext_customer";
 const SERIAL = "custom_serial_no";
 const LOCATION = "custom_job_location";
@@ -29,15 +31,16 @@ const PAGE = {
 	clearInterval: () => {},
 };
 
-// answers: customer -> what new_ticket_defaults returns (or a function returning a promise)
+// answers: customer -> what new_ticket_defaults returns, serial -> its product name
+// (either may be a function returning a promise)
 function open(answers = {}) {
 	const doc = {};
 	const filters = [];
 	const calls = [];
 	const call = (method, args) => {
 		calls.push([method, args]);
-		if (method !== DEFAULTS_API) return Promise.resolve({});
-		const answer = answers[args.customer];
+		if (method !== DEFAULTS_API && method !== PRODUCT_API) return Promise.resolve({});
+		const answer = answers[method === DEFAULTS_API ? args.customer : args.serial];
 		return typeof answer === "function" ? answer() : Promise.resolve(answer);
 	};
 	const applyFilters = (field, list) => filters.push([field, list]);
@@ -49,7 +52,11 @@ function open(answers = {}) {
 		doc[CUSTOMER] = value;
 		await form.onChange[CUSTOMER](value);
 	};
-	return { doc, filters, calls, pick };
+	const pickUnit = async (value) => {
+		doc[SERIAL] = value;
+		await form.onChange[SERIAL](value);
+	};
+	return { doc, filters, calls, pick, pickUnit };
 }
 
 test("Job Location is not the form's business: the server sets it from the Bill To address", async () => {
@@ -92,6 +99,33 @@ test("only the latest customer's answer is used", async () => {
 	releaseSlow({ serials: ["SN-S"] });
 	await first;
 	assert.deepEqual(filters.at(-1), [SERIAL, ["SN-F"]]);
+});
+
+test("picking a unit shows its product name", async () => {
+	const { doc, pickUnit } = open({ "SN-1": "Biometric Reader" });
+	await pickUnit("SN-1");
+	assert.equal(doc[PRODUCT], "Biometric Reader");
+});
+
+test("clearing the unit, or changing the customer, clears the product name", async () => {
+	const { doc, pick, pickUnit } = open({ ACME: { serials: ["SN-1"] }, "SN-1": "Reader" });
+	await pickUnit("SN-1");
+	await pickUnit("");
+	assert.equal(doc[PRODUCT], "");
+	await pickUnit("SN-1");
+	await pick("ACME");
+	assert.equal(doc[PRODUCT], "");
+});
+
+test("only the latest unit's product name is shown", async () => {
+	let releaseSlow;
+	const slow = () => new Promise((resolve) => (releaseSlow = resolve));
+	const { doc, pickUnit } = open({ "SN-SLOW": slow, "SN-FAST": "Fast Reader" });
+	const first = pickUnit("SN-SLOW");
+	await pickUnit("SN-FAST");
+	releaseSlow("Slow Reader");
+	await first;
+	assert.equal(doc[PRODUCT], "Fast Reader");
 });
 
 test("if the lookup fails the form still works: the unit can be picked later", async () => {

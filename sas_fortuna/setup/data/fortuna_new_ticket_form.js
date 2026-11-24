@@ -11,7 +11,9 @@
 // 3. The description box gets a border and a "Description *" heading, so customers see why
 //    Submit is grey.
 // 4. Agents only: Customer is the first field. Picking one narrows Serial No to that customer's
-//    units (sas_fortuna/support/new_ticket.py). Customers never see it.
+//    units, and picking a unit shows its Product Name next to it (Helpdesk's searchable
+//    dropdown shows only the serial) - sas_fortuna/support/new_ticket.py. Customers see
+//    neither field: their Serial No choices already name the product.
 // Job Location is not on this form: on save the server takes it from the customer's Bill To
 // address and assigns an engineer at that branch (support/hd_ticket.py,
 // overrides/assignment_rule.py).
@@ -190,12 +192,15 @@ function setupForm({ doc, call, applyFilters }) {
 	// --- 4. Agents: Customer first, the units follow ------------------------------------------
 	const CUSTOMER = "custom_erpnext_customer";
 	const SERIAL = "custom_serial_no";
+	const PRODUCT = "custom_product_name";
 	const DEFAULTS_API = "sas_fortuna.support.new_ticket.new_ticket_defaults";
+	const PRODUCT_API = "sas_fortuna.support.new_ticket.serial_product";
 
 	let latestCustomer = null; // only the last picked customer's answer is used
 	async function fillFromCustomer(customer) {
 		latestCustomer = customer;
 		doc[SERIAL] = ""; // a unit belongs to one customer: start the choice again
+		showProduct("");
 		if (!customer) {
 			applyFilters(SERIAL, null); // no customer, no units to offer
 			return;
@@ -212,10 +217,26 @@ function setupForm({ doc, call, applyFilters }) {
 		applyFilters(SERIAL, serials.length ? serials : null);
 	}
 
+	// The picked unit's product, shown read-only next to Serial No.
+	let latestSerial = null; // only the last picked unit's answer is used
+	async function showProduct(serial) {
+		latestSerial = serial;
+		doc[PRODUCT] = "";
+		if (!serial) return;
+		let product;
+		try {
+			product = await call(PRODUCT_API, { serial });
+		} catch (e) {
+			return; // the ticket still records it on save (fetched from the unit)
+		}
+		if (latestSerial === serial) doc[PRODUCT] = product || "";
+	}
+
 	return {
 		actions: [],
 		onChange: {
 			[CUSTOMER]: (value) => fillFromCustomer(value),
+			[SERIAL]: (value) => showProduct(value),
 			ticket_type: (value) => loadSubjects(value),
 			[FIELD]: (value) => {
 				doc[FIELD] = value;

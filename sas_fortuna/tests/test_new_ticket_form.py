@@ -6,7 +6,9 @@
                       sidebar still shows it, agents only, so it can be corrected later.
   2. Customer first . agents pick the Customer first; that narrows the Serial No choices to the
                       customer's own units
-  3. Product Name ... every Serial No choice names the product, on both pages
+  3. Product Name ... the portal's Serial No choices name the product; agents get a read-only
+                      Product Name next to Serial No (Helpdesk's searchable dropdown shows only
+                      the serial), filled as soon as a unit is picked and kept on the ticket
 
 Server side: support/portal.py (choices), support/new_ticket.py (agent form, defaults),
 setup/support_desk.py (the Default ticket template). The page side is
@@ -257,6 +259,43 @@ class TestCustomerFirst(IntegrationTestCase):
 		self.assertEqual(portal.serial_label("S1", "MODEL-1", "MODEL-1"), "S1 · MODEL-1")
 		self.assertEqual(portal.serial_label("S1", "MODEL-1", None), "S1 · MODEL-1")
 		self.assertEqual(portal.serial_label("S1", "MODEL-1", "Reader"), "S1 · Reader (MODEL-1)")
+
+	def test_ticket_keeps_the_product_name_of_its_unit(self):
+		df = frappe.get_meta("HD Ticket").get_field("custom_product_name")
+		self.assertEqual(
+			(df.fieldtype, df.read_only, df.fetch_from), ("Data", 1, "custom_serial_no.item_name")
+		)
+
+	def test_product_name_sits_next_to_serial_no_for_agents(self):
+		names = [f["fieldname"] for f in sd.TICKET_FORM_FIELDS]
+		self.assertEqual(names.index("custom_product_name"), names.index(SERIAL_FIELD) + 1)
+		self.assertEqual(_rows(sd.TICKET_FORM_FIELDS)["custom_product_name"].get("visible_to"), "Agents")
+
+	def test_setup_puts_a_new_row_after_its_neighbour(self):
+		# A site that already has the template gets Product Name next to Serial No, not at the end.
+		template = frappe.get_doc("HD Ticket Template", "Default")
+		for row in [r for r in template.fields if r.fieldname == "custom_product_name"]:
+			template.remove(row)
+		template.save(ignore_permissions=True)
+		sd._helpdesk_ticket_form()
+		rows = frappe.get_all(
+			"HD Ticket Template Field", filters={"parent": "Default"}, pluck="fieldname", order_by="idx"
+		)
+		self.assertEqual(rows[rows.index(SERIAL_FIELD) + 1], "custom_product_name")
+
+	def test_agents_see_product_name_read_only(self):
+		sd._helpdesk_ticket_form()
+		with patch.object(new_ticket, "is_helpdesk_agent", return_value=True):
+			field = _rows(new_ticket.get_template("Default")["fields"])["custom_product_name"]
+		self.assertTrue(field.disabled)  # shown, not typed in
+
+	def test_product_of_a_unit(self):
+		with patch.object(new_ticket, "is_helpdesk_agent", return_value=True):
+			self.assertEqual(new_ticket.serial_product(self.mine), "ZZ Biometric Reader")
+			self.assertIsNone(new_ticket.serial_product("ZZ-NO-SUCH-SERIAL"))
+		with patch.object(new_ticket, "is_helpdesk_agent", return_value=False):
+			with self.assertRaises(frappe.PermissionError):
+				new_ticket.serial_product(self.mine)
 
 	def test_agent_search_shows_the_product_name(self):
 		# Helpdesk's link dropdown shows a Serial No's search fields under it.
