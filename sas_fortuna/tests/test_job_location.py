@@ -18,7 +18,7 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from sas_fortuna.sas_fortuna.doctype.job_location import job_location as jl
-from sas_fortuna.support import hd_ticket
+from sas_fortuna.support import hd_ticket, new_ticket
 
 ZZ_TYPE = "ZZ JL Type"
 ZZ_BASE = "ZZ JL Support"
@@ -203,7 +203,7 @@ class TestRouting(IntegrationTestCase):
 
 	def test_location_comes_from_the_customer_when_blank(self):
 		doc = FakeTicket(custom_erpnext_customer="ZZ Any")
-		with patch.object(hd_ticket, "location_for_customer", return_value="ZZ JL Bigcity"):
+		with patch.object(new_ticket, "location_for_customer", return_value="ZZ JL Bigcity"):
 			hd_ticket.apply_job_location(doc)
 		self.assertEqual(doc.custom_job_location, "ZZ JL Bigcity")
 		chosen = FakeTicket(custom_erpnext_customer="ZZ Any", custom_job_location="ZZ Chosen")
@@ -213,23 +213,23 @@ class TestRouting(IntegrationTestCase):
 	def test_unknown_address_gets_the_default_location(self):
 		doc = FakeTicket(custom_erpnext_customer="ZZ Any")
 		with (
-			patch.object(hd_ticket, "location_for_customer", return_value=None),
-			patch.object(hd_ticket, "default_location", return_value="ZZ JL Default"),
+			patch.object(new_ticket, "location_for_customer", return_value=None),
+			patch.object(new_ticket, "default_location", return_value="ZZ JL Default"),
 		):
 			hd_ticket.apply_job_location(doc)
 		self.assertEqual(doc.custom_job_location, "ZZ JL Default")
 
 	def test_ticket_without_customer_gets_the_default_location(self):
 		doc = FakeTicket()
-		with patch.object(hd_ticket, "default_location", return_value="ZZ JL Default"):
+		with patch.object(new_ticket, "default_location", return_value="ZZ JL Default"):
 			hd_ticket.apply_job_location(doc)
 		self.assertEqual(doc.custom_job_location, "ZZ JL Default")
 
 	def test_a_matched_address_wins_over_the_default(self):
 		doc = FakeTicket(custom_erpnext_customer="ZZ Any")
 		with (
-			patch.object(hd_ticket, "location_for_customer", return_value="ZZ JL Bigcity"),
-			patch.object(hd_ticket, "default_location", return_value="ZZ JL Default"),
+			patch.object(new_ticket, "location_for_customer", return_value="ZZ JL Bigcity"),
+			patch.object(new_ticket, "default_location", return_value="ZZ JL Default"),
 		):
 			hd_ticket.apply_job_location(doc)
 		self.assertEqual(doc.custom_job_location, "ZZ JL Bigcity")

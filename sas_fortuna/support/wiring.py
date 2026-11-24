@@ -79,6 +79,12 @@ override_whitelisted_methods = {
 	"helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one": S + "new_ticket.get_template",
 }
 
+# A team's Assignment Rule picks an engineer at the ticket's Job Location (the customer's
+# Bill To branch) when the team has one there (overrides/assignment_rule.py).
+override_doctype_class = {
+	"Assignment Rule": "sas_fortuna.overrides.assignment_rule.FortunaAssignmentRule",
+}
+
 # Ticket page Assignee list: only the ticket's Team at its Job Location (support/agent_filter.py).
 # Helpdesk's dropdown lists every active agent; this narrows that HD Agent list on ticket pages.
 permission_query_conditions = {

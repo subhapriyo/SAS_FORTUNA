@@ -1,9 +1,11 @@
 """Unit tests: the New Ticket form, on the customer portal and in Helpdesk (agents).
 
-  1. Job Location ... from the customer's Bill To address (city, then state), else Kolkata;
-                      agents only: customers never see the field
-  2. Customer first . agents pick the Customer first; that fills Job Location and narrows the
-                      Serial No choices to the customer's own units
+  1. Job Location ... not on the New Ticket form at all: set on save from the customer's Bill
+                      To address (city, then state), else Kolkata; then an engineer at that
+                      Job Location is assigned (test_ticket_assignment.py). The agent's ticket
+                      sidebar still shows it, agents only, so it can be corrected later.
+  2. Customer first . agents pick the Customer first; that narrows the Serial No choices to the
+                      customer's own units
   3. Product Name ... every Serial No choice names the product, on both pages
 
 Server side: support/portal.py (choices), support/new_ticket.py (agent form, defaults),
@@ -108,7 +110,19 @@ class TestJobLocationFromBillTo(IntegrationTestCase):
 		with patch.object(jl, "DEFAULT_LOCATION", "ZZ NT Billtown"):
 			self.assertEqual(new_ticket.job_location_for(self.customer), "ZZ NT Billtown")
 
-	def test_job_location_is_for_agents_only(self):
+	def test_job_location_is_not_on_the_new_ticket_form(self):
+		# Nobody picks it: the customer's Bill To address decides, on save.
+		sd._helpdesk_ticket_form()
+		for agent in (True, False):
+			with (
+				patch.object(new_ticket, "is_helpdesk_agent", return_value=agent),
+				patch("helpdesk.ticket_fields.is_agent", return_value=agent),
+			):
+				fields = _rows(new_ticket.get_template("Default")["fields"])
+			self.assertNotIn(LOCATION_FIELD, fields, "agent" if agent else "customer")
+
+	def test_ticket_sidebar_keeps_it_for_agents_only(self):
+		# After creation an agent may correct it (which re-routes the ticket); customers never see it.
 		row = _rows(sd.TICKET_FORM_FIELDS)[LOCATION_FIELD]
 		self.assertEqual(row.get("visible_to"), "Agents")
 
@@ -132,14 +146,14 @@ class TestJobLocationFromBillTo(IntegrationTestCase):
 			"Agents",
 		)
 
-	def test_customers_do_not_get_the_field(self):
+	def test_customers_never_get_the_field_agents_do_in_the_sidebar(self):
 		from helpdesk.ticket_fields import TicketFields
 
 		sd._helpdesk_ticket_form()
 		with patch("helpdesk.ticket_fields.is_agent", return_value=False):
-			self.assertNotIn(LOCATION_FIELD, [f.fieldname for f in TicketFields("Default").get_form()])
+			self.assertNotIn(LOCATION_FIELD, [f.fieldname for f in TicketFields("Default").get_layout()])
 		with patch("helpdesk.ticket_fields.is_agent", return_value=True):
-			self.assertIn(LOCATION_FIELD, [f.fieldname for f in TicketFields("Default").get_form()])
+			self.assertIn(LOCATION_FIELD, [f.fieldname for f in TicketFields("Default").get_layout()])
 
 
 # ---------------------------------------------------------------------------
@@ -193,11 +207,9 @@ class TestCustomerFirst(IntegrationTestCase):
 		self.assertEqual(rows[0], CUSTOMER_FIELD)
 
 	def test_defaults_for_a_customer(self):
-		_address(self.customer, "ZZ NT Bill", "Zzbill")
 		with patch.object(new_ticket, "is_helpdesk_agent", return_value=True):
 			got = new_ticket.new_ticket_defaults(self.customer)
-		self.assertEqual(got["job_location"], "ZZ NT Billtown")
-		self.assertEqual(got["serials"], [self.mine])  # never another customer's unit
+		self.assertEqual(got, {"serials": [self.mine]})  # never another customer's unit
 
 	def test_defaults_are_for_agents_only(self):
 		with patch.object(new_ticket, "is_helpdesk_agent", return_value=False):

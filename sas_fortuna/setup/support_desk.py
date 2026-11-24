@@ -125,8 +125,9 @@ TICKET_FORM_FIELDS = [
 		"placeholder": "Serial No (optional)",
 	},
 	{
-		# Agents only: filled from the customer's Bill To address (Kolkata when none matches);
-		# an agent may change it to move the ticket. Portal tickets get it on save.
+		# The agent's ticket sidebar only: it is set on save from the customer's Bill To address
+		# (Kolkata when none matches), never asked for on the New Ticket form (support/new_ticket.py
+		# drops it there). An agent may correct it in the sidebar, which re-routes the ticket.
 		"fieldname": "custom_job_location",
 		"required": 0,
 		"visible_to": "Agents",

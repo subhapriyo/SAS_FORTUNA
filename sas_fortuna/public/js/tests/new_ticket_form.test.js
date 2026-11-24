@@ -52,33 +52,33 @@ function open(answers = {}) {
 	return { doc, filters, calls, pick };
 }
 
-test("picking a customer fills its Job Location", async () => {
-	const { doc, pick } = open({ ACME: { job_location: "Hyderabad", serials: ["SN-1"] } });
+test("Job Location is not the form's business: the server sets it from the Bill To address", async () => {
+	const { doc, pick } = open({ ACME: { serials: ["SN-1"] } });
 	await pick("ACME");
-	assert.equal(doc[LOCATION], "Hyderabad");
+	assert.equal(LOCATION in doc, false);
+	await pick("");
+	assert.equal(LOCATION in doc, false);
 });
 
 test("picking a customer narrows Serial No to that customer's units", async () => {
-	const { filters, pick } = open({
-		ACME: { job_location: "Kolkata", serials: ["SN-1", "SN-2"] },
-	});
+	const { filters, pick } = open({ ACME: { serials: ["SN-1", "SN-2"] } });
 	await pick("ACME");
 	assert.deepEqual(filters.at(-1), [SERIAL, ["SN-1", "SN-2"]]);
 });
 
 test("a customer with no units: Serial No is switched off rather than offering others' units", async () => {
-	const { doc, filters, pick } = open({ ACME: { job_location: "Kolkata", serials: [] } });
+	const { doc, filters, pick } = open({ ACME: { serials: [] } });
 	doc[SERIAL] = "SN-OLD";
 	await pick("ACME");
 	assert.deepEqual(filters.at(-1), [SERIAL, null]);
 	assert.equal(doc[SERIAL], "");
 });
 
-test("clearing the customer clears what it filled", async () => {
-	const { doc, filters, pick } = open({ ACME: { job_location: "Mumbai", serials: ["SN-1"] } });
+test("clearing the customer clears the chosen unit", async () => {
+	const { doc, filters, pick } = open({ ACME: { serials: ["SN-1"] } });
 	await pick("ACME");
+	doc[SERIAL] = "SN-1";
 	await pick("");
-	assert.equal(doc[LOCATION], "");
 	assert.equal(doc[SERIAL], "");
 	assert.deepEqual(filters.at(-1), [SERIAL, null]);
 });
@@ -86,24 +86,16 @@ test("clearing the customer clears what it filled", async () => {
 test("only the latest customer's answer is used", async () => {
 	let releaseSlow;
 	const slow = () => new Promise((resolve) => (releaseSlow = resolve));
-	const { doc, pick } = open({ SLOW: slow, FAST: { job_location: "Nagpur", serials: [] } });
+	const { filters, pick } = open({ SLOW: slow, FAST: { serials: ["SN-F"] } });
 	const first = pick("SLOW");
 	await pick("FAST");
-	releaseSlow({ job_location: "Bihar", serials: ["SN-X"] });
+	releaseSlow({ serials: ["SN-S"] });
 	await first;
-	assert.equal(doc[LOCATION], "Nagpur");
+	assert.deepEqual(filters.at(-1), [SERIAL, ["SN-F"]]);
 });
 
-test("if the lookup fails the form still works: the server fills Job Location on save", async () => {
-	const { doc, pick } = open({ ACME: () => Promise.reject(new Error("offline")) });
+test("if the lookup fails the form still works: the unit can be picked later", async () => {
+	const { filters, pick } = open({ ACME: () => Promise.reject(new Error("offline")) });
 	await pick("ACME");
-	assert.equal(doc[LOCATION] || "", "");
-});
-
-test("the agent's choice of Job Location is kept until the customer changes", async () => {
-	const { doc, calls, pick } = open({ ACME: { job_location: "Kolkata", serials: [] } });
-	await pick("ACME");
-	doc[LOCATION] = "Mumbai"; // agent corrects it by hand
-	assert.equal(calls.filter(([m]) => m === DEFAULTS_API).length, 1);
-	assert.equal(doc[LOCATION], "Mumbai");
+	assert.deepEqual(filters, []);
 });
