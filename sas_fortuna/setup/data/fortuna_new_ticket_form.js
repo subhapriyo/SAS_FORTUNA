@@ -10,6 +10,9 @@
 //    is shown on its own row as "Describe your issue" and must be typed in.
 // 3. The description box gets a border and a "Description *" heading, so customers see why
 //    Submit is grey.
+// 4. Agents only: Customer is the first field. Picking one fills Job Location (the customer's
+//    Bill To address, else Kolkata) and narrows Serial No to that customer's units
+//    (sas_fortuna/support/new_ticket.py). Customers never see these two fields.
 // Helpdesk has no setting for 2 and 3, so they work on the page itself. If a Helpdesk update
 // changes that page, they simply stop and the form works as Helpdesk ships it; the server
 // still checks the subject (sas_fortuna/support/hd_ticket.py).
@@ -182,9 +185,38 @@ function setupForm({ doc, call, applyFilters }) {
 		applyFilters(FIELD, allChoices[ticketType] || [OTHERS]);
 	}
 
+	// --- 4. Agents: Customer first, the rest follows ------------------------------------------
+	const CUSTOMER = "custom_erpnext_customer";
+	const SERIAL = "custom_serial_no";
+	const LOCATION = "custom_job_location";
+	const DEFAULTS_API = "sas_fortuna.support.new_ticket.new_ticket_defaults";
+
+	let latestCustomer = null; // only the last picked customer's answer is used
+	async function fillFromCustomer(customer) {
+		latestCustomer = customer;
+		doc[SERIAL] = ""; // a unit belongs to one customer: start the choice again
+		if (!customer) {
+			doc[LOCATION] = "";
+			applyFilters(SERIAL, null); // no customer, no units to offer
+			return;
+		}
+		let defaults;
+		try {
+			defaults = await call(DEFAULTS_API, { customer });
+		} catch (e) {
+			return; // the server still fills Job Location when the ticket is saved
+		}
+		if (latestCustomer !== customer || !defaults) return; // picked another one meanwhile
+		doc[LOCATION] = defaults.job_location || "";
+		// Only this customer's units; none sold to them switches the field off.
+		const serials = defaults.serials || [];
+		applyFilters(SERIAL, serials.length ? serials : null);
+	}
+
 	return {
 		actions: [],
 		onChange: {
+			[CUSTOMER]: (value) => fillFromCustomer(value),
 			ticket_type: (value) => loadSubjects(value),
 			[FIELD]: (value) => {
 				doc[FIELD] = value;

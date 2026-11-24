@@ -73,6 +73,12 @@ doc_events = {
 	"Serial No": {"validate": S + "sales.serial_no_validate"},
 }
 
+# Helpdesk's New Ticket form, as agents get it: Customer first, a searchable Serial No that the
+# page narrows to that customer's units (support/new_ticket.py). Customers get it unchanged.
+override_whitelisted_methods = {
+	"helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one": S + "new_ticket.get_template",
+}
+
 # Ticket page Assignee list: only the ticket's Team at its Job Location (support/agent_filter.py).
 # Helpdesk's dropdown lists every active agent; this narrows that HD Agent list on ticket pages.
 permission_query_conditions = {

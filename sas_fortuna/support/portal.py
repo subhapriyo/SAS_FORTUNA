@@ -3,10 +3,12 @@
 	get_portal_customer()    which Customer the logged-in portal user belongs to
 	accept_quotation()       the "Accept quotation" button on /repairs/<name>
 	customer_ticket_types()  choices for "Ticket Type" on Helpdesk's New ticket form
-	customer_serials()       choices for "Serial No" on that form: the customer's own units only
+	customer_serials()       choices for "Serial No" on that form: the customer's own units only,
+	                         each named with its product ("SN-1 · Biometric Reader (FPM-3171)")
 
 The last two are set as the fields' url_method on Helpdesk's "Default" ticket template
-(setup/support_desk.py: _helpdesk_ticket_form).
+(setup/support_desk.py: _helpdesk_ticket_form). Agents get a searchable Serial No instead,
+narrowed to the customer they pick (support/new_ticket.py).
 """
 
 import frappe
@@ -59,19 +61,27 @@ def ticket_subjects_by_type():
 
 @frappe.whitelist()
 def customer_serials():
-	"""The logged-in customer's units, as "serial · model" choices. Never another customer's."""
+	"""The logged-in customer's units as dropdown choices. Never another customer's."""
 	customer = get_portal_customer()
 	if not customer:
 		return []
 	rows = frappe.get_all(
 		"Serial No",
 		filters={"custom_sold_to": customer},
-		fields=["name", "item_code"],
+		fields=["name", "item_code", "item_name"],
 		order_by="name asc",
 		limit=500,
 		ignore_permissions=True,  # safe: only this customer's own units
 	)
-	return [{"label": f"{r.name} · {r.item_code}", "value": r.name} for r in rows]
+	return [{"label": serial_label(r.name, r.item_code, r.item_name), "value": r.name} for r in rows]
+
+
+def serial_label(serial, item_code, item_name=None):
+	"""How a unit reads in the dropdown: serial, then the product the customer knows it by.
+	"SN-1 · Biometric Reader (FPM-3171)"; just the code when the product has no other name."""
+	if not item_name or item_name == item_code:
+		return f"{serial} · {item_code}"
+	return f"{serial} · {item_name} ({item_code})"
 
 
 @frappe.whitelist()

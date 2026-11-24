@@ -312,7 +312,7 @@ class TestResolutionBoxSetup(IntegrationTestCase):
 	def test_setup_takes_it_off_a_sidebar_that_has_it(self):
 		template = frappe.get_doc("HD Ticket Template", "Default")
 		if NOTES not in [r.fieldname for r in template.fields]:
-			template.append("fields", {"fieldname": NOTES, "hide_from_customer": 1})
+			template.append("fields", {"fieldname": NOTES, "visible_to": "Agents"})
 			template.save(ignore_permissions=True)
 		sd._helpdesk_ticket_form()
 		fields = [r.fieldname for r in frappe.get_doc("HD Ticket Template", "Default").fields]

@@ -111,24 +111,27 @@ def match_location(city=None, state=None):
 
 
 def customer_address(customer):
-	"""The Customer's primary address, else its first linked address (billing first)."""
+	"""The address that decides a customer's branch: their Bill To address (the primary billing
+	one when there are several), else the Customer's primary address, else any address of theirs.
+	Returns {city, state}, or None when the customer has no address."""
 	if not customer:
 		return None
-	name = frappe.db.get_value("Customer", customer, "customer_primary_address")
-	if not name:
-		linked = frappe.get_all(
-			"Dynamic Link",
-			filters={"parenttype": "Address", "link_doctype": "Customer", "link_name": customer},
-			pluck="parent",
-		)
-		rows = frappe.get_all(
-			"Address",
-			filters={"name": ["in", linked or [""]], "disabled": 0},
-			fields=["name", "address_type"],
-			order_by="is_primary_address desc, creation asc",
-		)
-		billing = [r.name for r in rows if r.address_type == "Billing"]
-		name = (billing or [r.name for r in rows] or [None])[0]
+	linked = frappe.get_all(
+		"Dynamic Link",
+		filters={"parenttype": "Address", "link_doctype": "Customer", "link_name": customer},
+		pluck="parent",
+	)
+	rows = frappe.get_all(
+		"Address",
+		filters={"name": ["in", linked or [""]], "disabled": 0},
+		fields=["name", "address_type"],
+		order_by="is_primary_address desc, creation asc",
+	)
+	# In order of preference: Bill To, the Customer's primary address, any address.
+	bill_to = next((r.name for r in rows if r.address_type == "Billing"), None)
+	primary = frappe.db.get_value("Customer", customer, "customer_primary_address")
+	any_address = rows[0].name if rows else None
+	name = bill_to or primary or any_address
 	return frappe.db.get_value("Address", name, ["city", "state"], as_dict=True) if name else None
 
 

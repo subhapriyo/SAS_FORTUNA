@@ -371,6 +371,8 @@ if _os.path.exists(_os.path.join(_os.path.dirname(__file__), "setup", "support_d
 	scheduler_events = _support.scheduler_events
 	# Ticket page Assignee list: the ticket's Team at its Job Location only.
 	permission_query_conditions = _support.permission_query_conditions
+	# New Ticket form for agents: Customer first (support/new_ticket.py).
+	override_whitelisted_methods = _support.override_whitelisted_methods
 	# Customer portal: /repairs list and /repairs/<name> detail page.
 	website_route_rules = _support.website_route_rules
 	# Filter bar settings for /repairs; loaded before portal.js.

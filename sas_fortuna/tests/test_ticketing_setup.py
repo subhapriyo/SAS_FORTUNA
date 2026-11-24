@@ -239,6 +239,7 @@ class TestWiring(IntegrationTestCase):
 		"_portal_menu",
 		"_helpdesk_role_for_portal_users",
 		"_helpdesk_ticket_form",
+		"_serial_no_search_fields",
 	)
 
 	def test_support_desk_setup_is_an_after_migrate_hook(self):

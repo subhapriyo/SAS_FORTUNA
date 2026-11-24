@@ -157,7 +157,9 @@ class TestTeamSync(IntegrationTestCase):
 		self.assertIn(email, frappe.get_all("HD Team Member", filters={"parent": ZZ_TEAM}, pluck="user"))
 
 	def test_missing_user_is_only_reported_by_default(self):
+		# "By default": no site_config switch, and a site the staff patch has not switched on yet.
 		email = "zz.nobody.impex@example.com"
+		frappe.db.set_default(fi.CREATE_USERS_FLAG, "")
 		conf = {k: v for k, v in frappe.conf.items() if k != fi.CREATE_USERS_KEY}
 		with (
 			patch.object(fi, "load_staff", return_value=self._staff(email)),

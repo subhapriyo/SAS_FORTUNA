@@ -51,6 +51,7 @@ def execute():
 	_portal_menu()
 	_helpdesk_role_for_portal_users()
 	_helpdesk_ticket_form()
+	_serial_no_search_fields()
 	_resolution_box()
 	# Last: needs the custom fields and the New ticket form above.
 	ticketing.ensure()
@@ -93,10 +94,23 @@ def _portal_menu():
 		settings.save(ignore_permissions=True)
 
 
-# Fields added to Helpdesk's "Default" ticket template, i.e. the customer's New ticket form.
-# Without them a portal ticket has no type (so no team, no agent) and no serial (so no warranty
-# check). url_method: where the field's choices come from (support/portal.py).
+# Fields added to Helpdesk's "Default" ticket template: the New Ticket form, on the customer
+# portal and for agents in Helpdesk. Without them a portal ticket has no type (so no team, no
+# agent) and no serial (so no warranty check). In this order, first row first.
+#   url_method  where the field's choices come from (support/portal.py)
+#   visible_to  "Agents" keeps a field off the customer portal. Helpdesk 16 reads only this;
+#               its older hide_from_customer flag is ignored (that showed Job Location to
+#               customers), so setup also corrects it on rows that already exist.
 TICKET_FORM_FIELDS = [
+	{
+		# Agents start here: the customer decides Job Location and which units are offered
+		# (support/new_ticket.py; the page side is setup/data/fortuna_new_ticket_form.js).
+		# A portal customer is known from their login, so they never see it.
+		"fieldname": "custom_erpnext_customer",
+		"required": 0,
+		"visible_to": "Agents",
+		"placeholder": "Pick the customer first",
+	},
 	{
 		"fieldname": "ticket_type",
 		"required": 1,
@@ -111,10 +125,11 @@ TICKET_FORM_FIELDS = [
 		"placeholder": "Serial No (optional)",
 	},
 	{
-		# Agents only (ticket sidebar): set from the customer's address, changeable to move the ticket.
+		# Agents only: filled from the customer's Bill To address (Kolkata when none matches);
+		# an agent may change it to move the ticket. Portal tickets get it on save.
 		"fieldname": "custom_job_location",
 		"required": 0,
-		"hide_from_customer": 1,
+		"visible_to": "Agents",
 		"placeholder": "Job Location",
 	},
 ]
@@ -126,22 +141,71 @@ REMOVED_TICKET_FORM_FIELDS = ["resolution_details"]
 
 
 def _helpdesk_ticket_form():
-	"""Add TICKET_FORM_FIELDS to the Default ticket template, once, and take out the rows in
-	REMOVED_TICKET_FORM_FIELDS. Rows are matched by fieldname; an admin's later edits to the
-	others (required, placeholder, order) are kept."""
+	"""Keep the Default ticket template in step with TICKET_FORM_FIELDS.
+
+	  - a missing row is added (the Customer row goes first, the rest at the end)
+	  - a row's visible_to is put back to ours: who may see a field is not a layout choice
+	  - rows in REMOVED_TICKET_FORM_FIELDS are taken out
+	An admin's other edits (required, placeholder, the order of the other rows) are kept."""
 	if not frappe.db.exists("HD Ticket Template", "Default"):
 		return
 	template = frappe.get_doc("HD Ticket Template", "Default")
-	removed = [row for row in template.fields if row.fieldname in REMOVED_TICKET_FORM_FIELDS]
-	for row in removed:
+	changed = False
+
+	# Rows taken out of the form.
+	for row in [r for r in template.fields if r.fieldname in REMOVED_TICKET_FORM_FIELDS]:
 		template.remove(row)
-	have = {row.fieldname for row in template.fields}
-	missing = [f for f in TICKET_FORM_FIELDS if f["fieldname"] not in have]
-	if not missing and not removed:
+		changed = True
+
+	# Missing rows, and who may see the ones that exist.
+	rows = {r.fieldname: r for r in template.fields}
+	for field in TICKET_FORM_FIELDS:
+		row = rows.get(field["fieldname"])
+		if not row:
+			template.append("fields", field)
+			changed = True
+		elif field.get("visible_to") and row.visible_to != field["visible_to"]:
+			row.visible_to = field["visible_to"]
+			changed = True
+
+	# The Customer row leads: agents pick the customer before anything else.
+	first = TICKET_FORM_FIELDS[0]["fieldname"]
+	if template.fields and template.fields[0].fieldname != first:
+		row = next(r for r in template.fields if r.fieldname == first)
+		template.fields.remove(row)
+		template.fields.insert(0, row)
+		changed = True
+
+	if changed:
+		for idx, row in enumerate(template.fields, 1):
+			row.idx = idx
+		template.save(ignore_permissions=True)
+
+
+# Serial No search (Helpdesk's link dropdown, and Desk's): show the product under each serial.
+# Helpdesk lists a record's search fields as the grey line under it, so the Product Name leads.
+SERIAL_SEARCH_FIELDS = ["item_name", "item_code"]
+
+
+def _serial_no_search_fields():
+	"""Put item_name and item_code first in Serial No's search fields; any others an admin added
+	stay after them."""
+	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+	current = [f.strip() for f in (frappe.get_meta("Serial No").search_fields or "").split(",") if f.strip()]
+	wanted = SERIAL_SEARCH_FIELDS + [f for f in current if f not in SERIAL_SEARCH_FIELDS]
+	if current == wanted:
 		return
-	for field in missing:
-		template.append("fields", field)
-	template.save(ignore_permissions=True)
+	make_property_setter(
+		"Serial No",
+		None,
+		"search_fields",
+		",".join(wanted),
+		"Data",
+		for_doctype=True,
+		validate_fields_for_doctype=False,
+	)
+	frappe.clear_cache(doctype="Serial No")
 
 
 # Desk form: Resolution Details shows when the agent asked to resolve without one (flag set by
