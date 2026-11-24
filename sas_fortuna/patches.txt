@@ -4,3 +4,4 @@
 sas_fortuna.patches.v16_0.start_repair_after_order_confirmed
 sas_fortuna.patches.v16_0.refresh_fortuna_print_formats
 sas_fortuna.patches.v16_0.fortuna_staff_and_job_locations
+sas_fortuna.patches.v16_0.backfill_serial_sale_details
