@@ -2,18 +2,21 @@
 // Kept in sas_fortuna/setup/data/fortuna_new_ticket_form.js; every migrate copies it into the
 // HD Form Script "Fortuna New Ticket Form". Edit the file, not the record.
 //
-// Layout: Ticket Type and Serial No on one row, the Subject dropdown on the next, then (only
-// for "Others") the box to type the subject, then the description.
+// Layout (field order comes from the Default ticket template, setup/support_desk.py):
+//   agents     Customer, Ticket Type, Serial No, Item Name, Issue Subject, description
+//   customers  Ticket Type, Serial No, Issue Subject, description
+//
 // 1. Subject dropdown (HD Ticket.custom_issue_subject): its choices follow the Ticket Type,
 //    from the Ticket Subject list, with "Others" last.
 // 2. Helpdesk's own Subject box is hidden and filled with the chosen subject; on "Others" it
 //    is shown on its own row as "Describe your issue" and must be typed in.
 // 3. The description box gets a border and a "Description *" heading, so customers see why
 //    Submit is grey.
-// 4. Agents only: Customer is the first field. Picking one narrows Serial No to that customer's
-//    units, and picking a unit shows its Product Name next to it (Helpdesk's searchable
-//    dropdown shows only the serial) - sas_fortuna/support/new_ticket.py. Customers see
-//    neither field: their Serial No choices already name the product.
+// 4. Agents only: picking the Customer narrows Serial No to that customer's units; picking a
+//    unit shows its Item Name, read only (Helpdesk's searchable dropdown shows only the
+//    serial). Server side: sas_fortuna/support/new_ticket.py. Customers see neither field:
+//    their Serial No choices already name the item.
+//
 // Job Location is not on this form: on save the server takes it from the customer's Bill To
 // address and assigns an engineer at that branch (support/hd_ticket.py,
 // overrides/assignment_rule.py).
@@ -66,17 +69,19 @@ function setupForm({ doc, call, applyFilters }) {
 		}
 	}
 
-	// Ticket Type and Serial No share the first row; the Subject dropdown gets a row of its own.
-	function subjectOnItsOwnRow() {
+	// The Subject dropdown's label: a field label (span.block) inside the form's field grid.
+	function subjectDropdownLabel() {
 		for (const label of document.querySelectorAll("span.block")) {
-			const wrap = label.parentElement;
-			const grid = wrap && wrap.parentElement;
-			if (!grid || !grid.classList.contains("grid")) continue;
-			if (isDropdownLabel(label)) {
-				wrap.style.gridColumn = "1 / -1";
-				return;
-			}
+			const grid = label.parentElement && label.parentElement.parentElement;
+			if (grid && grid.classList.contains("grid") && isDropdownLabel(label)) return label;
 		}
+		return null;
+	}
+
+	// The fields above share rows; the Subject dropdown gets a row of its own.
+	function subjectOnItsOwnRow() {
+		const label = subjectDropdownLabel();
+		if (label) label.parentElement.style.gridColumn = "1 / -1";
 	}
 
 	// The description editor: the topmost element around it that does not hold the Subject box.
@@ -154,20 +159,6 @@ function setupForm({ doc, call, applyFilters }) {
 		label.appendChild(note);
 	}
 
-	function subjectDropdownLabel() {
-		for (const label of document.querySelectorAll("span.block")) {
-			const grid = label.parentElement && label.parentElement.parentElement;
-			if (
-				grid &&
-				grid.classList.contains("grid") &&
-				isDropdownLabel(label)
-			) {
-				return label;
-			}
-		}
-		return null;
-	}
-
 	// Every ticket type's choices in one call as soon as the page opens, so they are usually
 	// there before the customer has picked a ticket type.
 	let allChoices = null;
@@ -192,51 +183,50 @@ function setupForm({ doc, call, applyFilters }) {
 	// --- 4. Agents: Customer first, the units follow ------------------------------------------
 	const CUSTOMER = "custom_erpnext_customer";
 	const SERIAL = "custom_serial_no";
-	const PRODUCT = "custom_product_name";
+	const ITEM_NAME = "custom_product_name"; // labelled "Item Name"
 	const DEFAULTS_API = "sas_fortuna.support.new_ticket.new_ticket_defaults";
-	const PRODUCT_API = "sas_fortuna.support.new_ticket.serial_product";
+	const ITEM_NAME_API = "sas_fortuna.support.new_ticket.serial_product";
 
-	let latestCustomer = null; // only the last picked customer's answer is used
+	// Serial No offers only these units; null switches the field off (Helpdesk does that for an
+	// empty or missing list). Never leave another customer's units on offer.
+	const offerUnits = (serials) => applyFilters(SERIAL, serials && serials.length ? serials : null);
+
+	let latestCustomer = null; // answers for an older pick are ignored
 	async function fillFromCustomer(customer) {
 		latestCustomer = customer;
 		doc[SERIAL] = ""; // a unit belongs to one customer: start the choice again
-		showProduct("");
-		if (!customer) {
-			applyFilters(SERIAL, null); // no customer, no units to offer
-			return;
-		}
-		let defaults;
+		showItemName("");
+		if (!customer) return offerUnits(null);
+
+		let defaults = null;
 		try {
 			defaults = await call(DEFAULTS_API, { customer });
 		} catch (e) {
-			return; // leave the field as it is; the agent can still pick a unit
+			// Lookup failed: offer nothing (picking the customer again retries).
 		}
-		if (latestCustomer !== customer || !defaults) return; // picked another one meanwhile
-		// Only this customer's units; none sold to them switches the field off.
-		const serials = defaults.serials || [];
-		applyFilters(SERIAL, serials.length ? serials : null);
+		if (latestCustomer !== customer) return; // the agent picked another customer meanwhile
+		offerUnits(defaults && defaults.serials);
 	}
 
-	// The picked unit's product, shown read-only next to Serial No.
-	let latestSerial = null; // only the last picked unit's answer is used
-	async function showProduct(serial) {
+	let latestSerial = null; // answers for an older pick are ignored
+	async function showItemName(serial) {
 		latestSerial = serial;
-		doc[PRODUCT] = "";
+		doc[ITEM_NAME] = "";
 		if (!serial) return;
-		let product;
+		let itemName = "";
 		try {
-			product = await call(PRODUCT_API, { serial });
+			itemName = (await call(ITEM_NAME_API, { serial })) || "";
 		} catch (e) {
-			return; // the ticket still records it on save (fetched from the unit)
+			return; // left empty here; the ticket still gets it on save (fetched from the unit)
 		}
-		if (latestSerial === serial) doc[PRODUCT] = product || "";
+		if (latestSerial === serial) doc[ITEM_NAME] = itemName;
 	}
 
 	return {
 		actions: [],
 		onChange: {
 			[CUSTOMER]: (value) => fillFromCustomer(value),
-			[SERIAL]: (value) => showProduct(value),
+			[SERIAL]: (value) => showItemName(value),
 			ticket_type: (value) => loadSubjects(value),
 			[FIELD]: (value) => {
 				doc[FIELD] = value;

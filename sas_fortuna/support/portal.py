@@ -77,8 +77,9 @@ def customer_serials():
 
 
 def serial_label(serial, item_code, item_name=None):
-	"""How a unit reads in the dropdown: serial, then the product the customer knows it by.
-	"SN-1 · Biometric Reader (FPM-3171)"; just the code when the product has no other name."""
+	"""How a unit reads in the portal dropdown: the serial, then the Item Name the customer
+	knows it by, then the Item Code: "SN-1 · Biometric Reader (FPM-3171)". Just the code when
+	the item has no other name."""
 	if not item_name or item_name == item_code:
 		return f"{serial} · {item_code}"
 	return f"{serial} · {item_name} ({item_code})"

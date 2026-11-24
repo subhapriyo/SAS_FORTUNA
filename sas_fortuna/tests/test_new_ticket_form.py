@@ -6,9 +6,10 @@
                       sidebar still shows it, agents only, so it can be corrected later.
   2. Customer first . agents pick the Customer first; that narrows the Serial No choices to the
                       customer's own units
-  3. Product Name ... the portal's Serial No choices name the product; agents get a read-only
-                      Product Name next to Serial No (Helpdesk's searchable dropdown shows only
+  3. Item Name ...... the portal's Serial No choices name the item; agents get a read-only
+                      Item Name next to Serial No (Helpdesk's searchable dropdown shows only
                       the serial), filled as soon as a unit is picked and kept on the ticket
+                      (fieldname custom_product_name, from before the rename)
 
 Server side: support/portal.py (choices), support/new_ticket.py (agent form, defaults),
 setup/support_desk.py (the Default ticket template). The page side is
@@ -105,6 +106,14 @@ class TestJobLocationFromBillTo(IntegrationTestCase):
 		ship = _address(self.customer, "ZZ NT Ship", "Zzship", address_type="Shipping")
 		frappe.db.set_value("Customer", self.customer, "customer_primary_address", ship.name)
 		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Shiptown")
+
+	def test_a_disabled_primary_address_is_not_used(self):
+		# The customer moved: the old primary address is switched off, the new one decides.
+		old = _address(self.customer, "ZZ NT Old", "Zzship", address_type="Shipping")
+		_address(self.customer, "ZZ NT New", "Zzbill", address_type="Shipping")
+		frappe.db.set_value("Customer", self.customer, "customer_primary_address", old.name)
+		frappe.db.set_value("Address", old.name, "disabled", 1)
+		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Billtown")
 
 	def test_unknown_city_falls_back_to_the_default(self):
 		_address(self.customer, "ZZ NT Far", "Zznowhere")
@@ -213,6 +222,15 @@ class TestCustomerFirst(IntegrationTestCase):
 			got = new_ticket.new_ticket_defaults(self.customer)
 		self.assertEqual(got, {"serials": [self.mine]})  # never another customer's unit
 
+	def test_no_customer_offers_no_units(self):
+		# A blank "sold to" filter would match every unsold unit in stock.
+		unsold = self._serial("ZZNT-0003", None)
+		with patch.object(new_ticket, "is_helpdesk_agent", return_value=True):
+			for blank in (None, ""):
+				got = new_ticket.new_ticket_defaults(blank)
+				self.assertEqual(got, {"serials": []}, repr(blank))
+		self.assertTrue(unsold)
+
 	def test_defaults_are_for_agents_only(self):
 		with patch.object(new_ticket, "is_helpdesk_agent", return_value=False):
 			with self.assertRaises(frappe.PermissionError):
@@ -307,6 +325,9 @@ class TestCustomerFirst(IntegrationTestCase):
 		with patch.object(new_ticket, "is_helpdesk_agent", return_value=True):
 			self.assertEqual(new_ticket.serial_product(self.mine), "ZZ Biometric Reader")
 			self.assertIsNone(new_ticket.serial_product("ZZ-NO-SUCH-SERIAL"))
+			# A blank name must not fall through to "the first Serial No on the site".
+			for blank in (None, ""):
+				self.assertIsNone(new_ticket.serial_product(blank), repr(blank))
 		with patch.object(new_ticket, "is_helpdesk_agent", return_value=False):
 			with self.assertRaises(frappe.PermissionError):
 				new_ticket.serial_product(self.mine)

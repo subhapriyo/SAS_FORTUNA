@@ -47,10 +47,14 @@ def _ticket(job_location):
 class TestAssignByJobLocation(IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
+		self.away, self.unavailable = set(), set()  # everyone Active unless a test says otherwise
+		by_category = {"Away": self.away, "Unavailable": self.unavailable}
 		for p in (
 			patch.object(ar, "agent_locations", side_effect=lambda users: {u: WHERE.get(u) for u in users}),
-			# Everyone Active: Helpdesk's Away / Unavailable tiers play no part here.
-			patch("helpdesk.overrides.assignment_rule.get_agents_by_category", return_value=set()),
+			patch(
+				"helpdesk.overrides.assignment_rule.get_agents_by_category",
+				side_effect=lambda category: by_category.get(category, set()),
+			),
 		):
 			p.start()
 			self.addCleanup(p.stop)
@@ -62,6 +66,30 @@ class TestAssignByJobLocation(IntegrationTestCase):
 		counts = {KOL: 0, MUM1: 5, MUM2: 1}  # Kolkata is idle, but not at the branch
 		with patch.object(frappe.db, "count", side_effect=lambda dt, f: counts[f["allocated_to"]]):
 			self.assertEqual(_rule("Load Balancing").get_user(_ticket("Mumbai")), MUM2)
+
+	def test_weighted_rules_pick_at_the_branch_too(self):
+		self.assertIn(_rule("Weighted Distribution").get_user(_ticket("Mumbai")), (MUM1, MUM2))
+
+	def test_unavailable_engineer_at_the_branch_is_skipped(self):
+		self.unavailable.add(MUM1)
+		self.assertEqual(_rule().get_user(_ticket("Mumbai")), MUM2)
+
+	def test_branch_all_unavailable_hands_over_to_the_team(self):
+		# On leave at the branch: an Active engineer elsewhere beats waiting for them.
+		self.unavailable.update({MUM1, MUM2})
+		self.assertEqual(_rule().get_user(_ticket("Mumbai")), KOL)
+
+	def test_away_engineer_at_the_branch_is_still_preferred(self):
+		# Away is a short break; the ticket stays with the customer's branch.
+		self.away.update({MUM1, MUM2})
+		self.assertIn(_rule().get_user(_ticket("Mumbai")), (MUM1, MUM2))
+
+	def test_based_on_field_rules_are_left_alone(self):
+		rule = _rule("Based on Field")
+		with patch.object(ar.HelpdeskAssignmentRule, "get_user", return_value="zz.field@example.com") as base:
+			self.assertEqual(rule.get_user(_ticket("Mumbai")), "zz.field@example.com")
+		self.assertEqual([u.user for u in rule.users], [KOL, MUM1, MUM2])
+		base.assert_called_once()
 
 	def test_no_engineer_at_the_branch_keeps_the_whole_team(self):
 		self.assertEqual(_rule().get_user(_ticket("Nagpur")), KOL)
@@ -102,5 +130,8 @@ class TestAgentLocations(IntegrationTestCase):
 			frappe.get_doc(
 				{"doctype": "Job Location", "location_name": "ZZ Assign Town", "cities": "Zzassign"}
 			).insert(ignore_permissions=True)
-		frappe.db.set_value("HD Agent", user, "custom_job_location", "ZZ Assign Town")
+		frappe.db.set_value("HD Agent", user, {"custom_job_location": "ZZ Assign Town", "is_active": 1})
 		self.assertEqual(ar.agent_locations([user, "zz.not.an.agent@example.com"]), {user: "ZZ Assign Town"})
+		# Switched-off engineers are nobody's branch engineer.
+		frappe.db.set_value("HD Agent", user, "is_active", 0)
+		self.assertEqual(ar.agent_locations([user]), {})

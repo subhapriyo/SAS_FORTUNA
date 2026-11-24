@@ -128,8 +128,30 @@ test("only the latest unit's product name is shown", async () => {
 	assert.equal(doc[PRODUCT], "Fast Reader");
 });
 
-test("if the lookup fails the form still works: the unit can be picked later", async () => {
-	const { filters, pick } = open({ ACME: () => Promise.reject(new Error("offline")) });
+test("if the lookup fails, the previous customer's units are not offered", async () => {
+	const { filters, pick } = open({
+		ACME: { serials: ["SN-ACME"] },
+		BETA: () => Promise.reject(new Error("offline")),
+	});
 	await pick("ACME");
-	assert.deepEqual(filters, []);
+	await pick("BETA");
+	// Switched off until the customer is picked again (which retries the lookup).
+	assert.deepEqual(filters.at(-1), [SERIAL, null]);
+});
+
+test("a failed lookup for an older pick does not touch the newer customer's units", async () => {
+	let failSlow;
+	const slow = () => new Promise((_, reject) => (failSlow = reject));
+	const { filters, pick } = open({ SLOW: slow, FAST: { serials: ["SN-F"] } });
+	const first = pick("SLOW");
+	await pick("FAST");
+	failSlow(new Error("offline"));
+	await first;
+	assert.deepEqual(filters.at(-1), [SERIAL, ["SN-F"]]);
+});
+
+test("if the Item Name lookup fails the field stays empty; the server fills it on save", async () => {
+	const { doc, pickUnit } = open({ "SN-1": () => Promise.reject(new Error("offline")) });
+	await pickUnit("SN-1");
+	assert.equal(doc[PRODUCT], "");
 });

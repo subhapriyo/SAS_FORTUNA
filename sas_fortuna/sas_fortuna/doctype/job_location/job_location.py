@@ -111,9 +111,12 @@ def match_location(city=None, state=None):
 
 
 def customer_address(customer):
-	"""The address that decides a customer's branch: their Bill To address (the primary billing
-	one when there are several), else the Customer's primary address, else any address of theirs.
-	Returns {city, state}, or None when the customer has no address."""
+	"""The address that decides a customer's branch. Only addresses still in use (not disabled)
+	count; in order of preference:
+	  1. their Bill To address (the primary billing one when there are several)
+	  2. the Customer's primary address
+	  3. any address of theirs, oldest first
+	Returns {city, state}, or None when the customer has no address in use."""
 	if not customer:
 		return None
 	linked = frappe.get_all(
@@ -121,18 +124,24 @@ def customer_address(customer):
 		filters={"parenttype": "Address", "link_doctype": "Customer", "link_name": customer},
 		pluck="parent",
 	)
+	if not linked:
+		return None
 	rows = frappe.get_all(
 		"Address",
-		filters={"name": ["in", linked or [""]], "disabled": 0},
-		fields=["name", "address_type"],
+		filters={"name": ["in", linked], "disabled": 0},
+		fields=["name", "address_type", "city", "state"],
 		order_by="is_primary_address desc, creation asc",
 	)
-	# In order of preference: Bill To, the Customer's primary address, any address.
-	bill_to = next((r.name for r in rows if r.address_type == "Billing"), None)
-	primary = frappe.db.get_value("Customer", customer, "customer_primary_address")
-	any_address = rows[0].name if rows else None
-	name = bill_to or primary or any_address
-	return frappe.db.get_value("Address", name, ["city", "state"], as_dict=True) if name else None
+	if not rows:
+		return None
+
+	bill_to = next((r for r in rows if r.address_type == "Billing"), None)
+	if bill_to:
+		chosen = bill_to
+	else:
+		primary = frappe.db.get_value("Customer", customer, "customer_primary_address")
+		chosen = next((r for r in rows if r.name == primary), rows[0])  # a disabled primary is skipped
+	return frappe._dict(city=chosen.city, state=chosen.state)
 
 
 def location_for_customer(customer):
