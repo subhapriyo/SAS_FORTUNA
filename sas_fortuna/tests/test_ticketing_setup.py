@@ -233,6 +233,7 @@ class TestWiring(IntegrationTestCase):
 		"_create_roles",
 		"_create_stock_entry_types",
 		"_create_custom_fields",
+		"_item_name_label",
 		"_add_permissions",
 		"_add_report_roles",
 		"_relax_opportunity_for_amc",

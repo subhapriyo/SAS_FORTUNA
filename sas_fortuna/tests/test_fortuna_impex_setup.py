@@ -559,9 +559,10 @@ class TestTicketSubjectForm(IntegrationTestCase):
 				"HD Ticket Template Field", filters={"parent": "Default"}, pluck="fieldname", order_by="idx"
 			)
 			self.assertEqual(rows.count(fi.SUBJECT_FIELD), 1)
-			# Fortuna's order: Ticket Type, Serial No, Subject.
+			# Fortuna's order: Ticket Type, Serial No, (read-only Product Name,) Subject.
 			if "custom_serial_no" in rows:
-				self.assertEqual(rows.index(fi.SUBJECT_FIELD), rows.index("custom_serial_no") + 1)
+				before_subject = "custom_product_name" if "custom_product_name" in rows else "custom_serial_no"
+				self.assertEqual(rows.index(fi.SUBJECT_FIELD), rows.index(before_subject) + 1)
 			if "ticket_type" in rows:
 				self.assertLess(rows.index("ticket_type"), rows.index(fi.SUBJECT_FIELD))
 			fi.ensure_ticket_subject_form()  # again: no second row

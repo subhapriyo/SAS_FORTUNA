@@ -260,11 +260,25 @@ class TestCustomerFirst(IntegrationTestCase):
 		self.assertEqual(portal.serial_label("S1", "MODEL-1", None), "S1 · MODEL-1")
 		self.assertEqual(portal.serial_label("S1", "MODEL-1", "Reader"), "S1 · Reader (MODEL-1)")
 
-	def test_ticket_keeps_the_product_name_of_its_unit(self):
+	def test_ticket_keeps_the_item_name_of_its_unit(self):
 		df = frappe.get_meta("HD Ticket").get_field("custom_product_name")
 		self.assertEqual(
-			(df.fieldtype, df.read_only, df.fetch_from), ("Data", 1, "custom_serial_no.item_name")
+			(df.label, df.fieldtype, df.read_only, df.fetch_from),
+			("Item Name", "Data", 1, "custom_serial_no.item_name"),
 		)
+
+	def test_setup_renames_the_old_product_name_label(self):
+		# Sites that got the field before the rename: migrate keeps existing labels (update=False).
+		cf = frappe.db.get_value("Custom Field", {"dt": "HD Ticket", "fieldname": "custom_product_name"})
+		frappe.db.set_value("Custom Field", cf, "label", "Product Name")
+		sd._item_name_label()
+		self.assertEqual(frappe.db.get_value("Custom Field", cf, "label"), "Item Name")
+
+	def test_setup_keeps_a_label_an_admin_chose(self):
+		cf = frappe.db.get_value("Custom Field", {"dt": "HD Ticket", "fieldname": "custom_product_name"})
+		frappe.db.set_value("Custom Field", cf, "label", "Model")
+		sd._item_name_label()
+		self.assertEqual(frappe.db.get_value("Custom Field", cf, "label"), "Model")
 
 	def test_product_name_sits_next_to_serial_no_for_agents(self):
 		names = [f["fieldname"] for f in sd.TICKET_FORM_FIELDS]

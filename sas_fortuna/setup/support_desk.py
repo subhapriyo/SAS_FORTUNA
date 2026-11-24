@@ -45,6 +45,7 @@ def execute():
 	_create_roles()
 	_create_stock_entry_types()
 	_create_custom_fields()
+	_item_name_label()
 	_add_permissions()
 	_add_report_roles()
 	_relax_opportunity_for_amc()
@@ -125,12 +126,13 @@ TICKET_FORM_FIELDS = [
 		"placeholder": "Serial No (optional)",
 	},
 	{
-		# Agents only, read only: the picked unit's product. Customers see it in their Serial No
-		# choices already ("SN-1 · Biometric Reader (FPM-3171)").
+		# Agents only, read only: the Item Name of the picked unit, filled as soon as a Serial No
+		# is picked. Customers see it in their Serial No choices already
+		# ("SN-1 · Biometric Reader (FPM-3171)").
 		"fieldname": "custom_product_name",
 		"required": 0,
 		"visible_to": "Agents",
-		"placeholder": "Shown once a Serial No is picked",
+		"placeholder": "Filled from the Serial No",
 	},
 	{
 		# The agent's ticket sidebar only: it is set on save from the customer's Bill To address
@@ -197,8 +199,20 @@ def _helpdesk_ticket_form():
 		template.save(ignore_permissions=True)
 
 
-# Serial No search (Helpdesk's link dropdown, and Desk's): show the product under each serial.
-# Helpdesk lists a record's search fields as the grey line under it, so the Product Name leads.
+def _item_name_label():
+	"""HD Ticket's custom_product_name was first labelled "Product Name"; it is now "Item Name",
+	the name ERPNext uses. _create_custom_fields keeps existing labels, so older sites are renamed
+	here. Only the old default is replaced: a label an admin picked stays."""
+	name = frappe.db.get_value(
+		"Custom Field", {"dt": "HD Ticket", "fieldname": "custom_product_name", "label": "Product Name"}
+	)
+	if name:
+		frappe.db.set_value("Custom Field", name, "label", "Item Name")
+		frappe.clear_cache(doctype="HD Ticket")
+
+
+# Serial No search (Helpdesk's link dropdown, and Desk's): show the item under each serial.
+# Helpdesk lists a record's search fields as the grey line under it, so the Item Name leads.
 SERIAL_SEARCH_FIELDS = ["item_name", "item_code"]
 
 
@@ -355,12 +369,12 @@ HD_TICKET_FIELDS = _chain(
 			"link_filters": '[["Item","has_serial_no","=",1]]',
 		},
 		{"fieldname": "custom_serial_no", "fieldtype": "Link", "label": "Serial No", "options": "Serial No"},
-		# The unit's product as people know it, kept with the ticket; shown next to Serial No on the
-		# agent's New Ticket form, whose searchable Serial No dropdown shows only the serial.
+		# The unit's Item Name, kept with the ticket; shown next to Serial No on the agent's New
+		# Ticket form, whose searchable Serial No dropdown shows only the serial.
 		_ro(
 			fieldname="custom_product_name",
 			fieldtype="Data",
-			label="Product Name",
+			label="Item Name",
 			fetch_from="custom_serial_no.item_name",
 		),
 		{
