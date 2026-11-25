@@ -80,7 +80,7 @@ override_whitelisted_methods = {
 }
 
 # Assignment Rule: a team's rule picks an engineer at the ticket's Job Location (the customer's
-# Bill To branch) when the team has one there (overrides/assignment_rule.py).
+# Ship To branch) when the team has one there (overrides/assignment_rule.py).
 # HD Ticket: Customer is the 2nd column of the agents' ticket list (overrides/hd_ticket.py).
 override_doctype_class = {
 	"Assignment Rule": "sas_fortuna.overrides.assignment_rule.FortunaAssignmentRule",

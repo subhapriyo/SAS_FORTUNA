@@ -1,7 +1,7 @@
 """Unit tests: the New Ticket form, on the customer portal and in Helpdesk (agents).
 
-  1. Job Location ... not on the New Ticket form at all: set on save from the customer's Bill
-                      To address (city, then state), else Kolkata; then an engineer at that
+  1. Job Location ... not on the New Ticket form at all: set on save from the customer's Ship
+                      To address, else Bill To (city, then state), else Kolkata; then an engineer at that
                       Job Location is assigned (test_ticket_assignment.py). The agent's ticket
                       sidebar still shows it, agents only, so it can be corrected later.
   2. Customer first . agents pick the Customer first; that narrows the Serial No choices to the
@@ -65,8 +65,8 @@ def _customer(name):
 FREE_STATE = "Kerala"
 
 
-def _address(customer, title, city, address_type="Billing", state=FREE_STATE):
-	return frappe.get_doc(
+def _address(customer, title, city, address_type="Billing", state=FREE_STATE, preferred_shipping=0):
+	address = frappe.get_doc(
 		{
 			"doctype": "Address",
 			"address_title": title,
@@ -78,6 +78,9 @@ def _address(customer, title, city, address_type="Billing", state=FREE_STATE):
 			"links": [{"link_doctype": "Customer", "link_name": customer}],
 		}
 	).insert(ignore_permissions=True)
+	# Set the flag directly: Address may set or clear it on its own while saving.
+	frappe.db.set_value("Address", address.name, "is_shipping_address", preferred_shipping)
+	return address
 
 
 def _rows(fields):
@@ -85,9 +88,9 @@ def _rows(fields):
 
 
 # ---------------------------------------------------------------------------
-# 1. Job Location: Bill To city, else Kolkata, never shown to customers
+# 1. Job Location: Ship To city, else Bill To, else Kolkata, never shown to customers
 # ---------------------------------------------------------------------------
-class TestJobLocationFromBillTo(IntegrationTestCase):
+class TestJobLocationFromShipTo(IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
 		_location("ZZ NT Billtown", cities="Zzbill")
@@ -95,22 +98,40 @@ class TestJobLocationFromBillTo(IntegrationTestCase):
 		# The class shares one transaction: a customer per test keeps their addresses apart.
 		self.customer = _customer(f"ZZ NT {self._testMethodName[5:40]}").name
 
-	def test_bill_to_city_wins_over_the_primary_address(self):
-		# The primary address is the shipping one; the branch still follows the Bill To address.
-		ship = _address(self.customer, "ZZ NT Ship", "Zzship", address_type="Shipping")
-		_address(self.customer, "ZZ NT Bill", "Zzbill")
-		frappe.db.set_value("Customer", self.customer, "customer_primary_address", ship.name)
-		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Billtown")
-
-	def test_without_a_bill_to_address_the_primary_one_is_used(self):
-		ship = _address(self.customer, "ZZ NT Ship", "Zzship", address_type="Shipping")
-		frappe.db.set_value("Customer", self.customer, "customer_primary_address", ship.name)
+	def test_ship_to_city_wins_over_bill_to(self):
+		# The engineer goes where the unit is: the Ship To address, even when the bills go elsewhere.
+		bill = _address(self.customer, "ZZ NT Bill", "Zzbill")
+		_address(self.customer, "ZZ NT Ship", "Zzship", address_type="Shipping")
+		frappe.db.set_value("Customer", self.customer, "customer_primary_address", bill.name)
 		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Shiptown")
 
+	def test_the_preferred_shipping_address_wins(self):
+		# "Preferred Shipping Address" ticked marks the Ship To, whatever its type.
+		_address(self.customer, "ZZ NT Other Ship", "Zzbill", address_type="Shipping")
+		_address(self.customer, "ZZ NT Site", "Zzship", address_type="Office", preferred_shipping=1)
+		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Shiptown")
+
+	def test_without_a_ship_to_address_bill_to_is_used(self):
+		_address(self.customer, "ZZ NT Office", "Zzship", address_type="Office")
+		_address(self.customer, "ZZ NT Bill", "Zzbill")
+		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Billtown")
+
+	def test_without_ship_to_or_bill_to_the_primary_one_is_used(self):
+		_address(self.customer, "ZZ NT Office 1", "Zzbill", address_type="Office")
+		main = _address(self.customer, "ZZ NT Office 2", "Zzship", address_type="Office")
+		frappe.db.set_value("Customer", self.customer, "customer_primary_address", main.name)
+		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Shiptown")
+
+	def test_a_disabled_ship_to_address_is_not_used(self):
+		# The customer moved: the old site is switched off, the new one decides.
+		old = _address(self.customer, "ZZ NT Old Site", "Zzship", address_type="Shipping", preferred_shipping=1)
+		_address(self.customer, "ZZ NT New Site", "Zzbill", address_type="Shipping")
+		frappe.db.set_value("Address", old.name, "disabled", 1)
+		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Billtown")
+
 	def test_a_disabled_primary_address_is_not_used(self):
-		# The customer moved: the old primary address is switched off, the new one decides.
-		old = _address(self.customer, "ZZ NT Old", "Zzship", address_type="Shipping")
-		_address(self.customer, "ZZ NT New", "Zzbill", address_type="Shipping")
+		old = _address(self.customer, "ZZ NT Old", "Zzship", address_type="Office")
+		_address(self.customer, "ZZ NT New", "Zzbill", address_type="Office")
 		frappe.db.set_value("Customer", self.customer, "customer_primary_address", old.name)
 		frappe.db.set_value("Address", old.name, "disabled", 1)
 		self.assertEqual(jl.location_for_customer(self.customer), "ZZ NT Billtown")
@@ -122,7 +143,7 @@ class TestJobLocationFromBillTo(IntegrationTestCase):
 			self.assertEqual(new_ticket.job_location_for(self.customer), "ZZ NT Billtown")
 
 	def test_job_location_is_not_on_the_new_ticket_form(self):
-		# Nobody picks it: the customer's Bill To address decides, on save.
+		# Nobody picks it: the customer's Ship To address decides, on save.
 		sd._helpdesk_ticket_form()
 		for agent in (True, False):
 			with (

@@ -59,7 +59,7 @@ function open(answers = {}) {
 	return { doc, filters, calls, pick, pickUnit };
 }
 
-test("Job Location is not the form's business: the server sets it from the Bill To address", async () => {
+test("Job Location is not the form's business: the server sets it from the Ship To address", async () => {
 	const { doc, pick } = open({ ACME: { serials: ["SN-1"] } });
 	await pick("ACME");
 	assert.equal(LOCATION in doc, false);

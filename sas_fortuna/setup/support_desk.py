@@ -135,7 +135,7 @@ TICKET_FORM_FIELDS = [
 		"placeholder": "Filled from the Serial No",
 	},
 	{
-		# The agent's ticket sidebar only: it is set on save from the customer's Bill To address
+		# The agent's ticket sidebar only: it is set on save from the customer's Ship To address
 		# (Kolkata when none matches), never asked for on the New Ticket form (support/new_ticket.py
 		# drops it there). An agent may correct it in the sidebar, which re-routes the ticket.
 		"fieldname": "custom_job_location",

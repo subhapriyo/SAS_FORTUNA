@@ -111,11 +111,13 @@ def match_location(city=None, state=None):
 
 
 def customer_address(customer):
-	"""The address that decides a customer's branch. Only addresses still in use (not disabled)
-	count; in order of preference:
-	  1. their Bill To address (the primary billing one when there are several)
-	  2. the Customer's primary address
-	  3. any address of theirs, oldest first
+	"""The address that decides a customer's branch: where the units are, so where the engineer
+	goes. Only addresses still in use (not disabled) count; in order of preference:
+	  1. their Ship To address: the one ticked "Preferred Shipping Address", else one of type
+	     Shipping
+	  2. their Bill To address (type Billing; the primary one when there are several)
+	  3. the Customer's primary address
+	  4. any address of theirs, oldest first
 	Returns {city, state}, or None when the customer has no address in use."""
 	if not customer:
 		return None
@@ -129,18 +131,23 @@ def customer_address(customer):
 	rows = frappe.get_all(
 		"Address",
 		filters={"name": ["in", linked], "disabled": 0},
-		fields=["name", "address_type", "city", "state"],
+		fields=["name", "address_type", "is_shipping_address", "city", "state"],
 		order_by="is_primary_address desc, creation asc",
 	)
 	if not rows:
 		return None
 
-	bill_to = next((r for r in rows if r.address_type == "Billing"), None)
-	if bill_to:
-		chosen = bill_to
-	else:
+	def first(test):
+		return next((r for r in rows if test(r)), None)
+
+	chosen = (
+		first(lambda r: r.is_shipping_address)  # Ship To, as marked on the address
+		or first(lambda r: r.address_type == "Shipping")  # Ship To by type
+		or first(lambda r: r.address_type == "Billing")  # Bill To
+	)
+	if not chosen:
 		primary = frappe.db.get_value("Customer", customer, "customer_primary_address")
-		chosen = next((r for r in rows if r.name == primary), rows[0])  # a disabled primary is skipped
+		chosen = first(lambda r: r.name == primary) or rows[0]  # a disabled primary is skipped
 	return frappe._dict(city=chosen.city, state=chosen.state)
 
 

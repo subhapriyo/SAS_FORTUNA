@@ -153,7 +153,7 @@ def on_update(doc, method=None):
 # Job Location: where the customer is, so which branch's engineers take the ticket
 # ---------------------------------------------------------------------------
 def apply_job_location(doc):
-	"""Fill a ticket's Job Location when blank: the branch serving its customer's Bill To city
+	"""Fill a ticket's Job Location when blank: the branch serving its customer's Ship To city
 	(else state), Kolkata when none does or there is no customer. Nobody picks it on the New
 	Ticket form; the team's Assignment Rule then gives the ticket to an engineer at that branch
 	(overrides/assignment_rule.py). An agent may correct it later in the ticket sidebar;

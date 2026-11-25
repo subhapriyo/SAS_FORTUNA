@@ -17,7 +17,7 @@
 //    serial). Server side: sas_fortuna/support/new_ticket.py. Customers see neither field:
 //    their Serial No choices already name the item.
 //
-// Job Location is not on this form: on save the server takes it from the customer's Bill To
+// Job Location is not on this form: on save the server takes it from the customer's Ship To
 // address and assigns an engineer at that branch (support/hd_ticket.py,
 // overrides/assignment_rule.py).
 // Helpdesk has no setting for 2 and 3, so they work on the page itself. If a Helpdesk update

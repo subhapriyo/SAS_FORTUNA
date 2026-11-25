@@ -5,13 +5,13 @@ What lives here
 	                        helpdesk...hd_ticket_template.api.get_one here)
 	new_ticket_defaults()   what picking a Customer narrows: the units sold to them
 	serial_product()        the Item Name shown once an agent picks a unit
-	job_location_for()      a customer's branch: Bill To city/state, else Kolkata
+	job_location_for()      a customer's branch: Ship To (else Bill To) city/state, else Kolkata
 
 How the pieces fit
-	- Job Location is nobody's choice on this form. On save it comes from the customer's Bill
-	  To address (support/hd_ticket.py apply_job_location), and the team's Assignment Rule gives
-	  the ticket to an engineer at that branch (overrides/assignment_rule.py). It stays on the
-	  agent's ticket sidebar so it can be corrected later.
+	- Job Location is nobody's choice on this form. On save it comes from the customer's Ship
+	  To address, else Bill To (support/hd_ticket.py apply_job_location), and the team's
+	  Assignment Rule gives the ticket to an engineer at that branch
+	  (overrides/assignment_rule.py). Agents can correct it on the ticket later.
 	- The customer portal uses the same template; there the customer is known from the login,
 	  so the Customer row is agents-only (setup/support_desk.py TICKET_FORM_FIELDS).
 	- The page side is setup/data/fortuna_new_ticket_form.js.
@@ -50,7 +50,7 @@ def _agents_only(message):
 def get_template(name):
 	"""Helpdesk's template for the New Ticket page, adjusted:
 
-	everyone  no Job Location (set on save from the Bill To address)
+	everyone  no Job Location (set on save from the Ship To address)
 	agents    the Customer row reads "Customer" (its field is labelled "ERPNext Customer")
 	agents    Serial No is a searchable link. The portal's choice list (url_method) knows only
 	          the logged-in customer, so for an agent it would be empty; the page narrows the
@@ -111,6 +111,6 @@ def serial_product(serial):
 # 3. Which branch serves the customer
 # ---------------------------------------------------------------------------
 def job_location_for(customer):
-	"""The Job Location serving the customer's Bill To city (else state); the default location
-	(Kolkata) when none does, or when there is no customer or address."""
+	"""The Job Location serving the customer's Ship To address (else Bill To): its city, else its
+	state; the default location (Kolkata) when none does, or when there is no customer or address."""
 	return (customer and location_for_customer(customer)) or default_location()

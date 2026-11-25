@@ -373,7 +373,7 @@ if _os.path.exists(_os.path.join(_os.path.dirname(__file__), "setup", "support_d
 	permission_query_conditions = _support.permission_query_conditions
 	# New Ticket form for agents: Customer first (support/new_ticket.py).
 	override_whitelisted_methods = _support.override_whitelisted_methods
-	# Tickets go to an engineer at the customer's Bill To branch (overrides/assignment_rule.py).
+	# Tickets go to an engineer at the customer's Ship To branch (overrides/assignment_rule.py).
 	override_doctype_class = _support.override_doctype_class
 	# Customer portal: /repairs list and /repairs/<name> detail page.
 	website_route_rules = _support.website_route_rules

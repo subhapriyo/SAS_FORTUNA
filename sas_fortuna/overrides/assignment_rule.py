@@ -1,7 +1,7 @@
 """Assignment Rule: a ticket goes to an engineer at the customer's branch.
 
 How a new ticket finds its engineer
-  1. On save the ticket gets its Job Location from the customer's Bill To city, else state,
+  1. On save the ticket gets its Job Location from the customer's Ship To address (else Bill To): its city, else state,
      else Kolkata (support/hd_ticket.py apply_job_location), and its team from Ticket Type +
      Job Location (route_to_team).
   2. Helpdesk gives every team an Assignment Rule ("<team> - Support Rotation") whose

@@ -1,6 +1,6 @@
 """Unit tests: a new ticket goes to an engineer at the customer's branch.
 
-  1. The ticket's Job Location comes from the customer's Bill To city/state, else Kolkata
+  1. The ticket's Job Location comes from the customer's Ship To (else Bill To) city/state, else Kolkata
      (support/hd_ticket.py apply_job_location; test_new_ticket_form.py covers the address).
   2. The ticket's team assigns it through its Assignment Rule (Helpdesk: "<team> - Support
      Rotation"). overrides/assignment_rule.py narrows the rule's engineers to those whose
