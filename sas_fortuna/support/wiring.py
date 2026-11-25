@@ -75,8 +75,11 @@ doc_events = {
 
 # Helpdesk's New Ticket form, as agents get it: Customer first, a searchable Serial No that the
 # page narrows to that customer's units (support/new_ticket.py). Customers get it unchanged.
+# Link searches: on Helpdesk pages a Customer is listed with one short line (group · mobile)
+# instead of ERPNext's whole address; everything else passes through (support/new_ticket.py).
 override_whitelisted_methods = {
 	"helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one": S + "new_ticket.get_template",
+	"frappe.desk.search.search_link": S + "new_ticket.search_link",
 }
 
 # Assignment Rule: a team's rule picks an engineer at the ticket's Job Location (the customer's

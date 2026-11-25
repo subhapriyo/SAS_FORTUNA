@@ -5,6 +5,8 @@ What lives here
 	                        helpdesk...hd_ticket_template.api.get_one here)
 	new_ticket_defaults()   what picking a Customer narrows: the units sold to them
 	serial_product()        the Item Name shown once an agent picks a unit
+	search_link()           Frappe's Link search; on Helpdesk pages a Customer gets a short line
+	                        (group · mobile) instead of ERPNext's whole address
 	job_location_for()      a customer's branch: Ship To (else Bill To) city/state, else Kolkata
 
 How the pieces fit
@@ -16,6 +18,8 @@ How the pieces fit
 	  so the Customer row is agents-only (setup/support_desk.py TICKET_FORM_FIELDS).
 	- The page side is setup/data/fortuna_new_ticket_form.js.
 """
+
+from urllib.parse import urlparse
 
 import frappe
 from frappe import _
@@ -111,7 +115,53 @@ def serial_product(serial):
 
 
 # ---------------------------------------------------------------------------
-# 3. Which branch serves the customer
+# 3. The Customer dropdown: a short line under each name
+# ---------------------------------------------------------------------------
+# ERPNext's Customer search lists the whole primary address under each name (several lines,
+# raw <br> tags, GSTIN): unreadable in Helpdesk's dropdown. On Helpdesk pages each customer
+# gets one short line of basic information instead, like the Serial No dropdown:
+# "Dealer · +91 93113 30707" (customer group, then mobile number). No address. Desk's own
+# searches, and every other doctype, are passed through untouched.
+# hooks.py: override_whitelisted_methods["frappe.desk.search.search_link"] (support/wiring.py).
+HELPDESK_PATH = "/helpdesk"
+
+
+@frappe.whitelist()
+def search_link(*args, **kwargs):
+	"""Frappe's Link-field search, with short Customer lines on Helpdesk pages.
+
+	Arguments are handed to Frappe's search the way Frappe itself would (frappe.call keeps only
+	the ones it accepts), so a new or extra request parameter never breaks Desk's searches."""
+	from frappe.desk import search
+
+	kwargs.pop("cmd", None)  # the request's own method name, not an argument
+	results = frappe.call(search.search_link, *args, **kwargs)
+	doctype = kwargs.get("doctype") or (args[0] if args else None)
+	if doctype != "Customer" or not from_helpdesk_page():
+		return results
+	return [dict(row, description=customer_line(row.get("value"))) for row in results]
+
+
+def from_helpdesk_page():
+	"""True when the request comes from a Helpdesk page (/helpdesk/...), not from Desk."""
+	try:
+		referer = frappe.get_request_header("Referer") or ""
+	except Exception:
+		return False  # no web request (console, tests, background jobs)
+	return urlparse(referer).path.startswith(HELPDESK_PATH)
+
+
+def customer_line(customer):
+	""""<customer group> · <mobile>": the basics an agent needs to tell customers apart.
+	Either part is left out when blank."""
+	row = frappe.db.get_value("Customer", customer, ["customer_group", "mobile_no"], as_dict=True)
+	if not row:
+		return ""
+	return " · ".join(p for p in (row.customer_group, row.mobile_no) if p)
+
+
+# ---------------------------------------------------------------------------
+# 4. Which branch serves the customer
 # ---------------------------------------------------------------------------
 def job_location_for(customer):
 	"""The Job Location serving the customer's Ship To address (else Bill To): its city, else its

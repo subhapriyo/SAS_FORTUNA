@@ -266,6 +266,71 @@ class TestCustomerFirst(IntegrationTestCase):
 		self.assertEqual(fields[CUSTOMER_FIELD].label, "Customer")
 		self.assertFalse(fields[SERIAL_FIELD].url_method)
 
+	# -----------------------------------------------------------------------
+	# The Customer dropdown on Helpdesk: a short line under each name
+	# -----------------------------------------------------------------------
+	def _search(self, from_helpdesk, doctype="Customer", original=None):
+		"""new_ticket.search_link, with Frappe's own search answering `original`."""
+		original = original or [
+			{"value": self.customer, "label": self.customer, "description": "Dealer, 1 Zz Road<br>Kerala<br>GSTIN: X"}
+		]
+		with (
+			patch("frappe.desk.search.search_link", return_value=original) as frappe_search,
+			patch.object(new_ticket, "from_helpdesk_page", return_value=from_helpdesk),
+		):
+			got = new_ticket.search_link(doctype=doctype, txt="zz", cmd="frappe.desk.search.search_link")
+		return got, frappe_search
+
+	def test_helpdesk_shows_just_group_and_mobile(self):
+		# Basic information only, like the Serial No dropdown: no address, city or GSTIN.
+		_address(self.customer, "ZZ NT Ship", "Zzship", address_type="Shipping")
+		frappe.db.set_value("Customer", self.customer, "mobile_no", "+91 90000 00001")
+		group = frappe.db.get_value("Customer", self.customer, "customer_group")
+		got, _ = self._search(from_helpdesk=True)
+		self.assertEqual(got[0]["description"], f"{group} · +91 90000 00001")
+		self.assertNotIn("Zzship", got[0]["description"])
+		self.assertEqual((got[0]["value"], got[0]["label"]), (self.customer, self.customer))
+
+	def test_a_customer_without_a_mobile_shows_its_group(self):
+		frappe.db.set_value("Customer", self.customer, "mobile_no", None)
+		group = frappe.db.get_value("Customer", self.customer, "customer_group")
+		got, _ = self._search(from_helpdesk=True)
+		self.assertEqual(got[0]["description"], group)
+
+	def test_desk_searches_are_untouched(self):
+		got, _ = self._search(from_helpdesk=False)
+		self.assertIn("<br>", got[0]["description"])
+
+	def test_other_doctypes_are_untouched_on_helpdesk(self):
+		unit = [{"value": "SN-1", "label": "SN-1", "description": "VF2000(4G), FX0031"}]
+		got, _ = self._search(from_helpdesk=True, doctype="Serial No", original=unit)
+		self.assertEqual(got, unit)
+
+	def test_the_search_gets_frappes_own_arguments(self):
+		_, frappe_search = self._search(from_helpdesk=False)
+		frappe_search.assert_called_once_with(doctype="Customer", txt="zz")
+
+	def test_an_unknown_request_parameter_never_breaks_the_search(self):
+		# Frappe's real search, no mock: an extra parameter (a cache-buster, say) is dropped.
+		with patch.object(new_ticket, "from_helpdesk_page", return_value=False):
+			got = new_ticket.search_link(doctype="Customer", txt="ZZ NT", _="1764000000")
+		self.assertIn(self.customer, [r["value"] for r in got])
+
+	def test_helpdesk_pages_are_told_apart_by_the_referring_page(self):
+		for referer, expected in (
+			("https://site.example/helpdesk/tickets/new", True),
+			("https://site.example/desk/hd-ticket/new", False),
+			(None, False),
+		):
+			with patch("frappe.get_request_header", return_value=referer):
+				self.assertEqual(new_ticket.from_helpdesk_page(), expected, referer)
+
+	def test_frappes_link_search_is_routed_here(self):
+		self.assertEqual(
+			frappe.get_hooks("override_whitelisted_methods").get("frappe.desk.search.search_link"),
+			["sas_fortuna.support.new_ticket.search_link"],
+		)
+
 	def test_agents_can_pick_the_customer(self):
 		# The field is read only on the ticket itself (it comes from the unit or the sender), and
 		# Helpdesk 16.2 disables read-only fields on the New Ticket page: agents could not pick one.
