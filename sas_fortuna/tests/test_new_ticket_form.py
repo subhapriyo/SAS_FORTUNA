@@ -266,6 +266,27 @@ class TestCustomerFirst(IntegrationTestCase):
 		self.assertEqual(fields[CUSTOMER_FIELD].label, "Customer")
 		self.assertFalse(fields[SERIAL_FIELD].url_method)
 
+	def test_agents_can_pick_the_customer(self):
+		# The field is read only on the ticket itself (it comes from the unit or the sender), and
+		# Helpdesk 16.2 disables read-only fields on the New Ticket page: agents could not pick one.
+		self.assertTrue(frappe.get_meta("HD Ticket").get_field(CUSTOMER_FIELD).read_only)
+		# Helpdesk 16.2's template call reports the field's read_only (16.0's does not): stand in for it.
+		helpdesk_16_2 = {
+			"fields": [
+				frappe._dict(fieldname=CUSTOMER_FIELD, label="ERPNext Customer", fieldtype="Link", read_only=1),
+				frappe._dict(fieldname=SERIAL_FIELD, label="Serial No", fieldtype="Link", read_only=0),
+			]
+		}
+		with (
+			patch.object(new_ticket, "is_helpdesk_agent", return_value=True),
+			patch("helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one", return_value=helpdesk_16_2),
+		):
+			field = _rows(new_ticket.get_template("Default")["fields"])[CUSTOMER_FIELD]
+		self.assertFalse(field.get("read_only"))
+		self.assertFalse(field.get("disabled"))
+		# ...on the New Ticket form only: the ticket's own field stays read only.
+		self.assertTrue(frappe.get_meta("HD Ticket").get_field(CUSTOMER_FIELD).read_only)
+
 	def test_customers_keep_their_own_serial_list(self):
 		sd._helpdesk_ticket_form()
 		with (

@@ -51,7 +51,9 @@ def get_template(name):
 	"""Helpdesk's template for the New Ticket page, adjusted:
 
 	everyone  no Job Location (set on save from the Ship To address)
-	agents    the Customer row reads "Customer" (its field is labelled "ERPNext Customer")
+	agents    the Customer row reads "Customer" (its field is labelled "ERPNext Customer"), and can
+	          be picked: the field is read only on the ticket itself (it comes from the unit or
+	          the sender), and Helpdesk 16.2 disables read-only fields on this page
 	agents    Serial No is a searchable link. The portal's choice list (url_method) knows only
 	          the logged-in customer, so for an agent it would be empty; the page narrows the
 	          link to the customer the agent picks instead.
@@ -66,6 +68,7 @@ def get_template(name):
 	for field in template["fields"]:
 		if field.fieldname == CUSTOMER_FIELD:
 			field.label = _("Customer")
+			field.read_only = 0  # this form only: the ticket's own field stays read only
 		elif field.fieldname == SERIAL_FIELD:
 			field.url_method = ""
 		elif field.fieldname == ITEM_NAME_FIELD:
