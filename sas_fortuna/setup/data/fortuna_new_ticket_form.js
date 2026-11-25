@@ -23,6 +23,15 @@
 // Helpdesk has no setting for 2 and 3, so they work on the page itself. If a Helpdesk update
 // changes that page, they simply stop and the form works as Helpdesk ships it; the server
 // still checks the subject (sas_fortuna/support/hd_ticket.py).
+//
+// Two page layouts are handled (public/js/tests/new_ticket_layout.test.js has a copy of each):
+//   Helpdesk 16.0  field labels are <span class="block">; the field grid already sits above the
+//                  Subject box and the description
+//   Helpdesk 16.2  field labels are <label class="block">; one flex column holds Subject,
+//                  Description (with Helpdesk's own grey label), the field grid, Attachments.
+//                  The grid is shown first with CSS order (the page's elements are never moved:
+//                  Helpdesk's Vue keeps them), and Helpdesk's own "Description" label gives way
+//                  to ours
 function setupForm({ doc, call, applyFilters }) {
 	const FIELD = "custom_issue_subject";
 	const OTHERS = "Others";
@@ -30,15 +39,24 @@ function setupForm({ doc, call, applyFilters }) {
 	const ACCENT = "#e8590c";
 
 	const subjectInput = () => document.querySelector('input[maxlength="140"]');
+	// A field's label: Helpdesk 16.0 draws a <span class="block">, 16.2 a <label class="block">.
+	const FIELD_LABELS = "span.block, label.block";
 	// The dropdown's label: "Issue Subject" (sites before the rename: "Subject").
 	const isDropdownLabel = (label) => /^(Issue )?Subject\b/.test(label.textContent.trim());
+
+	// The child of `ancestor` that holds `el` (null when `el` is not inside it).
+	function childOf(ancestor, el) {
+		while (el && el.parentElement !== ancestor) el = el.parentElement;
+		return el || null;
+	}
 
 	// The Subject block: the wrapper that holds the "Subject *" label and the input.
 	function subjectBlock(input) {
 		let el = input && input.parentElement;
 		while (el && el !== document.body) {
 			const first = el.firstElementChild;
-			if (first && first.tagName === "SPAN" && !first.contains(input)) return el;
+			const isLabel = first && (first.tagName === "SPAN" || first.tagName === "LABEL");
+			if (isLabel && !first.contains(input)) return el;
 			el = el.parentElement;
 		}
 		return null;
@@ -69,19 +87,39 @@ function setupForm({ doc, call, applyFilters }) {
 		}
 	}
 
-	// The Subject dropdown's label: a field label (span.block) inside the form's field grid.
+	// The Subject dropdown's label: a field label reading "Issue Subject", not the one on
+	// Helpdesk's own Subject box (16.2 labels that one "Subject" too).
 	function subjectDropdownLabel() {
-		for (const label of document.querySelectorAll("span.block")) {
-			const grid = label.parentElement && label.parentElement.parentElement;
-			if (grid && grid.classList.contains("grid") && isDropdownLabel(label)) return label;
+		const input = subjectInput();
+		for (const label of document.querySelectorAll(FIELD_LABELS)) {
+			const own = input && label.parentElement && label.parentElement.contains(input);
+			if (!own && isDropdownLabel(label)) return label;
 		}
 		return null;
 	}
 
-	// The fields above share rows; the Subject dropdown gets a row of its own.
+	// 16.0: the fields share grid rows; the Subject dropdown gets a row of its own.
+	// (16.2 lays the fields out itself: left as it is.)
 	function subjectOnItsOwnRow() {
 		const label = subjectDropdownLabel();
-		if (label) label.parentElement.style.gridColumn = "1 / -1";
+		const wrap = label && label.parentElement;
+		const grid = wrap && wrap.parentElement;
+		if (grid && grid.classList.contains("grid")) wrap.style.gridColumn = "1 / -1";
+	}
+
+	// 16.2: Subject, Description, the fields and Attachments are one flex column, fields third.
+	// Show the fields first (Customer leads for agents), then the "Describe your issue" box (only
+	// shown for Others), then the description. CSS order only: nothing is moved.
+	function fieldsFirst() {
+		const root = editorRoot();
+		const description = root && root.parentElement;
+		const column = description && description.parentElement;
+		if (!column || getComputedStyle(column).display !== "flex") return;
+		const fields = childOf(column, subjectDropdownLabel());
+		if (!fields || fields === description) return;
+		fields.style.order = "-2";
+		const subject = childOf(column, subjectInput());
+		if (subject && subject !== fields && subject !== description) subject.style.order = "-1";
 	}
 
 	// The description editor: the topmost element around it that does not hold the Subject box.
@@ -113,6 +151,12 @@ function setupForm({ doc, call, applyFilters }) {
 				"Submit becomes active once this is filled in.</div>";
 			root.parentElement.insertBefore(heading, root);
 		}
+		// 16.2 shows its own grey "Description" label above the editor; ours (with * and the
+		// hint) takes its place.
+		for (const el of root.parentElement.children) {
+			const plain = el !== root && !el.classList.contains("fortuna-description-heading");
+			if (plain && el.textContent.trim() === "Description") el.style.display = "none";
+		}
 		// Show the heading only while Helpdesk shows the editor.
 		const heading = root.previousElementSibling;
 		if (heading && heading.classList.contains("fortuna-description-heading")) {
@@ -128,6 +172,7 @@ function setupForm({ doc, call, applyFilters }) {
 			subjectOnItsOwnRow();
 			showSubjectBox();
 			highlightDescription();
+			fieldsFirst();
 		} catch (e) {
 			clearInterval(timer);
 			console.warn("Fortuna New Ticket Form:", e);

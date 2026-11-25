@@ -1,0 +1,252 @@
+1
+00:00:00,600 --> 00:00:02,409
+Namaste!
+
+2
+00:00:02,359 --> 00:00:10,710
+In this short video, we will see how a support ticket at Fortuna now reaches the right engineer, automatically.
+
+3
+00:00:10,710 --> 00:00:17,398
+First the one-time setup, then we test each screen, and then the whole flow together.
+
+4
+00:00:17,398 --> 00:00:20,005
+Chaliye, let's begin.
+
+5
+00:00:21,412 --> 00:00:24,231
+First, the big picture.
+
+6
+00:00:24,181 --> 00:00:27,000
+The agent picks the customer.
+
+7
+00:00:27,000 --> 00:00:34,075
+The serial number list shows only that customer's units, and the item name fills itself.
+
+8
+00:00:34,075 --> 00:00:45,963
+When the ticket is saved, the system reads the customer's Bill To address, finds the branch, picks that branch's team, and gives the ticket to an engineer who works there.
+
+9
+00:00:45,963 --> 00:00:48,729
+No manual routing at all.
+
+10
+00:00:50,144 --> 00:00:52,843
+Part one, the setup.
+
+11
+00:00:52,793 --> 00:00:57,022
+Step one: Job Locations, on Desk.
+
+12
+00:00:57,022 --> 00:00:59,908
+Each branch has one record.
+
+13
+00:00:59,908 --> 00:01:02,168
+Here is Mumbai.
+
+14
+00:01:02,168 --> 00:01:09,655
+Under Cities, we have Mumbai, Navi Mumbai and Thane, and under States, Maharashtra.
+
+15
+00:01:09,655 --> 00:01:16,357
+One city or state belongs to only one branch, so there is never any confusion.
+
+16
+00:01:16,357 --> 00:01:21,996
+And Kolkata is the default, for any address that does not match.
+
+17
+00:01:23,412 --> 00:01:26,617
+Step two: the engineers.
+
+18
+00:01:26,567 --> 00:01:33,442
+Open each H D Agent, and set the Job Location where that person actually sits.
+
+19
+00:01:33,442 --> 00:01:36,261
+Rohit here is in Mumbai.
+
+20
+00:01:36,261 --> 00:01:39,359
+Keep Availability as Active.
+
+21
+00:01:39,359 --> 00:01:46,075
+If someone is on leave, simply mark them Unavailable, and new tickets will skip them.
+
+22
+00:01:47,488 --> 00:01:53,047
+Step three: Team Routing, inside Fortuna Support Settings.
+
+23
+00:01:52,997 --> 00:01:59,140
+Each row says, this ticket type, from this branch, goes to this team.
+
+24
+00:01:59,140 --> 00:02:05,257
+For example, Hardware from Mumbai goes to Hardware Support, Mumbai.
+
+25
+00:02:05,257 --> 00:02:08,887
+The rows without a branch are the fallback.
+
+26
+00:02:10,292 --> 00:02:14,162
+Step four: check the customer's address.
+
+27
+00:02:14,112 --> 00:02:19,258
+The Billing address, that is the Bill To, decides the branch.
+
+28
+00:02:19,258 --> 00:02:25,069
+For Demo Client, the city is Kolkata and the state is West Bengal.
+
+29
+00:02:25,069 --> 00:02:28,221
+That's it, the setup is done.
+
+30
+00:02:28,221 --> 00:02:32,582
+Most of it is already created for you during the update.
+
+31
+00:02:33,984 --> 00:02:37,614
+Part two, let's test each screen.
+
+32
+00:02:37,564 --> 00:02:40,423
+Open Helpdesk, Tickets.
+
+33
+00:02:40,423 --> 00:02:45,663
+See, the Customer column now comes right after the ticket number.
+
+34
+00:02:45,663 --> 00:02:49,559
+So you know who is calling, at one glance.
+
+35
+00:02:50,980 --> 00:02:52,921
+Click Create.
+
+36
+00:02:52,871 --> 00:02:56,023
+The very first field is Customer.
+
+37
+00:02:56,023 --> 00:03:00,332
+And notice, there is no Job Location field here.
+
+38
+00:03:00,332 --> 00:03:03,031
+Nobody has to choose it.
+
+39
+00:03:04,448 --> 00:03:08,424
+Pick the customer, then open Serial Number.
+
+40
+00:03:08,374 --> 00:03:12,616
+Only this customer's own five units are listed.
+
+41
+00:03:12,616 --> 00:03:17,018
+Someone else's device cannot be picked by mistake.
+
+42
+00:03:18,420 --> 00:03:24,045
+Choose a serial, and Item Name fills itself: Demo Model 1.
+
+43
+00:03:23,995 --> 00:03:28,064
+It is locked, so it always matches the unit.
+
+44
+00:03:29,464 --> 00:03:36,366
+Now choose the ticket type and the subject, write a short description, and click Submit.
+
+45
+00:03:36,316 --> 00:03:40,145
+Bas, that's all the agent has to type.
+
+46
+00:03:41,564 --> 00:03:43,865
+The ticket is saved.
+
+47
+00:03:43,815 --> 00:03:52,910
+On the right, the team is Hardware Support, Kolkata, and it is already assigned to Arpan, an engineer from Kolkata.
+
+48
+00:03:54,312 --> 00:03:59,485
+Open the same ticket in Desk, on the Product and Warranty tab.
+
+49
+00:03:59,435 --> 00:04:05,871
+Serial number, item name, warranty, and Job Location, Kolkata.
+
+50
+00:04:05,871 --> 00:04:11,350
+All filled automatically, from the unit and from the customer's address.
+
+51
+00:04:12,772 --> 00:04:16,655
+One more check, from the customer's side.
+
+52
+00:04:16,605 --> 00:04:23,028
+On the customer portal, the customer sees only their own units, with the item name.
+
+53
+00:04:23,028 --> 00:04:27,509
+There is no Customer field, and no Job Location.
+
+54
+00:04:27,509 --> 00:04:29,810
+That stays internal.
+
+55
+00:04:31,232 --> 00:04:35,820
+Part three, the whole flow, with different customers.
+
+56
+00:04:35,770 --> 00:04:41,062
+A Mumbai customer goes to the Mumbai team and the Mumbai engineer.
+
+57
+00:04:41,062 --> 00:04:48,363
+Pune is not listed as a city, but its state, Maharashtra, is, so again Mumbai.
+
+58
+00:04:48,363 --> 00:04:54,653
+Chennai, or no address at all, goes to Kolkata, our head office.
+
+59
+00:04:54,653 --> 00:05:02,073
+And if the agent changes the Job Location later, the team and the engineer change along with it.
+
+60
+00:05:03,492 --> 00:05:08,439
+So, just pick the customer, and the system does the rest.
+
+61
+00:05:08,389 --> 00:05:13,814
+Right units, right item, right branch, right engineer.
+
+62
+00:05:13,814 --> 00:05:19,413
+The full guide, with every setup and test step, is in the document.
+
+63
+00:05:19,413 --> 00:05:23,043
+Thank you, and all the best for your demo!
+
